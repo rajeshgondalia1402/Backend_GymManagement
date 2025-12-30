@@ -1,0 +1,197 @@
+2025-12-29 16:53:04 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:31:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2025-12-29 16:53:04 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:31:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2025-12-29 16:53:04 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:31:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2025-12-29 16:53:04 [error]: PrismaClientKnownRequestError: 
+Invalid `prisma.refreshToken.delete()` invocation in
+E:\Gym\gym-management\backend\src\api\v1\auth\auth.service.ts:116:37
+
+  113 }
+  114 
+  115 // Delete old token
+→ 116 await prisma.refreshToken.delete(
+An operation failed because it depends on one or more records that were required but not found. No record was found for a delete.
+    at qr.handleRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at qr.handleAndLogRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at qr.request (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at a (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:805:24)
+    at AuthService.refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.service.ts:116:5)
+    at refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.controller.ts:18:22)
+2025-12-29 16:53:04 [error]: Error: Refresh token not found or expired
+    at AuthService.refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.service.ts:103:13)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.controller.ts:18:22)
+2025-12-29 17:08:23 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:31:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2025-12-29 17:10:39 [error]: ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "undefined",
+    "path": [
+      "maxMembers"
+    ],
+    "message": "Required"
+  },
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "undefined",
+    "path": [
+      "maxTrainers"
+    ],
+    "message": "Required"
+  },
+  {
+    "code": "invalid_type",
+    "expected": "array",
+    "received": "string",
+    "path": [
+      "features"
+    ],
+    "message": "Expected array, received string"
+  }
+]
+    at Object.get error [as error] (E:\Gym\gym-management\backend\node_modules\zod\v3\types.cjs:45:31)
+    at ZodObject.parseAsync (E:\Gym\gym-management\backend\node_modules\zod\v3\types.cjs:183:22)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at E:\Gym\gym-management\backend\src\common\middleware\validate.middleware.ts:149:20
+2025-12-29 17:10:54 [error]: ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "undefined",
+    "path": [
+      "maxMembers"
+    ],
+    "message": "Required"
+  },
+  {
+    "code": "invalid_type",
+    "expected": "number",
+    "received": "undefined",
+    "path": [
+      "maxTrainers"
+    ],
+    "message": "Required"
+  },
+  {
+    "code": "invalid_type",
+    "expected": "array",
+    "received": "string",
+    "path": [
+      "features"
+    ],
+    "message": "Expected array, received string"
+  }
+]
+    at Object.get error [as error] (E:\Gym\gym-management\backend\node_modules\zod\v3\types.cjs:45:31)
+    at ZodObject.parseAsync (E:\Gym\gym-management\backend\node_modules\zod\v3\types.cjs:183:22)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at E:\Gym\gym-management\backend\src\common\middleware\validate.middleware.ts:149:20
+2025-12-29 17:27:14 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:31:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2025-12-29 17:27:14 [error]: Error: Refresh token not found or expired
+    at AuthService.refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.service.ts:103:13)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.controller.ts:18:22)
+2025-12-29 17:56:45 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:31:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2025-12-29 17:56:45 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:31:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2025-12-29 17:56:45 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:31:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2025-12-29 17:56:45 [error]: Error: Refresh token not found or expired
+    at AuthService.refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.service.ts:103:13)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.controller.ts:18:22)
+2025-12-29 17:56:45 [error]: Error: Refresh token not found or expired
+    at AuthService.refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.service.ts:103:13)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.controller.ts:18:22)
+2025-12-30 16:21:24 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:31:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)

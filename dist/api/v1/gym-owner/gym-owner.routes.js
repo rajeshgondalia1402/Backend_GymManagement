@@ -1,0 +1,36 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const gym_owner_controller_1 = __importDefault(require("./gym-owner.controller"));
+const middleware_1 = require("../../../common/middleware");
+const router = (0, express_1.Router)();
+router.use(middleware_1.authenticate, (0, middleware_1.authorize)('GYM_OWNER'));
+router.get('/dashboard', gym_owner_controller_1.default.getDashboard.bind(gym_owner_controller_1.default));
+router.get('/trainers', (0, middleware_1.validate)(middleware_1.paginationSchema, 'query'), gym_owner_controller_1.default.getTrainers.bind(gym_owner_controller_1.default));
+router.get('/trainers/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), gym_owner_controller_1.default.getTrainerById.bind(gym_owner_controller_1.default));
+router.post('/trainers', (0, middleware_1.validate)(middleware_1.createTrainerSchema), gym_owner_controller_1.default.createTrainer.bind(gym_owner_controller_1.default));
+router.put('/trainers/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), (0, middleware_1.validate)(middleware_1.updateTrainerSchema), gym_owner_controller_1.default.updateTrainer.bind(gym_owner_controller_1.default));
+router.delete('/trainers/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), gym_owner_controller_1.default.deleteTrainer.bind(gym_owner_controller_1.default));
+router.get('/members', (0, middleware_1.validate)(middleware_1.paginationSchema, 'query'), gym_owner_controller_1.default.getMembers.bind(gym_owner_controller_1.default));
+router.get('/members/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), gym_owner_controller_1.default.getMemberById.bind(gym_owner_controller_1.default));
+router.post('/members', (0, middleware_1.validate)(middleware_1.createMemberSchema), gym_owner_controller_1.default.createMember.bind(gym_owner_controller_1.default));
+router.put('/members/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), (0, middleware_1.validate)(middleware_1.updateMemberSchema), gym_owner_controller_1.default.updateMember.bind(gym_owner_controller_1.default));
+router.delete('/members/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), gym_owner_controller_1.default.deleteMember.bind(gym_owner_controller_1.default));
+router.get('/diet-plans', (0, middleware_1.validate)(middleware_1.paginationSchema, 'query'), gym_owner_controller_1.default.getDietPlans.bind(gym_owner_controller_1.default));
+router.get('/diet-plans/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), gym_owner_controller_1.default.getDietPlanById.bind(gym_owner_controller_1.default));
+router.post('/diet-plans', (0, middleware_1.validate)(middleware_1.createDietPlanSchema), gym_owner_controller_1.default.createDietPlan.bind(gym_owner_controller_1.default));
+router.put('/diet-plans/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), (0, middleware_1.validate)(middleware_1.updateDietPlanSchema), gym_owner_controller_1.default.updateDietPlan.bind(gym_owner_controller_1.default));
+router.delete('/diet-plans/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), gym_owner_controller_1.default.deleteDietPlan.bind(gym_owner_controller_1.default));
+router.get('/exercise-plans', (0, middleware_1.validate)(middleware_1.paginationSchema, 'query'), gym_owner_controller_1.default.getExercisePlans.bind(gym_owner_controller_1.default));
+router.get('/exercise-plans/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), gym_owner_controller_1.default.getExercisePlanById.bind(gym_owner_controller_1.default));
+router.post('/exercise-plans', (0, middleware_1.validate)(middleware_1.createExercisePlanSchema), gym_owner_controller_1.default.createExercisePlan.bind(gym_owner_controller_1.default));
+router.put('/exercise-plans/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), (0, middleware_1.validate)(middleware_1.updateExercisePlanSchema), gym_owner_controller_1.default.updateExercisePlan.bind(gym_owner_controller_1.default));
+router.delete('/exercise-plans/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), gym_owner_controller_1.default.deleteExercisePlan.bind(gym_owner_controller_1.default));
+router.post('/assign-diet-plan', (0, middleware_1.validate)(middleware_1.assignPlanSchema), gym_owner_controller_1.default.assignDietPlan.bind(gym_owner_controller_1.default));
+router.post('/assign-exercise-plan', (0, middleware_1.validate)(middleware_1.assignPlanSchema), gym_owner_controller_1.default.assignExercisePlan.bind(gym_owner_controller_1.default));
+router.post('/assign-trainer', gym_owner_controller_1.default.assignTrainer.bind(gym_owner_controller_1.default));
+exports.default = router;
+//# sourceMappingURL=gym-owner.routes.js.map

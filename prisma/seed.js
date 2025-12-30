@@ -68,7 +68,7 @@ async function main() {
         description: 'Essential gym management features',
         price: 29.99,
         durationDays: 30,
-        features: ['Up to 50 members', 'Basic reporting', 'Email support']
+        features: '<ul><li>Up to 50 members</li><li>Basic reporting</li><li>Email support</li></ul>'
       }
     }),
     prisma.gymSubscriptionPlan.create({
@@ -77,7 +77,7 @@ async function main() {
         description: 'Advanced features for growing gyms',
         price: 79.99,
         durationDays: 30,
-        features: ['Up to 200 members', 'Advanced reporting', 'Priority support', 'Custom branding']
+        features: '<ul><li>Up to 200 members</li><li>Advanced reporting</li><li>Priority support</li><li>Custom branding</li></ul>'
       }
     }),
     prisma.gymSubscriptionPlan.create({
@@ -86,7 +86,7 @@ async function main() {
         description: 'Complete solution for large gyms',
         price: 149.99,
         durationDays: 30,
-        features: ['Unlimited members', 'Full analytics', '24/7 support', 'API access', 'White-label']
+        features: '<ul><li>Unlimited members</li><li>Full analytics</li><li>24/7 support</li><li>API access</li><li>White-label</li></ul>'
       }
     })
   ]);
