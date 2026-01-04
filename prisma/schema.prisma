@@ -87,6 +87,7 @@ model Gym {
   trainers           Trainer[]
   expenseGroups      ExpenseGroupMaster[]
   designations       DesignationMaster[]
+  bodyParts          BodyPartMaster[]
   workoutExercises   WorkoutExerciseMaster[]
 
   @@index([ownerId])
@@ -392,16 +393,36 @@ model DesignationMaster {
   @@index([designationName])
 }
 
-model WorkoutExerciseMaster {
-  id           String   @id @default(uuid())
-  exerciseName String
-  shortCode    String?  @db.VarChar(20)
+model BodyPartMaster {
+  id           String                  @id @default(uuid())
+  bodyPartName String
   description  String?
-  isActive     Boolean  @default(true)
+  isActive     Boolean                 @default(true)
   gymId        String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  gym          Gym      @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+  gym          Gym                     @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  exercises    WorkoutExerciseMaster[]
+
+  @@unique([bodyPartName, gymId])
+  @@map("bodypartmaster")
+  @@index([gymId])
+  @@index([bodyPartName])
+  @@index([isActive])
+}
+
+model WorkoutExerciseMaster {
+  id           String          @id @default(uuid())
+  exerciseName String
+  shortCode    String?         @db.VarChar(20)
+  description  String?
+  isActive     Boolean         @default(true)
+  gymId        String
+  bodyPartId   String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  gym          Gym             @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  bodyPart     BodyPartMaster? @relation(fields: [bodyPartId], references: [id], onDelete: SetNull)
 
   @@unique([exerciseName, gymId])
   @@map("workoutexercisemaster")
@@ -409,6 +430,7 @@ model WorkoutExerciseMaster {
   @@index([exerciseName])
   @@index([shortCode])
   @@index([isActive])
+  @@index([bodyPartId])
 }
 
 enum SubscriptionStatus {

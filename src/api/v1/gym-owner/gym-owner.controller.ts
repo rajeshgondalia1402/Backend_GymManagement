@@ -623,6 +623,57 @@ class GymOwnerController {
     }
   }
 
+  // Body Part Master CRUD
+  async getBodyParts(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const bodyParts = await gymOwnerService.getBodyParts(gymId);
+      successResponse(res, bodyParts, 'Body parts retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getBodyPartById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const bodyPart = await gymOwnerService.getBodyPartById(gymId, req.params.id);
+      successResponse(res, bodyPart, 'Body part retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createBodyPart(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const bodyPart = await gymOwnerService.createBodyPart(gymId, req.body);
+      successResponse(res, bodyPart, 'Body part created successfully', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateBodyPart(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const bodyPart = await gymOwnerService.updateBodyPart(gymId, req.params.id, req.body);
+      successResponse(res, bodyPart, 'Body part updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteBodyPart(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      await gymOwnerService.deleteBodyPart(gymId, req.params.id);
+      successResponse(res, null, 'Body part deleted successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // Workout Exercise Master CRUD
   async getWorkoutExercises(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -664,11 +715,11 @@ class GymOwnerController {
     }
   }
 
-  async deleteWorkoutExercise(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  async toggleWorkoutExerciseStatus(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const gymId = this.getGymId(req);
-      await gymOwnerService.deleteWorkoutExercise(gymId, req.params.id);
-      successResponse(res, null, 'Workout exercise deleted successfully');
+      const exercise = await gymOwnerService.toggleWorkoutExerciseStatus(gymId, req.params.id);
+      successResponse(res, exercise, `Workout exercise ${exercise.isActive ? 'activated' : 'deactivated'} successfully`);
     } catch (error) {
       next(error);
     }
