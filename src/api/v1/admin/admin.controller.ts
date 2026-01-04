@@ -224,6 +224,33 @@ class AdminController {
     }
   }
 
+  async getGymOwnerById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const owner = await adminService.getGymOwnerById(req.params.id);
+      successResponse(res, owner, 'Gym owner retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateGymOwner(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const owner = await adminService.updateGymOwner(req.params.id, req.body);
+      successResponse(res, owner, 'Gym owner updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteGymOwner(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      await adminService.deleteGymOwner(req.params.id);
+      successResponse(res, null, 'Gym owner deleted successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async toggleUserStatus(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await adminService.toggleUserStatus(req.params.id);

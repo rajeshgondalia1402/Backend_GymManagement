@@ -95,6 +95,15 @@ export interface CreateGymOwnerRequest {
   phone?: string;
 }
 
+export interface UpdateGymOwnerRequest {
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  isActive?: boolean;
+}
+
 export interface DashboardStats {
   totalGyms: number;
   totalGymOwners: number;
