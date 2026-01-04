@@ -1411,6 +1411,72 @@ class GymOwnerService {
             where: { id },
         });
     }
+    async getWorkoutExercises(gymId) {
+        const exercises = await database_1.prisma.workoutExerciseMaster.findMany({
+            where: { gymId },
+            orderBy: { exerciseName: 'asc' },
+        });
+        return exercises;
+    }
+    async getWorkoutExerciseById(gymId, id) {
+        const exercise = await database_1.prisma.workoutExerciseMaster.findFirst({
+            where: { id, gymId },
+        });
+        if (!exercise)
+            throw new exceptions_1.NotFoundException('Workout exercise not found');
+        return exercise;
+    }
+    async createWorkoutExercise(gymId, data) {
+        const existingExercise = await database_1.prisma.workoutExerciseMaster.findFirst({
+            where: {
+                exerciseName: data.exerciseName,
+                gymId,
+            },
+        });
+        if (existingExercise) {
+            throw new exceptions_1.ConflictException('Workout exercise with this name already exists');
+        }
+        const exercise = await database_1.prisma.workoutExerciseMaster.create({
+            data: {
+                exerciseName: data.exerciseName,
+                shortCode: data.shortCode,
+                description: data.description,
+                gymId,
+            },
+        });
+        return exercise;
+    }
+    async updateWorkoutExercise(gymId, id, data) {
+        await this.getWorkoutExerciseById(gymId, id);
+        if (data.exerciseName) {
+            const existingExercise = await database_1.prisma.workoutExerciseMaster.findFirst({
+                where: {
+                    exerciseName: data.exerciseName,
+                    gymId,
+                    NOT: { id },
+                },
+            });
+            if (existingExercise) {
+                throw new exceptions_1.ConflictException('Workout exercise with this name already exists');
+            }
+        }
+        const exercise = await database_1.prisma.workoutExerciseMaster.update({
+            where: { id },
+            data: {
+                exerciseName: data.exerciseName,
+                shortCode: data.shortCode,
+                description: data.description,
+                isActive: data.isActive,
+            },
+        });
+        return exercise;
+    }
+    async deleteWorkoutExercise(gymId, id) {
+        await this.getWorkoutExerciseById(gymId, id);
+        await database_1.prisma.workoutExerciseMaster.delete({
+            where: { id },
+        });
+    }
 }
 exports.default = new GymOwnerService();
 //# sourceMappingURL=gym-owner.service.js.map

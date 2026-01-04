@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const admin_service_1 = __importDefault(require("./admin.service"));
 const utils_1 = require("../../../common/utils");
+const upload_middleware_1 = require("../../../common/middleware/upload.middleware");
 class AdminController {
     async getDashboard(req, res, next) {
         try {
@@ -133,6 +134,46 @@ class AdminController {
             const { ownerId } = req.body;
             const gym = await admin_service_1.default.assignGymOwner(req.params.id, ownerId);
             (0, utils_1.successResponse)(res, gym, 'Owner assigned to gym successfully');
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    async uploadGymLogo(req, res, next) {
+        try {
+            const gymId = req.params.id;
+            if (!req.file) {
+                res.status(400).json({
+                    success: false,
+                    message: 'No file uploaded. Please upload a gym logo image.',
+                });
+                return;
+            }
+            const existingGym = await admin_service_1.default.getGymById(gymId);
+            if (existingGym.gymLogo) {
+                (0, upload_middleware_1.deleteOldLogo)(existingGym.gymLogo);
+            }
+            const logoPath = (0, upload_middleware_1.getRelativeLogoPath)(req.file.filename);
+            const gym = await admin_service_1.default.updateGym(gymId, { gymLogo: logoPath });
+            (0, utils_1.successResponse)(res, {
+                gym,
+                logoUrl: logoPath,
+                message: 'Logo uploaded and saved successfully'
+            }, 'Gym logo uploaded successfully');
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    async deleteGymLogo(req, res, next) {
+        try {
+            const gymId = req.params.id;
+            const existingGym = await admin_service_1.default.getGymById(gymId);
+            if (existingGym.gymLogo) {
+                (0, upload_middleware_1.deleteOldLogo)(existingGym.gymLogo);
+            }
+            const gym = await admin_service_1.default.updateGym(gymId, { gymLogo: undefined });
+            (0, utils_1.successResponse)(res, gym, 'Gym logo deleted successfully');
         }
         catch (error) {
             next(error);

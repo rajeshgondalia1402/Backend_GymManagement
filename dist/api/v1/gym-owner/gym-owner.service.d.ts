@@ -1,4 +1,4 @@
-import { Trainer, CreateTrainerRequest, UpdateTrainerRequest, Member, CreateMemberRequest, UpdateMemberRequest, DietPlan, CreateDietPlanRequest, UpdateDietPlanRequest, ExercisePlan, CreateExercisePlanRequest, UpdateExercisePlanRequest, AssignPlanRequest, GymOwnerDashboardStats, PaginationParams, PTMember, CreatePTMemberRequest, UpdatePTMemberRequest, Supplement, CreateSupplementRequest, UpdateSupplementRequest, MemberDietPlan, CreateMemberDietPlanRequest, UpdateMemberDietPlanRequest, Inquiry, CreateInquiryRequest, UpdateInquiryRequest, MemberReport, PTProgressReport, TrainerReport, RevenueReport, ExpenseGroup, CreateExpenseGroupRequest, UpdateExpenseGroupRequest, Designation, CreateDesignationRequest, UpdateDesignationRequest } from './gym-owner.types';
+import { Trainer, CreateTrainerRequest, UpdateTrainerRequest, Member, CreateMemberRequest, UpdateMemberRequest, DietPlan, CreateDietPlanRequest, UpdateDietPlanRequest, ExercisePlan, CreateExercisePlanRequest, UpdateExercisePlanRequest, AssignPlanRequest, GymOwnerDashboardStats, PaginationParams, PTMember, CreatePTMemberRequest, UpdatePTMemberRequest, Supplement, CreateSupplementRequest, UpdateSupplementRequest, MemberDietPlan, CreateMemberDietPlanRequest, UpdateMemberDietPlanRequest, Inquiry, CreateInquiryRequest, UpdateInquiryRequest, MemberReport, PTProgressReport, TrainerReport, RevenueReport, ExpenseGroup, CreateExpenseGroupRequest, UpdateExpenseGroupRequest, Designation, CreateDesignationRequest, UpdateDesignationRequest, WorkoutExercise, CreateWorkoutExerciseRequest, UpdateWorkoutExerciseRequest } from './gym-owner.types';
 declare class GymOwnerService {
     getDashboardStats(gymId: string): Promise<GymOwnerDashboardStats>;
     getTrainers(gymId: string, params: PaginationParams): Promise<{
@@ -75,6 +75,11 @@ declare class GymOwnerService {
     createDesignation(gymId: string, data: CreateDesignationRequest): Promise<Designation>;
     updateDesignation(gymId: string, id: string, data: UpdateDesignationRequest): Promise<Designation>;
     deleteDesignation(gymId: string, id: string): Promise<void>;
+    getWorkoutExercises(gymId: string): Promise<WorkoutExercise[]>;
+    getWorkoutExerciseById(gymId: string, id: string): Promise<WorkoutExercise>;
+    createWorkoutExercise(gymId: string, data: CreateWorkoutExerciseRequest): Promise<WorkoutExercise>;
+    updateWorkoutExercise(gymId: string, id: string, data: UpdateWorkoutExerciseRequest): Promise<WorkoutExercise>;
+    deleteWorkoutExercise(gymId: string, id: string): Promise<void>;
 }
 declare const _default: GymOwnerService;
 export default _default;

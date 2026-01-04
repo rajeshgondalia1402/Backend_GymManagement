@@ -1546,3 +1546,245 @@ An operation failed because it depends on one or more records that were required
 2026-01-03 13:57:21 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
 2026-01-03 13:57:21 [info]: 🌍 Environment: development
 2026-01-03 13:57:31 [info]: SIGINT received. Shutting down gracefully...
+2026-01-04 11:08:58 [info]: 🚀 Server is running on port 5000
+2026-01-04 11:08:58 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-04 11:08:58 [info]: 🌍 Environment: development
+2026-01-04 11:09:13 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:33:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2026-01-04 11:09:21 [error]: PrismaClientKnownRequestError: 
+Invalid `prisma.workoutExerciseMaster.findMany()` invocation in
+E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.service.ts:1651:58
+
+  1648 
+  1649 // Workout Exercise Master CRUD
+  1650 async getWorkoutExercises(gymId: string): Promise<WorkoutExercise[]> {
+→ 1651   const exercises = await prisma.workoutExerciseMaster.findMany(
+The table `public.workoutexercisemaster` does not exist in the current database.
+    at qr.handleRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at qr.handleAndLogRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at qr.request (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at a (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:805:24)
+    at GymOwnerService.getWorkoutExercises (E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.service.ts:1651:23)
+    at GymOwnerController.getWorkoutExercises (E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.controller.ts:630:25)
+2026-01-04 11:09:22 [error]: PrismaClientKnownRequestError: 
+Invalid `prisma.workoutExerciseMaster.findMany()` invocation in
+E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.service.ts:1651:58
+
+  1648 
+  1649 // Workout Exercise Master CRUD
+  1650 async getWorkoutExercises(gymId: string): Promise<WorkoutExercise[]> {
+→ 1651   const exercises = await prisma.workoutExerciseMaster.findMany(
+The table `public.workoutexercisemaster` does not exist in the current database.
+    at qr.handleRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at qr.handleAndLogRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at qr.request (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at a (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:805:24)
+    at GymOwnerService.getWorkoutExercises (E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.service.ts:1651:23)
+    at GymOwnerController.getWorkoutExercises (E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.controller.ts:630:25)
+2026-01-04 11:09:57 [error]: PrismaClientKnownRequestError: 
+Invalid `prisma.workoutExerciseMaster.findMany()` invocation in
+E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.service.ts:1651:58
+
+  1648 
+  1649 // Workout Exercise Master CRUD
+  1650 async getWorkoutExercises(gymId: string): Promise<WorkoutExercise[]> {
+→ 1651   const exercises = await prisma.workoutExerciseMaster.findMany(
+The table `public.workoutexercisemaster` does not exist in the current database.
+    at qr.handleRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at qr.handleAndLogRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at qr.request (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at a (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:805:24)
+    at GymOwnerService.getWorkoutExercises (E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.service.ts:1651:23)
+    at GymOwnerController.getWorkoutExercises (E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.controller.ts:630:25)
+2026-01-04 11:09:59 [error]: PrismaClientKnownRequestError: 
+Invalid `prisma.workoutExerciseMaster.findMany()` invocation in
+E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.service.ts:1651:58
+
+  1648 
+  1649 // Workout Exercise Master CRUD
+  1650 async getWorkoutExercises(gymId: string): Promise<WorkoutExercise[]> {
+→ 1651   const exercises = await prisma.workoutExerciseMaster.findMany(
+The table `public.workoutexercisemaster` does not exist in the current database.
+    at qr.handleRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at qr.handleAndLogRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at qr.request (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at a (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:805:24)
+    at GymOwnerService.getWorkoutExercises (E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.service.ts:1651:23)
+    at GymOwnerController.getWorkoutExercises (E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.controller.ts:630:25)
+2026-01-04 11:10:15 [error]: PrismaClientKnownRequestError: 
+Invalid `prisma.workoutExerciseMaster.findMany()` invocation in
+E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.service.ts:1651:58
+
+  1648 
+  1649 // Workout Exercise Master CRUD
+  1650 async getWorkoutExercises(gymId: string): Promise<WorkoutExercise[]> {
+→ 1651   const exercises = await prisma.workoutExerciseMaster.findMany(
+The table `public.workoutexercisemaster` does not exist in the current database.
+    at qr.handleRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at qr.handleAndLogRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at qr.request (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at a (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:805:24)
+    at GymOwnerService.getWorkoutExercises (E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.service.ts:1651:23)
+    at GymOwnerController.getWorkoutExercises (E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.controller.ts:630:25)
+2026-01-04 11:10:16 [error]: PrismaClientKnownRequestError: 
+Invalid `prisma.workoutExerciseMaster.findMany()` invocation in
+E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.service.ts:1651:58
+
+  1648 
+  1649 // Workout Exercise Master CRUD
+  1650 async getWorkoutExercises(gymId: string): Promise<WorkoutExercise[]> {
+→ 1651   const exercises = await prisma.workoutExerciseMaster.findMany(
+The table `public.workoutexercisemaster` does not exist in the current database.
+    at qr.handleRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at qr.handleAndLogRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at qr.request (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at a (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:805:24)
+    at GymOwnerService.getWorkoutExercises (E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.service.ts:1651:23)
+    at GymOwnerController.getWorkoutExercises (E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.controller.ts:630:25)
+2026-01-04 11:10:17 [error]: PrismaClientKnownRequestError: 
+Invalid `prisma.workoutExerciseMaster.findMany()` invocation in
+E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.service.ts:1651:58
+
+  1648 
+  1649 // Workout Exercise Master CRUD
+  1650 async getWorkoutExercises(gymId: string): Promise<WorkoutExercise[]> {
+→ 1651   const exercises = await prisma.workoutExerciseMaster.findMany(
+The table `public.workoutexercisemaster` does not exist in the current database.
+    at qr.handleRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at qr.handleAndLogRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at qr.request (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at a (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:805:24)
+    at GymOwnerService.getWorkoutExercises (E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.service.ts:1651:23)
+    at GymOwnerController.getWorkoutExercises (E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.controller.ts:630:25)
+2026-01-04 11:10:18 [error]: PrismaClientKnownRequestError: 
+Invalid `prisma.workoutExerciseMaster.findMany()` invocation in
+E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.service.ts:1651:58
+
+  1648 
+  1649 // Workout Exercise Master CRUD
+  1650 async getWorkoutExercises(gymId: string): Promise<WorkoutExercise[]> {
+→ 1651   const exercises = await prisma.workoutExerciseMaster.findMany(
+The table `public.workoutexercisemaster` does not exist in the current database.
+    at qr.handleRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at qr.handleAndLogRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at qr.request (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at a (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:805:24)
+    at GymOwnerService.getWorkoutExercises (E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.service.ts:1651:23)
+    at GymOwnerController.getWorkoutExercises (E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.controller.ts:630:25)
+2026-01-04 11:10:30 [error]: PrismaClientKnownRequestError: 
+Invalid `prisma.workoutExerciseMaster.findMany()` invocation in
+E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.service.ts:1651:58
+
+  1648 
+  1649 // Workout Exercise Master CRUD
+  1650 async getWorkoutExercises(gymId: string): Promise<WorkoutExercise[]> {
+→ 1651   const exercises = await prisma.workoutExerciseMaster.findMany(
+The table `public.workoutexercisemaster` does not exist in the current database.
+    at qr.handleRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at qr.handleAndLogRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at qr.request (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at a (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:805:24)
+    at GymOwnerService.getWorkoutExercises (E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.service.ts:1651:23)
+    at GymOwnerController.getWorkoutExercises (E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.controller.ts:630:25)
+2026-01-04 11:10:32 [error]: PrismaClientKnownRequestError: 
+Invalid `prisma.workoutExerciseMaster.findMany()` invocation in
+E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.service.ts:1651:58
+
+  1648 
+  1649 // Workout Exercise Master CRUD
+  1650 async getWorkoutExercises(gymId: string): Promise<WorkoutExercise[]> {
+→ 1651   const exercises = await prisma.workoutExerciseMaster.findMany(
+The table `public.workoutexercisemaster` does not exist in the current database.
+    at qr.handleRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at qr.handleAndLogRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at qr.request (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at a (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:805:24)
+    at GymOwnerService.getWorkoutExercises (E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.service.ts:1651:23)
+    at GymOwnerController.getWorkoutExercises (E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.controller.ts:630:25)
+2026-01-04 11:10:48 [error]: PrismaClientKnownRequestError: 
+Invalid `prisma.workoutExerciseMaster.findMany()` invocation in
+E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.service.ts:1651:58
+
+  1648 
+  1649 // Workout Exercise Master CRUD
+  1650 async getWorkoutExercises(gymId: string): Promise<WorkoutExercise[]> {
+→ 1651   const exercises = await prisma.workoutExerciseMaster.findMany(
+The table `public.workoutexercisemaster` does not exist in the current database.
+    at qr.handleRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at qr.handleAndLogRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at qr.request (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at a (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:805:24)
+    at GymOwnerService.getWorkoutExercises (E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.service.ts:1651:23)
+    at GymOwnerController.getWorkoutExercises (E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.controller.ts:630:25)
+2026-01-04 11:10:49 [error]: PrismaClientKnownRequestError: 
+Invalid `prisma.workoutExerciseMaster.findMany()` invocation in
+E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.service.ts:1651:58
+
+  1648 
+  1649 // Workout Exercise Master CRUD
+  1650 async getWorkoutExercises(gymId: string): Promise<WorkoutExercise[]> {
+→ 1651   const exercises = await prisma.workoutExerciseMaster.findMany(
+The table `public.workoutexercisemaster` does not exist in the current database.
+    at qr.handleRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at qr.handleAndLogRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at qr.request (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at a (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:805:24)
+    at GymOwnerService.getWorkoutExercises (E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.service.ts:1651:23)
+    at GymOwnerController.getWorkoutExercises (E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.controller.ts:630:25)
+2026-01-04 11:11:25 [error]: PrismaClientKnownRequestError: 
+Invalid `prisma.workoutExerciseMaster.findMany()` invocation in
+E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.service.ts:1651:58
+
+  1648 
+  1649 // Workout Exercise Master CRUD
+  1650 async getWorkoutExercises(gymId: string): Promise<WorkoutExercise[]> {
+→ 1651   const exercises = await prisma.workoutExerciseMaster.findMany(
+The table `public.workoutexercisemaster` does not exist in the current database.
+    at qr.handleRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at qr.handleAndLogRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at qr.request (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at a (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:805:24)
+    at GymOwnerService.getWorkoutExercises (E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.service.ts:1651:23)
+    at GymOwnerController.getWorkoutExercises (E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.controller.ts:630:25)
+2026-01-04 11:11:26 [error]: PrismaClientKnownRequestError: 
+Invalid `prisma.workoutExerciseMaster.findMany()` invocation in
+E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.service.ts:1651:58
+
+  1648 
+  1649 // Workout Exercise Master CRUD
+  1650 async getWorkoutExercises(gymId: string): Promise<WorkoutExercise[]> {
+→ 1651   const exercises = await prisma.workoutExerciseMaster.findMany(
+The table `public.workoutexercisemaster` does not exist in the current database.
+    at qr.handleRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at qr.handleAndLogRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at qr.request (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at a (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:805:24)
+    at GymOwnerService.getWorkoutExercises (E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.service.ts:1651:23)
+    at GymOwnerController.getWorkoutExercises (E:\Gym\gym-management\backend\src\api\v1\gym-owner\gym-owner.controller.ts:630:25)
+2026-01-04 11:22:49 [info]: 🚀 Server is running on port 5000
+2026-01-04 11:22:49 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-04 11:22:49 [info]: 🌍 Environment: development
+2026-01-04 11:28:27 [info]: SIGINT received. Shutting down gracefully...

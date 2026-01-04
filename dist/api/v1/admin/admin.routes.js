@@ -18,6 +18,8 @@ router.get('/gyms', (0, middleware_1.validate)(middleware_1.paginationSchema, 'q
 router.get('/gyms/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), admin_controller_1.default.getGymById);
 router.post('/gyms', (0, middleware_1.validate)(middleware_1.createGymSchema), admin_controller_1.default.createGym);
 router.put('/gyms/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), (0, middleware_1.validate)(middleware_1.updateGymSchema), admin_controller_1.default.updateGym);
+router.post('/gyms/:id/upload-logo', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), middleware_1.uploadGymLogo, middleware_1.handleUploadError, admin_controller_1.default.uploadGymLogo);
+router.delete('/gyms/:id/delete-logo', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), admin_controller_1.default.deleteGymLogo);
 router.delete('/gyms/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), admin_controller_1.default.deleteGym);
 router.patch('/gyms/:id/toggle-status', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), admin_controller_1.default.toggleGymStatus);
 router.patch('/gyms/:id/assign-owner', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), admin_controller_1.default.assignGymOwner);

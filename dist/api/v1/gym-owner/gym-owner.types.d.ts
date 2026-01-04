@@ -345,4 +345,25 @@ export interface CreateDesignationRequest {
 export interface UpdateDesignationRequest {
     designationName: string;
 }
+export interface WorkoutExercise {
+    id: string;
+    exerciseName: string;
+    shortCode?: string | null;
+    description?: string | null;
+    isActive: boolean;
+    gymId: string;
+    createdAt: Date;
+    updatedAt: Date;
+}
+export interface CreateWorkoutExerciseRequest {
+    exerciseName: string;
+    shortCode?: string;
+    description?: string;
+}
+export interface UpdateWorkoutExerciseRequest {
+    exerciseName?: string;
+    shortCode?: string;
+    description?: string;
+    isActive?: boolean;
+}
 //# sourceMappingURL=gym-owner.types.d.ts.map

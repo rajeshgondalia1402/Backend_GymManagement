@@ -55,6 +55,11 @@ declare class GymOwnerController {
     createDesignation(req: AuthRequest, res: Response, next: NextFunction): Promise<void>;
     updateDesignation(req: AuthRequest, res: Response, next: NextFunction): Promise<void>;
     deleteDesignation(req: AuthRequest, res: Response, next: NextFunction): Promise<void>;
+    getWorkoutExercises(req: AuthRequest, res: Response, next: NextFunction): Promise<void>;
+    getWorkoutExerciseById(req: AuthRequest, res: Response, next: NextFunction): Promise<void>;
+    createWorkoutExercise(req: AuthRequest, res: Response, next: NextFunction): Promise<void>;
+    updateWorkoutExercise(req: AuthRequest, res: Response, next: NextFunction): Promise<void>;
+    deleteWorkoutExercise(req: AuthRequest, res: Response, next: NextFunction): Promise<void>;
 }
 declare const _default: GymOwnerController;
 export default _default;

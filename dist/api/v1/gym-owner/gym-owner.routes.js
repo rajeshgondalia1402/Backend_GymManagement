@@ -61,5 +61,10 @@ router.get('/designations/:id', (0, middleware_1.validate)(middleware_1.idParamS
 router.post('/designations', (0, middleware_1.validate)(middleware_1.createDesignationSchema), gym_owner_controller_1.default.createDesignation.bind(gym_owner_controller_1.default));
 router.put('/designations/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), (0, middleware_1.validate)(middleware_1.updateDesignationSchema), gym_owner_controller_1.default.updateDesignation.bind(gym_owner_controller_1.default));
 router.delete('/designations/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), gym_owner_controller_1.default.deleteDesignation.bind(gym_owner_controller_1.default));
+router.get('/workout-exercises', gym_owner_controller_1.default.getWorkoutExercises.bind(gym_owner_controller_1.default));
+router.get('/workout-exercises/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), gym_owner_controller_1.default.getWorkoutExerciseById.bind(gym_owner_controller_1.default));
+router.post('/workout-exercises', (0, middleware_1.validate)(middleware_1.createWorkoutExerciseSchema), gym_owner_controller_1.default.createWorkoutExercise.bind(gym_owner_controller_1.default));
+router.put('/workout-exercises/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), (0, middleware_1.validate)(middleware_1.updateWorkoutExerciseSchema), gym_owner_controller_1.default.updateWorkoutExercise.bind(gym_owner_controller_1.default));
+router.delete('/workout-exercises/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), gym_owner_controller_1.default.deleteWorkoutExercise.bind(gym_owner_controller_1.default));
 exports.default = router;
 //# sourceMappingURL=gym-owner.routes.js.map

@@ -17,4 +17,5 @@ Object.defineProperty(exports, "__esModule", { value: true });
 __exportStar(require("./auth.middleware"), exports);
 __exportStar(require("./error.middleware"), exports);
 __exportStar(require("./validate.middleware"), exports);
+__exportStar(require("./upload.middleware"), exports);
 //# sourceMappingURL=index.js.map

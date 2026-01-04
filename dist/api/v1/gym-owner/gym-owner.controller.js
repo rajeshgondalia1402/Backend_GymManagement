@@ -595,6 +595,56 @@ class GymOwnerController {
             next(error);
         }
     }
+    async getWorkoutExercises(req, res, next) {
+        try {
+            const gymId = this.getGymId(req);
+            const exercises = await gym_owner_service_1.default.getWorkoutExercises(gymId);
+            (0, utils_1.successResponse)(res, exercises, 'Workout exercises retrieved successfully');
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    async getWorkoutExerciseById(req, res, next) {
+        try {
+            const gymId = this.getGymId(req);
+            const exercise = await gym_owner_service_1.default.getWorkoutExerciseById(gymId, req.params.id);
+            (0, utils_1.successResponse)(res, exercise, 'Workout exercise retrieved successfully');
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    async createWorkoutExercise(req, res, next) {
+        try {
+            const gymId = this.getGymId(req);
+            const exercise = await gym_owner_service_1.default.createWorkoutExercise(gymId, req.body);
+            (0, utils_1.successResponse)(res, exercise, 'Workout exercise created successfully', 201);
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    async updateWorkoutExercise(req, res, next) {
+        try {
+            const gymId = this.getGymId(req);
+            const exercise = await gym_owner_service_1.default.updateWorkoutExercise(gymId, req.params.id, req.body);
+            (0, utils_1.successResponse)(res, exercise, 'Workout exercise updated successfully');
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    async deleteWorkoutExercise(req, res, next) {
+        try {
+            const gymId = this.getGymId(req);
+            await gym_owner_service_1.default.deleteWorkoutExercise(gymId, req.params.id);
+            (0, utils_1.successResponse)(res, null, 'Workout exercise deleted successfully');
+        }
+        catch (error) {
+            next(error);
+        }
+    }
 }
 exports.default = new GymOwnerController();
 //# sourceMappingURL=gym-owner.controller.js.map

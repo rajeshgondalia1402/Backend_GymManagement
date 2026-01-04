@@ -157,6 +157,9 @@ class AdminService {
                 OR: [
                     { name: { contains: search, mode: 'insensitive' } },
                     { email: { contains: search, mode: 'insensitive' } },
+                    { city: { contains: search, mode: 'insensitive' } },
+                    { state: { contains: search, mode: 'insensitive' } },
+                    { gstRegNo: { contains: search, mode: 'insensitive' } },
                 ],
             }
             : {};
@@ -196,9 +199,18 @@ class AdminService {
         const gym = await database_1.prisma.gym.create({
             data: {
                 name: data.name,
-                address: data.address,
-                phone: data.phone,
+                address1: data.address1,
+                address2: data.address2,
+                city: data.city,
+                state: data.state,
+                zipcode: data.zipcode,
+                mobileNo: data.mobileNo,
+                phoneNo: data.phoneNo,
                 email: data.email,
+                gstRegNo: data.gstRegNo,
+                website: data.website,
+                note: data.note,
+                gymLogo: data.gymLogo,
                 subscriptionPlanId: data.subscriptionPlanId,
                 ownerId: data.ownerId,
             },
@@ -208,9 +220,40 @@ class AdminService {
     }
     async updateGym(id, data) {
         await this.getGymById(id);
+        const updateData = {};
+        if (data.name !== undefined)
+            updateData.name = data.name;
+        if (data.address1 !== undefined)
+            updateData.address1 = data.address1;
+        if (data.address2 !== undefined)
+            updateData.address2 = data.address2;
+        if (data.city !== undefined)
+            updateData.city = data.city;
+        if (data.state !== undefined)
+            updateData.state = data.state;
+        if (data.zipcode !== undefined)
+            updateData.zipcode = data.zipcode;
+        if (data.mobileNo !== undefined)
+            updateData.mobileNo = data.mobileNo;
+        if (data.phoneNo !== undefined)
+            updateData.phoneNo = data.phoneNo;
+        if (data.email !== undefined)
+            updateData.email = data.email;
+        if (data.gstRegNo !== undefined)
+            updateData.gstRegNo = data.gstRegNo;
+        if (data.website !== undefined)
+            updateData.website = data.website;
+        if (data.note !== undefined)
+            updateData.note = data.note;
+        if (data.gymLogo !== undefined)
+            updateData.gymLogo = data.gymLogo || null;
+        if (data.subscriptionPlanId !== undefined)
+            updateData.subscriptionPlanId = data.subscriptionPlanId;
+        if (data.ownerId !== undefined)
+            updateData.ownerId = data.ownerId;
         const gym = await database_1.prisma.gym.update({
             where: { id },
-            data,
+            data: updateData,
             include: { subscriptionPlan: true },
         });
         return gym;

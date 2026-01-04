@@ -112,45 +112,99 @@ export declare const updateSubscriptionPlanSchema: z.ZodObject<{
 }>;
 export declare const createGymSchema: z.ZodObject<{
     name: z.ZodString;
-    address: z.ZodString;
-    phone: z.ZodString;
-    email: z.ZodString;
-    subscriptionPlanId: z.ZodString;
+    address1: z.ZodOptional<z.ZodString>;
+    address2: z.ZodOptional<z.ZodString>;
+    city: z.ZodOptional<z.ZodString>;
+    state: z.ZodOptional<z.ZodString>;
+    zipcode: z.ZodOptional<z.ZodString>;
+    mobileNo: z.ZodOptional<z.ZodString>;
+    phoneNo: z.ZodOptional<z.ZodString>;
+    email: z.ZodOptional<z.ZodString>;
+    gstRegNo: z.ZodOptional<z.ZodString>;
+    website: z.ZodOptional<z.ZodString>;
+    note: z.ZodOptional<z.ZodString>;
+    gymLogo: z.ZodOptional<z.ZodString>;
+    subscriptionPlanId: z.ZodOptional<z.ZodString>;
     ownerId: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     name: string;
-    email: string;
-    address: string;
-    phone: string;
-    subscriptionPlanId: string;
+    email?: string | undefined;
+    address1?: string | undefined;
+    address2?: string | undefined;
+    city?: string | undefined;
+    state?: string | undefined;
+    zipcode?: string | undefined;
+    mobileNo?: string | undefined;
+    phoneNo?: string | undefined;
+    gstRegNo?: string | undefined;
+    website?: string | undefined;
+    note?: string | undefined;
+    gymLogo?: string | undefined;
     ownerId?: string | undefined;
+    subscriptionPlanId?: string | undefined;
 }, {
     name: string;
-    email: string;
-    address: string;
-    phone: string;
-    subscriptionPlanId: string;
+    email?: string | undefined;
+    address1?: string | undefined;
+    address2?: string | undefined;
+    city?: string | undefined;
+    state?: string | undefined;
+    zipcode?: string | undefined;
+    mobileNo?: string | undefined;
+    phoneNo?: string | undefined;
+    gstRegNo?: string | undefined;
+    website?: string | undefined;
+    note?: string | undefined;
+    gymLogo?: string | undefined;
     ownerId?: string | undefined;
+    subscriptionPlanId?: string | undefined;
 }>;
 export declare const updateGymSchema: z.ZodObject<{
     name: z.ZodOptional<z.ZodString>;
-    address: z.ZodOptional<z.ZodString>;
-    phone: z.ZodOptional<z.ZodString>;
-    email: z.ZodOptional<z.ZodString>;
-    subscriptionPlanId: z.ZodOptional<z.ZodString>;
+    address1: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    address2: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    city: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    state: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    zipcode: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    mobileNo: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    phoneNo: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    email: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    gstRegNo: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    website: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    note: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    gymLogo: z.ZodOptional<z.ZodOptional<z.ZodString>>;
+    subscriptionPlanId: z.ZodOptional<z.ZodOptional<z.ZodString>>;
     ownerId: z.ZodOptional<z.ZodOptional<z.ZodString>>;
 }, "strip", z.ZodTypeAny, {
     name?: string | undefined;
     email?: string | undefined;
-    address?: string | undefined;
-    phone?: string | undefined;
+    address1?: string | undefined;
+    address2?: string | undefined;
+    city?: string | undefined;
+    state?: string | undefined;
+    zipcode?: string | undefined;
+    mobileNo?: string | undefined;
+    phoneNo?: string | undefined;
+    gstRegNo?: string | undefined;
+    website?: string | undefined;
+    note?: string | undefined;
+    gymLogo?: string | undefined;
     ownerId?: string | undefined;
     subscriptionPlanId?: string | undefined;
 }, {
     name?: string | undefined;
     email?: string | undefined;
-    address?: string | undefined;
-    phone?: string | undefined;
+    address1?: string | undefined;
+    address2?: string | undefined;
+    city?: string | undefined;
+    state?: string | undefined;
+    zipcode?: string | undefined;
+    mobileNo?: string | undefined;
+    phoneNo?: string | undefined;
+    gstRegNo?: string | undefined;
+    website?: string | undefined;
+    note?: string | undefined;
+    gymLogo?: string | undefined;
     ownerId?: string | undefined;
     subscriptionPlanId?: string | undefined;
 }>;
@@ -247,6 +301,35 @@ export declare const updateDesignationSchema: z.ZodObject<{
     designationName: string;
 }, {
     designationName: string;
+}>;
+export declare const createWorkoutExerciseSchema: z.ZodObject<{
+    exerciseName: z.ZodString;
+    shortCode: z.ZodOptional<z.ZodString>;
+    description: z.ZodOptional<z.ZodString>;
+}, "strip", z.ZodTypeAny, {
+    exerciseName: string;
+    description?: string | undefined;
+    shortCode?: string | undefined;
+}, {
+    exerciseName: string;
+    description?: string | undefined;
+    shortCode?: string | undefined;
+}>;
+export declare const updateWorkoutExerciseSchema: z.ZodObject<{
+    exerciseName: z.ZodOptional<z.ZodString>;
+    shortCode: z.ZodOptional<z.ZodString>;
+    description: z.ZodOptional<z.ZodString>;
+    isActive: z.ZodOptional<z.ZodBoolean>;
+}, "strip", z.ZodTypeAny, {
+    isActive?: boolean | undefined;
+    description?: string | undefined;
+    exerciseName?: string | undefined;
+    shortCode?: string | undefined;
+}, {
+    isActive?: boolean | undefined;
+    description?: string | undefined;
+    exerciseName?: string | undefined;
+    shortCode?: string | undefined;
 }>;
 export declare const createGymOwnerSchema: z.ZodEffects<z.ZodObject<{
     name: z.ZodOptional<z.ZodString>;

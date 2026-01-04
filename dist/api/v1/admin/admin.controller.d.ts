@@ -14,6 +14,8 @@ declare class AdminController {
     deleteGym(req: AuthRequest, res: Response, next: NextFunction): Promise<void>;
     toggleGymStatus(req: AuthRequest, res: Response, next: NextFunction): Promise<void>;
     assignGymOwner(req: AuthRequest, res: Response, next: NextFunction): Promise<void>;
+    uploadGymLogo(req: AuthRequest, res: Response, next: NextFunction): Promise<void>;
+    deleteGymLogo(req: AuthRequest, res: Response, next: NextFunction): Promise<void>;
     getGymOwners(req: AuthRequest, res: Response, next: NextFunction): Promise<void>;
     createGymOwner(req: AuthRequest, res: Response, next: NextFunction): Promise<void>;
     toggleUserStatus(req: AuthRequest, res: Response, next: NextFunction): Promise<void>;

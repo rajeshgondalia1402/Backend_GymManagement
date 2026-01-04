@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validate = exports.updateProfileSchema = exports.assignPlanSchema = exports.updateExercisePlanSchema = exports.createExercisePlanSchema = exports.updateDietPlanSchema = exports.createDietPlanSchema = exports.ptMemberIdParamSchema = exports.memberIdParamSchema = exports.updateInquirySchema = exports.createInquirySchema = exports.updateMemberDietPlanSchema = exports.createMemberDietPlanSchema = exports.updateSupplementSchema = exports.createSupplementSchema = exports.updatePTMemberSchema = exports.createPTMemberSchema = exports.updateMemberSchema = exports.createMemberSchema = exports.updateTrainerSchema = exports.createTrainerSchema = exports.createGymOwnerSchema = exports.updateDesignationSchema = exports.createDesignationSchema = exports.updateExpenseGroupSchema = exports.createExpenseGroupSchema = exports.updatePaymentTypeSchema = exports.createPaymentTypeSchema = exports.updateEnquiryTypeSchema = exports.createEnquiryTypeSchema = exports.updateOccupationSchema = exports.createOccupationSchema = exports.updateGymSchema = exports.createGymSchema = exports.updateSubscriptionPlanSchema = exports.createSubscriptionPlanSchema = exports.changePasswordSchema = exports.refreshTokenSchema = exports.loginSchema = exports.gymIdParamSchema = exports.idParamSchema = exports.paginationSchema = void 0;
+exports.validate = exports.updateProfileSchema = exports.assignPlanSchema = exports.updateExercisePlanSchema = exports.createExercisePlanSchema = exports.updateDietPlanSchema = exports.createDietPlanSchema = exports.ptMemberIdParamSchema = exports.memberIdParamSchema = exports.updateInquirySchema = exports.createInquirySchema = exports.updateMemberDietPlanSchema = exports.createMemberDietPlanSchema = exports.updateSupplementSchema = exports.createSupplementSchema = exports.updatePTMemberSchema = exports.createPTMemberSchema = exports.updateMemberSchema = exports.createMemberSchema = exports.updateTrainerSchema = exports.createTrainerSchema = exports.createGymOwnerSchema = exports.updateWorkoutExerciseSchema = exports.createWorkoutExerciseSchema = exports.updateDesignationSchema = exports.createDesignationSchema = exports.updateExpenseGroupSchema = exports.createExpenseGroupSchema = exports.updatePaymentTypeSchema = exports.createPaymentTypeSchema = exports.updateEnquiryTypeSchema = exports.createEnquiryTypeSchema = exports.updateOccupationSchema = exports.createOccupationSchema = exports.updateGymSchema = exports.createGymSchema = exports.updateSubscriptionPlanSchema = exports.createSubscriptionPlanSchema = exports.changePasswordSchema = exports.refreshTokenSchema = exports.loginSchema = exports.gymIdParamSchema = exports.idParamSchema = exports.paginationSchema = void 0;
 const zod_1 = require("zod");
 exports.paginationSchema = zod_1.z.object({
     page: zod_1.z.string().optional().transform((val) => parseInt(val || '1', 10)),
@@ -37,11 +37,31 @@ exports.createSubscriptionPlanSchema = zod_1.z.object({
 });
 exports.updateSubscriptionPlanSchema = exports.createSubscriptionPlanSchema.partial();
 exports.createGymSchema = zod_1.z.object({
-    name: zod_1.z.string().min(2, 'Name must be at least 2 characters'),
-    address: zod_1.z.string().min(5, 'Address must be at least 5 characters'),
-    phone: zod_1.z.string().min(10, 'Phone must be at least 10 characters'),
-    email: zod_1.z.string().email('Invalid email format'),
-    subscriptionPlanId: zod_1.z.string().uuid('Invalid subscription plan ID'),
+    name: zod_1.z.string().min(2, 'Gym Name must be at least 2 characters'),
+    address1: zod_1.z.string().min(5, 'Address 1 must be at least 5 characters').optional(),
+    address2: zod_1.z.string().optional(),
+    city: zod_1.z.string().min(2, 'City must be at least 2 characters').optional(),
+    state: zod_1.z.string().min(2, 'State must be at least 2 characters').optional(),
+    zipcode: zod_1.z.string()
+        .regex(/^\d+$/, 'Zipcode must contain only numbers')
+        .max(10, 'Zipcode must be at most 10 digits')
+        .optional(),
+    mobileNo: zod_1.z.string()
+        .regex(/^\d+$/, 'Mobile No must contain only numbers')
+        .min(10, 'Mobile No must be at least 10 digits')
+        .max(15, 'Mobile No must be at most 15 digits')
+        .optional(),
+    phoneNo: zod_1.z.string()
+        .regex(/^\d+$/, 'Phone No must contain only numbers')
+        .min(10, 'Phone No must be at least 10 digits')
+        .max(15, 'Phone No must be at most 15 digits')
+        .optional(),
+    email: zod_1.z.string().email('Invalid email format').optional(),
+    gstRegNo: zod_1.z.string().max(20, 'GST Reg. No must be at most 20 characters').optional(),
+    website: zod_1.z.string().optional(),
+    note: zod_1.z.string().optional(),
+    gymLogo: zod_1.z.string().optional(),
+    subscriptionPlanId: zod_1.z.string().uuid('Invalid subscription plan ID').optional(),
     ownerId: zod_1.z.string().uuid('Invalid owner ID').optional(),
 });
 exports.updateGymSchema = exports.createGymSchema.partial();
@@ -76,6 +96,17 @@ exports.createDesignationSchema = zod_1.z.object({
 });
 exports.updateDesignationSchema = zod_1.z.object({
     designationName: zod_1.z.string().min(2, 'Designation name must be at least 2 characters'),
+});
+exports.createWorkoutExerciseSchema = zod_1.z.object({
+    exerciseName: zod_1.z.string().min(2, 'Exercise name must be at least 2 characters'),
+    shortCode: zod_1.z.string().max(20, 'Short code must be at most 20 characters').optional(),
+    description: zod_1.z.string().optional(),
+});
+exports.updateWorkoutExerciseSchema = zod_1.z.object({
+    exerciseName: zod_1.z.string().min(2, 'Exercise name must be at least 2 characters').optional(),
+    shortCode: zod_1.z.string().max(20, 'Short code must be at most 20 characters').optional(),
+    description: zod_1.z.string().optional(),
+    isActive: zod_1.z.boolean().optional(),
 });
 exports.createGymOwnerSchema = zod_1.z.object({
     name: zod_1.z.string().min(2, 'Name must be at least 2 characters').optional(),

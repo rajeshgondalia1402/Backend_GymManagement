@@ -28,11 +28,23 @@ export interface UpdateSubscriptionPlanRequest extends Partial<CreateSubscriptio
 export interface Gym {
     id: string;
     name: string;
-    address: string;
-    phone: string;
-    email: string;
+    address?: string;
+    address1?: string;
+    address2?: string;
+    city?: string;
+    state?: string;
+    zipcode?: string;
+    phone?: string;
+    mobileNo?: string;
+    phoneNo?: string;
+    email?: string;
+    gstRegNo?: string;
+    website?: string;
+    note?: string;
+    logo?: string;
+    gymLogo?: string;
     isActive: boolean;
-    subscriptionPlanId: string;
+    subscriptionPlanId?: string;
     subscriptionPlan?: SubscriptionPlan;
     ownerId?: string;
     owner?: GymOwner;
@@ -41,10 +53,19 @@ export interface Gym {
 }
 export interface CreateGymRequest {
     name: string;
-    address: string;
-    phone: string;
-    email: string;
-    subscriptionPlanId: string;
+    address1?: string;
+    address2?: string;
+    city?: string;
+    state?: string;
+    zipcode?: string;
+    mobileNo?: string;
+    phoneNo?: string;
+    email?: string;
+    gstRegNo?: string;
+    website?: string;
+    note?: string;
+    gymLogo?: string;
+    subscriptionPlanId?: string;
     ownerId?: string;
 }
 export interface UpdateGymRequest extends Partial<CreateGymRequest> {
