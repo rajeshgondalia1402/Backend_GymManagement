@@ -9,6 +9,7 @@ import {
   createGymSchema,
   updateGymSchema,
   createGymOwnerSchema,
+  updateGymOwnerSchema,
   createOccupationSchema,
   updateOccupationSchema,
   createEnquiryTypeSchema,
@@ -510,6 +511,98 @@ router.get('/gym-owners', validate(paginationSchema, 'query'), adminController.g
  *         description: Gym owner created successfully
  */
 router.post('/gym-owners', validate(createGymOwnerSchema), adminController.createGymOwner);
+
+/**
+ * @swagger
+ * /api/v1/admin/gym-owners/{id}:
+ *   get:
+ *     summary: Get gym owner by ID
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Gym owner retrieved successfully
+ *       404:
+ *         description: Gym owner not found
+ */
+router.get('/gym-owners/:id', validate(idParamSchema, 'params'), adminController.getGymOwnerById);
+
+/**
+ * @swagger
+ * /api/v1/admin/gym-owners/{id}:
+ *   put:
+ *     summary: Update a gym owner
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Full name
+ *               firstName:
+ *                 type: string
+ *                 description: First name
+ *               lastName:
+ *                 type: string
+ *                 description: Last name
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: Email address
+ *               phone:
+ *                 type: string
+ *                 description: Phone number
+ *               isActive:
+ *                 type: boolean
+ *                 description: Active status
+ *     responses:
+ *       200:
+ *         description: Gym owner updated successfully
+ *       404:
+ *         description: Gym owner not found
+ */
+router.put('/gym-owners/:id', validate(idParamSchema, 'params'), validate(updateGymOwnerSchema), adminController.updateGymOwner);
+
+/**
+ * @swagger
+ * /api/v1/admin/gym-owners/{id}:
+ *   delete:
+ *     summary: Delete a gym owner
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Gym owner deleted successfully
+ *       404:
+ *         description: Gym owner not found
+ */
+router.delete('/gym-owners/:id', validate(idParamSchema, 'params'), adminController.deleteGymOwner);
 
 /**
  * @swagger

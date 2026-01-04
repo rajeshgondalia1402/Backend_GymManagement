@@ -10,6 +10,7 @@ import {
   UpdateGymRequest,
   GymOwner,
   CreateGymOwnerRequest,
+  UpdateGymOwnerRequest,
   DashboardStats,
   PaginationParams,
   Occupation,
@@ -410,6 +411,108 @@ class AdminService {
       gymId: undefined,
       createdAt: user.createdAt,
     };
+  }
+
+  async getGymOwnerById(id: string): Promise<GymOwner> {
+    const gymOwnerRole = await prisma.rolemaster.findFirst({ where: { rolename: 'GYM_OWNER' } });
+    if (!gymOwnerRole) throw new NotFoundException('GYM_OWNER role not found');
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      include: { ownedGym: true },
+    });
+
+    if (!user) throw new NotFoundException('Gym owner not found');
+    if (user.roleId !== gymOwnerRole.Id) throw new NotFoundException('User is not a gym owner');
+
+    const nameParts = user.name.split(' ');
+    return {
+      id: user.id,
+      email: user.email,
+      firstName: nameParts[0] || user.name,
+      lastName: nameParts.slice(1).join(' ') || '',
+      phone: undefined,
+      isActive: user.isActive,
+      gymId: user.ownedGym?.id || '',
+      gymName: user.ownedGym?.name || '',
+      createdAt: user.createdAt,
+    };
+  }
+
+  async updateGymOwner(id: string, data: UpdateGymOwnerRequest): Promise<GymOwner> {
+    const gymOwnerRole = await prisma.rolemaster.findFirst({ where: { rolename: 'GYM_OWNER' } });
+    if (!gymOwnerRole) throw new NotFoundException('GYM_OWNER role not found');
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      include: { ownedGym: true },
+    });
+
+    if (!user) throw new NotFoundException('Gym owner not found');
+    if (user.roleId !== gymOwnerRole.Id) throw new NotFoundException('User is not a gym owner');
+
+    // Check if email is being changed and if new email already exists
+    if (data.email && data.email !== user.email) {
+      const existingUser = await prisma.user.findUnique({ where: { email: data.email } });
+      if (existingUser) throw new ConflictException('User with this email already exists');
+    }
+
+    // Handle name update
+    let fullName = user.name;
+    if (data.name) {
+      fullName = data.name;
+    } else if (data.firstName || data.lastName) {
+      const currentParts = user.name.split(' ');
+      const firstName = data.firstName || currentParts[0] || '';
+      const lastName = data.lastName || currentParts.slice(1).join(' ') || '';
+      fullName = `${firstName} ${lastName}`.trim();
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: {
+        name: fullName,
+        email: data.email || user.email,
+        isActive: data.isActive !== undefined ? data.isActive : user.isActive,
+      },
+      include: { ownedGym: true },
+    });
+
+    const nameParts = updatedUser.name.split(' ');
+    return {
+      id: updatedUser.id,
+      email: updatedUser.email,
+      firstName: nameParts[0] || updatedUser.name,
+      lastName: nameParts.slice(1).join(' ') || '',
+      phone: data.phone,
+      isActive: updatedUser.isActive,
+      gymId: updatedUser.ownedGym?.id || '',
+      gymName: updatedUser.ownedGym?.name || '',
+      createdAt: updatedUser.createdAt,
+    };
+  }
+
+  async deleteGymOwner(id: string): Promise<void> {
+    const gymOwnerRole = await prisma.rolemaster.findFirst({ where: { rolename: 'GYM_OWNER' } });
+    if (!gymOwnerRole) throw new NotFoundException('GYM_OWNER role not found');
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      include: { ownedGym: true },
+    });
+
+    if (!user) throw new NotFoundException('Gym owner not found');
+    if (user.roleId !== gymOwnerRole.Id) throw new NotFoundException('User is not a gym owner');
+
+    // If the gym owner has a gym, unassign them first
+    if (user.ownedGym) {
+      await prisma.gym.update({
+        where: { id: user.ownedGym.id },
+        data: { ownerId: null },
+      });
+    }
+
+    await prisma.user.delete({ where: { id } });
   }
 
   async toggleUserStatus(id: string): Promise<{ isActive: boolean }> {
