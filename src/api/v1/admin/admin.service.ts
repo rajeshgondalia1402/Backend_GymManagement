@@ -12,6 +12,15 @@ import {
   CreateGymOwnerRequest,
   DashboardStats,
   PaginationParams,
+  Occupation,
+  CreateOccupationRequest,
+  UpdateOccupationRequest,
+  EnquiryType,
+  CreateEnquiryTypeRequest,
+  UpdateEnquiryTypeRequest,
+  PaymentType,
+  CreatePaymentTypeRequest,
+  UpdatePaymentTypeRequest,
 } from './admin.types';
 
 class AdminService {
@@ -182,6 +191,9 @@ class AdminService {
           OR: [
             { name: { contains: search, mode: 'insensitive' as const } },
             { email: { contains: search, mode: 'insensitive' as const } },
+            { city: { contains: search, mode: 'insensitive' as const } },
+            { state: { contains: search, mode: 'insensitive' as const } },
+            { gstRegNo: { contains: search, mode: 'insensitive' as const } },
           ],
         }
       : {};
@@ -224,9 +236,18 @@ class AdminService {
     const gym = await prisma.gym.create({
       data: {
         name: data.name,
-        address: data.address,
-        phone: data.phone,
+        address1: data.address1,
+        address2: data.address2,
+        city: data.city,
+        state: data.state,
+        zipcode: data.zipcode,
+        mobileNo: data.mobileNo,
+        phoneNo: data.phoneNo,
         email: data.email,
+        gstRegNo: data.gstRegNo,
+        website: data.website,
+        note: data.note,
+        gymLogo: data.gymLogo,
         subscriptionPlanId: data.subscriptionPlanId,
         ownerId: data.ownerId,
       },
@@ -238,9 +259,28 @@ class AdminService {
 
   async updateGym(id: string, data: UpdateGymRequest): Promise<Gym> {
     await this.getGymById(id);
+    
+    // Build update data object with only provided fields
+    const updateData: any = {};
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.address1 !== undefined) updateData.address1 = data.address1;
+    if (data.address2 !== undefined) updateData.address2 = data.address2;
+    if (data.city !== undefined) updateData.city = data.city;
+    if (data.state !== undefined) updateData.state = data.state;
+    if (data.zipcode !== undefined) updateData.zipcode = data.zipcode;
+    if (data.mobileNo !== undefined) updateData.mobileNo = data.mobileNo;
+    if (data.phoneNo !== undefined) updateData.phoneNo = data.phoneNo;
+    if (data.email !== undefined) updateData.email = data.email;
+    if (data.gstRegNo !== undefined) updateData.gstRegNo = data.gstRegNo;
+    if (data.website !== undefined) updateData.website = data.website;
+    if (data.note !== undefined) updateData.note = data.note;
+    if (data.gymLogo !== undefined) updateData.gymLogo = data.gymLogo || null;
+    if (data.subscriptionPlanId !== undefined) updateData.subscriptionPlanId = data.subscriptionPlanId;
+    if (data.ownerId !== undefined) updateData.ownerId = data.ownerId;
+    
     const gym = await prisma.gym.update({
       where: { id },
-      data,
+      data: updateData,
       include: { subscriptionPlan: true },
     });
     return gym as unknown as Gym;
@@ -259,6 +299,39 @@ class AdminService {
       include: { subscriptionPlan: true },
     });
     return updated as unknown as Gym;
+  }
+
+  async assignGymOwner(gymId: string, ownerId: string): Promise<Gym> {
+    // Verify gym exists
+    await this.getGymById(gymId);
+
+    // Verify user exists and is a gym owner
+    const gymOwnerRole = await prisma.rolemaster.findFirst({ where: { rolename: 'GYM_OWNER' } });
+    if (!gymOwnerRole) throw new NotFoundException('Gym owner role not found');
+
+    const user = await prisma.user.findUnique({ where: { id: ownerId } });
+    if (!user) throw new NotFoundException('User not found');
+    if (user.roleId !== gymOwnerRole.Id) {
+      throw new ConflictException('User is not a gym owner');
+    }
+
+    // Check if user already owns a gym
+    const existingGym = await prisma.gym.findFirst({ where: { ownerId } });
+    if (existingGym && existingGym.id !== gymId) {
+      throw new ConflictException('User already owns another gym');
+    }
+
+    // Assign owner to gym
+    const gym = await prisma.gym.update({
+      where: { id: gymId },
+      data: { ownerId },
+      include: {
+        subscriptionPlan: true,
+        owner: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    return gym as unknown as Gym;
   }
 
   // Gym Owners
@@ -285,7 +358,7 @@ class AdminService {
         skip,
         take: limit,
         orderBy: { [sortBy]: sortOrder },
-        include: { ownedGym: { select: { id: true } } },
+        include: { ownedGym: { select: { id: true, name: true } } },
       }),
       prisma.user.count({ where }),
     ]);
@@ -297,7 +370,8 @@ class AdminService {
       lastName: u.name.split(' ').slice(1).join(' ') || '',
       phone: undefined,
       isActive: u.isActive,
-      gymId: u.ownedGym?.id,
+      gymId: u.ownedGym?.id || '',
+      gymName: u.ownedGym?.name || '',
       createdAt: u.createdAt,
     }));
 
@@ -312,20 +386,25 @@ class AdminService {
     if (!gymOwnerRole) throw new NotFoundException('GYM_OWNER role not found');
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
+    
+    // Handle both name formats: single 'name' field or 'firstName'/'lastName'
+    const fullName = data.name || `${data.firstName || ''} ${data.lastName || ''}`.trim();
+    
     const user = await prisma.user.create({
       data: {
         email: data.email,
         password: hashedPassword,
-        name: `${data.firstName} ${data.lastName}`,
+        name: fullName,
         roleId: gymOwnerRole.Id,
       },
     });
 
+    const nameParts = fullName.split(' ');
     return {
       id: user.id,
       email: user.email,
-      firstName: data.firstName,
-      lastName: data.lastName,
+      firstName: data.firstName || nameParts[0] || fullName,
+      lastName: data.lastName || nameParts.slice(1).join(' ') || '',
       phone: data.phone,
       isActive: user.isActive,
       gymId: undefined,
@@ -343,6 +422,232 @@ class AdminService {
     });
 
     return { isActive: updated.isActive };
+  }
+
+  // Occupation Master CRUD
+  async getOccupations(): Promise<Occupation[]> {
+    const occupations = await prisma.occupationMaster.findMany({
+      orderBy: { occupationName: 'asc' },
+    });
+
+    return occupations;
+  }
+
+  async getOccupationById(id: string): Promise<Occupation> {
+    const occupation = await prisma.occupationMaster.findUnique({ where: { id } });
+    if (!occupation) throw new NotFoundException('Occupation not found');
+    return occupation;
+  }
+
+  async createOccupation(data: CreateOccupationRequest, createdBy?: string): Promise<Occupation> {
+    // Check if occupation with same name exists
+    const existingOccupation = await prisma.occupationMaster.findUnique({
+      where: { occupationName: data.occupationName },
+    });
+    if (existingOccupation) {
+      throw new ConflictException('Occupation with this name already exists');
+    }
+
+    const occupation = await prisma.occupationMaster.create({
+      data: {
+        occupationName: data.occupationName,
+        description: data.description,
+        createdBy: createdBy,
+      },
+    });
+
+    return occupation;
+  }
+
+  async updateOccupation(id: string, data: UpdateOccupationRequest): Promise<Occupation> {
+    await this.getOccupationById(id);
+
+    // Check for duplicate name if updating occupationName
+    if (data.occupationName) {
+      const existingOccupation = await prisma.occupationMaster.findFirst({
+        where: {
+          occupationName: data.occupationName,
+          NOT: { id },
+        },
+      });
+      if (existingOccupation) {
+        throw new ConflictException('Occupation with this name already exists');
+      }
+    }
+
+    const updateData: any = {};
+    if (data.occupationName) updateData.occupationName = data.occupationName;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+
+    const occupation = await prisma.occupationMaster.update({
+      where: { id },
+      data: updateData,
+    });
+
+    return occupation;
+  }
+
+  async deleteOccupation(id: string): Promise<Occupation> {
+    // Soft delete - set isActive to false
+    await this.getOccupationById(id);
+
+    const occupation = await prisma.occupationMaster.update({
+      where: { id },
+      data: { isActive: false },
+    });
+
+    return occupation;
+  }
+
+  // Enquiry Type Master CRUD
+  async getEnquiryTypes(): Promise<EnquiryType[]> {
+    const enquiryTypes = await prisma.enquiryTypeMaster.findMany({
+      orderBy: { name: 'asc' },
+    });
+
+    return enquiryTypes;
+  }
+
+  async getEnquiryTypeById(id: string): Promise<EnquiryType> {
+    const enquiryType = await prisma.enquiryTypeMaster.findUnique({ where: { id } });
+    if (!enquiryType) throw new NotFoundException('Enquiry type not found');
+    return enquiryType;
+  }
+
+  async createEnquiryType(data: CreateEnquiryTypeRequest, createdBy?: string): Promise<EnquiryType> {
+    // Check if enquiry type with same name exists
+    const existingEnquiryType = await prisma.enquiryTypeMaster.findUnique({
+      where: { name: data.name },
+    });
+    if (existingEnquiryType) {
+      throw new ConflictException('Enquiry type with this name already exists');
+    }
+
+    const enquiryType = await prisma.enquiryTypeMaster.create({
+      data: {
+        name: data.name,
+        createdBy: createdBy,
+      },
+    });
+
+    return enquiryType;
+  }
+
+  async updateEnquiryType(id: string, data: UpdateEnquiryTypeRequest): Promise<EnquiryType> {
+    await this.getEnquiryTypeById(id);
+
+    // Check for duplicate name if updating name
+    if (data.name) {
+      const existingEnquiryType = await prisma.enquiryTypeMaster.findFirst({
+        where: {
+          name: data.name,
+          NOT: { id },
+        },
+      });
+      if (existingEnquiryType) {
+        throw new ConflictException('Enquiry type with this name already exists');
+      }
+    }
+
+    const updateData: any = {};
+    if (data.name) updateData.name = data.name;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+
+    const enquiryType = await prisma.enquiryTypeMaster.update({
+      where: { id },
+      data: updateData,
+    });
+
+    return enquiryType;
+  }
+
+  async deleteEnquiryType(id: string): Promise<EnquiryType> {
+    // Soft delete - set isActive to false
+    await this.getEnquiryTypeById(id);
+
+    const enquiryType = await prisma.enquiryTypeMaster.update({
+      where: { id },
+      data: { isActive: false },
+    });
+
+    return enquiryType;
+  }
+
+  // Payment Type Master CRUD
+  async getPaymentTypes(): Promise<PaymentType[]> {
+    const paymentTypes = await prisma.paymentTypeMaster.findMany({
+      orderBy: { paymentTypeName: 'asc' },
+    });
+
+    return paymentTypes;
+  }
+
+  async getPaymentTypeById(id: string): Promise<PaymentType> {
+    const paymentType = await prisma.paymentTypeMaster.findUnique({ where: { id } });
+    if (!paymentType) throw new NotFoundException('Payment type not found');
+    return paymentType;
+  }
+
+  async createPaymentType(data: CreatePaymentTypeRequest, createdBy?: string): Promise<PaymentType> {
+    // Check if payment type with same name exists
+    const existingPaymentType = await prisma.paymentTypeMaster.findUnique({
+      where: { paymentTypeName: data.paymentTypeName },
+    });
+    if (existingPaymentType) {
+      throw new ConflictException('Payment type with this name already exists');
+    }
+
+    const paymentType = await prisma.paymentTypeMaster.create({
+      data: {
+        paymentTypeName: data.paymentTypeName,
+        description: data.description,
+        createdBy: createdBy,
+      },
+    });
+
+    return paymentType;
+  }
+
+  async updatePaymentType(id: string, data: UpdatePaymentTypeRequest): Promise<PaymentType> {
+    await this.getPaymentTypeById(id);
+
+    // Check for duplicate name if updating paymentTypeName
+    if (data.paymentTypeName) {
+      const existingPaymentType = await prisma.paymentTypeMaster.findFirst({
+        where: {
+          paymentTypeName: data.paymentTypeName,
+          NOT: { id },
+        },
+      });
+      if (existingPaymentType) {
+        throw new ConflictException('Payment type with this name already exists');
+      }
+    }
+
+    const updateData: any = {};
+    if (data.paymentTypeName) updateData.paymentTypeName = data.paymentTypeName;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+
+    const paymentType = await prisma.paymentTypeMaster.update({
+      where: { id },
+      data: updateData,
+    });
+
+    return paymentType;
+  }
+
+  async deletePaymentType(id: string): Promise<PaymentType> {
+    // Soft delete - set isActive to false
+    await this.getPaymentTypeById(id);
+
+    const paymentType = await prisma.paymentTypeMaster.update({
+      where: { id },
+      data: { isActive: false },
+    });
+
+    return paymentType;
   }
 }
 

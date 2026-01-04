@@ -316,6 +316,138 @@ class MemberService {
       gym: member.gym,
     };
   }
+
+  // Get member's personal diet plan (MemberDietPlan - individual plan created by gym owner)
+  async getMyDietPlan(userId: string): Promise<any> {
+    const member = await prisma.member.findUnique({ where: { userId } });
+    if (!member) throw new NotFoundException('Member not found');
+
+    const dietPlan = await prisma.memberDietPlan.findFirst({
+      where: {
+        memberId: member.id,
+        isActive: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!dietPlan) return null;
+
+    return {
+      id: dietPlan.id,
+      planName: dietPlan.planName,
+      description: dietPlan.description,
+      meals: dietPlan.meals,
+      calories: dietPlan.calories,
+      startDate: dietPlan.startDate,
+      endDate: dietPlan.endDate,
+      isActive: dietPlan.isActive,
+      createdAt: dietPlan.createdAt,
+      updatedAt: dietPlan.updatedAt,
+    };
+  }
+
+  // Get all member's diet plans (history)
+  async getMyDietPlanHistory(userId: string): Promise<any[]> {
+    const member = await prisma.member.findUnique({ where: { userId } });
+    if (!member) throw new NotFoundException('Member not found');
+
+    const dietPlans = await prisma.memberDietPlan.findMany({
+      where: {
+        memberId: member.id,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return dietPlans.map((plan) => ({
+      id: plan.id,
+      planName: plan.planName,
+      description: plan.description,
+      meals: plan.meals,
+      calories: plan.calories,
+      startDate: plan.startDate,
+      endDate: plan.endDate,
+      isActive: plan.isActive,
+      createdAt: plan.createdAt,
+      updatedAt: plan.updatedAt,
+    }));
+  }
+
+  // Get member's supplements (via PT membership)
+  async getMySupplements(userId: string): Promise<any[]> {
+    const member = await prisma.member.findUnique({ where: { userId } });
+    if (!member) throw new NotFoundException('Member not found');
+
+    // Get PT membership for this member
+    const ptMember = await prisma.pTMember.findFirst({
+      where: {
+        memberId: member.id,
+        isActive: true,
+      },
+    });
+
+    if (!ptMember) {
+      return []; // Not a PT member, no supplements
+    }
+
+    const supplements = await prisma.supplement.findMany({
+      where: {
+        ptMemberId: ptMember.id,
+        isActive: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return supplements.map((sup) => ({
+      id: sup.id,
+      name: sup.name,
+      dosage: sup.dosage,
+      frequency: sup.frequency,
+      timing: sup.timing,
+      notes: sup.notes,
+      startDate: sup.startDate,
+      endDate: sup.endDate,
+      isActive: sup.isActive,
+      createdAt: sup.createdAt,
+    }));
+  }
+
+  // Get member's PT membership details (if they are a PT member)
+  async getMyPTMembership(userId: string): Promise<any | null> {
+    const member = await prisma.member.findUnique({ where: { userId } });
+    if (!member) throw new NotFoundException('Member not found');
+
+    const ptMember = await prisma.pTMember.findFirst({
+      where: {
+        memberId: member.id,
+        isActive: true,
+      },
+      include: {
+        trainer: {
+          include: {
+            user: { select: { id: true, name: true, email: true } },
+          },
+        },
+      },
+    });
+
+    if (!ptMember) return null;
+
+    return {
+      id: ptMember.id,
+      sessionsTotal: ptMember.sessionsTotal,
+      sessionsUsed: ptMember.sessionsUsed,
+      sessionsRemaining: ptMember.sessionsTotal - ptMember.sessionsUsed,
+      startDate: ptMember.startDate,
+      endDate: ptMember.endDate,
+      isActive: ptMember.isActive,
+      trainer: {
+        id: ptMember.trainer.id,
+        name: ptMember.trainer.user.name,
+        email: ptMember.trainer.user.email,
+        specialization: ptMember.trainer.specialization,
+      },
+    };
+  }
 }
 
 export default new MemberService();

@@ -66,6 +66,46 @@ class MemberController {
       next(error);
     }
   }
+
+  // Get personal diet plan (MemberDietPlan)
+  async getMyDietPlan(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const dietPlan = await memberService.getMyDietPlan(req.user!.id);
+      successResponse(res, dietPlan, 'Personal diet plan retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Get diet plan history
+  async getMyDietPlanHistory(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const dietPlans = await memberService.getMyDietPlanHistory(req.user!.id);
+      successResponse(res, dietPlans, 'Diet plan history retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Get my supplements (PT members only)
+  async getMySupplements(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const supplements = await memberService.getMySupplements(req.user!.id);
+      successResponse(res, supplements, 'Supplements retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Get PT membership details
+  async getMyPTMembership(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const ptMembership = await memberService.getMyPTMembership(req.user!.id);
+      successResponse(res, ptMembership, 'PT membership retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new MemberController();

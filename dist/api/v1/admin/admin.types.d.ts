@@ -5,8 +5,8 @@ export interface SubscriptionPlan {
     price: number;
     currency: string;
     durationDays: number;
-    maxMembers: number;
-    maxTrainers: number;
+    maxMembers?: number;
+    maxTrainers?: number;
     features?: string[];
     isActive: boolean;
     createdAt: Date;
@@ -18,9 +18,9 @@ export interface CreateSubscriptionPlanRequest {
     price: number;
     currency?: string;
     durationDays: number;
-    maxMembers: number;
-    maxTrainers: number;
-    features?: string[];
+    maxMembers?: number;
+    maxTrainers?: number;
+    features?: string | string[];
     isActive?: boolean;
 }
 export interface UpdateSubscriptionPlanRequest extends Partial<CreateSubscriptionPlanRequest> {
@@ -28,11 +28,23 @@ export interface UpdateSubscriptionPlanRequest extends Partial<CreateSubscriptio
 export interface Gym {
     id: string;
     name: string;
-    address: string;
-    phone: string;
-    email: string;
+    address?: string;
+    address1?: string;
+    address2?: string;
+    city?: string;
+    state?: string;
+    zipcode?: string;
+    phone?: string;
+    mobileNo?: string;
+    phoneNo?: string;
+    email?: string;
+    gstRegNo?: string;
+    website?: string;
+    note?: string;
+    logo?: string;
+    gymLogo?: string;
     isActive: boolean;
-    subscriptionPlanId: string;
+    subscriptionPlanId?: string;
     subscriptionPlan?: SubscriptionPlan;
     ownerId?: string;
     owner?: GymOwner;
@@ -41,10 +53,19 @@ export interface Gym {
 }
 export interface CreateGymRequest {
     name: string;
-    address: string;
-    phone: string;
-    email: string;
-    subscriptionPlanId: string;
+    address1?: string;
+    address2?: string;
+    city?: string;
+    state?: string;
+    zipcode?: string;
+    mobileNo?: string;
+    phoneNo?: string;
+    email?: string;
+    gstRegNo?: string;
+    website?: string;
+    note?: string;
+    gymLogo?: string;
+    subscriptionPlanId?: string;
     ownerId?: string;
 }
 export interface UpdateGymRequest extends Partial<CreateGymRequest> {
@@ -57,14 +78,16 @@ export interface GymOwner {
     phone?: string;
     isActive: boolean;
     gymId?: string;
+    gymName?: string;
     createdAt: Date;
 }
 export interface CreateGymOwnerRequest {
-    firstName: string;
-    lastName: string;
+    name?: string;
+    firstName?: string;
+    lastName?: string;
     email: string;
     password: string;
-    phone: string;
+    phone?: string;
 }
 export interface DashboardStats {
     totalGyms: number;
@@ -80,5 +103,56 @@ export interface PaginationParams {
     search?: string;
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
+}
+export interface Occupation {
+    id: string;
+    occupationName: string;
+    description?: string | null;
+    isActive: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+    createdBy?: string | null;
+}
+export interface CreateOccupationRequest {
+    occupationName: string;
+    description?: string;
+}
+export interface UpdateOccupationRequest {
+    occupationName?: string;
+    description?: string;
+    isActive?: boolean;
+}
+export interface EnquiryType {
+    id: string;
+    name: string;
+    isActive: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+    createdBy?: string | null;
+}
+export interface CreateEnquiryTypeRequest {
+    name: string;
+}
+export interface UpdateEnquiryTypeRequest {
+    name?: string;
+    isActive?: boolean;
+}
+export interface PaymentType {
+    id: string;
+    paymentTypeName: string;
+    description?: string | null;
+    isActive: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+    createdBy?: string | null;
+}
+export interface CreatePaymentTypeRequest {
+    paymentTypeName: string;
+    description?: string;
+}
+export interface UpdatePaymentTypeRequest {
+    paymentTypeName?: string;
+    description?: string;
+    isActive?: boolean;
 }
 //# sourceMappingURL=admin.types.d.ts.map

@@ -8,6 +8,10 @@ declare class MemberController {
     getDietPlan(req: AuthRequest, res: Response, next: NextFunction): Promise<void>;
     getExercisePlans(req: AuthRequest, res: Response, next: NextFunction): Promise<void>;
     getMembership(req: AuthRequest, res: Response, next: NextFunction): Promise<void>;
+    getMyDietPlan(req: AuthRequest, res: Response, next: NextFunction): Promise<void>;
+    getMyDietPlanHistory(req: AuthRequest, res: Response, next: NextFunction): Promise<void>;
+    getMySupplements(req: AuthRequest, res: Response, next: NextFunction): Promise<void>;
+    getMyPTMembership(req: AuthRequest, res: Response, next: NextFunction): Promise<void>;
 }
 declare const _default: MemberController;
 export default _default;

@@ -15,5 +15,9 @@ router.get('/trainer', member_controller_1.default.getTrainer);
 router.get('/diet-plan', member_controller_1.default.getDietPlan);
 router.get('/exercise-plans', member_controller_1.default.getExercisePlans);
 router.get('/membership', member_controller_1.default.getMembership);
+router.get('/my-diet-plan', member_controller_1.default.getMyDietPlan);
+router.get('/my-diet-plan/history', member_controller_1.default.getMyDietPlanHistory);
+router.get('/my-supplements', member_controller_1.default.getMySupplements);
+router.get('/my-pt-membership', member_controller_1.default.getMyPTMembership);
 exports.default = router;
 //# sourceMappingURL=member.routes.js.map
