@@ -47,3 +47,32 @@ npm run build
 | Admin     | admin@gymmanager.com     | admin123   |
 | Gym Owner | owner@fitnesspro.com     | owner123   |
 | Member    | alice@example.com        | member123  |
+
+
+npx prisma migrate dev --name add_body_part_master
+
+npx prisma db push
+npx prisma db seed
+
+
+Permanent Solution - Best Practices for Future
+1. Always use prisma migrate dev to create migrations
+This creates the migration AND records it in _prisma_migrations table.
+- # After modifying schema.prisma, run:
+npx prisma migrate dev --name descriptive_name
+
+2. When merging branches with schema changes:
+# After merging, always run these commands:
+npx prisma generate          # Regenerate client
+npx prisma migrate deploy    # Apply any pending migrations (for production)
+# OR
+npx prisma migrate dev       # For development (may prompt for reset if drift exists)
+
+3. If you ever face drift again, resolve it with:# Mark a manually applied migration as applied:
+npx prisma migrate resolve --applied <migration_name>
+
+When merging dev → main in the future, always run:
+npx prisma generate
+npx prisma migrate dev (or migrate deploy for production)
+npm run build
+
