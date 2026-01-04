@@ -29,6 +29,8 @@ import {
   updateExpenseGroupSchema,
   createDesignationSchema,
   updateDesignationSchema,
+  createBodyPartSchema,
+  updateBodyPartSchema,
   createWorkoutExerciseSchema,
   updateWorkoutExerciseSchema,
 } from '../../../common/middleware';
@@ -902,6 +904,154 @@ router.put('/designations/:id', validate(idParamSchema, 'params'), validate(upda
  */
 router.delete('/designations/:id', validate(idParamSchema, 'params'), gymOwnerController.deleteDesignation.bind(gymOwnerController));
 
+// Body Part Master CRUD
+/**
+ * @swagger
+ * /api/v1/gym-owner/body-parts:
+ *   get:
+ *     summary: Get all body parts for the gym
+ *     tags: [Gym Owner - Body Parts]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Body parts retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/BodyPart'
+ */
+router.get('/body-parts', gymOwnerController.getBodyParts.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/body-parts/{id}:
+ *   get:
+ *     summary: Get body part by ID
+ *     tags: [Gym Owner - Body Parts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Body Part ID
+ *     responses:
+ *       200:
+ *         description: Body part retrieved successfully
+ *       404:
+ *         description: Body part not found
+ */
+router.get('/body-parts/:id', validate(idParamSchema, 'params'), gymOwnerController.getBodyPartById.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/body-parts:
+ *   post:
+ *     summary: Create a new body part
+ *     tags: [Gym Owner - Body Parts]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - bodyPartName
+ *             properties:
+ *               bodyPartName:
+ *                 type: string
+ *                 description: Body part name (e.g., Chest, Back, Legs)
+ *                 example: Chest
+ *               description:
+ *                 type: string
+ *                 description: Description of the body part
+ *     responses:
+ *       201:
+ *         description: Body part created successfully
+ *       409:
+ *         description: Body part with this name already exists
+ */
+router.post('/body-parts', validate(createBodyPartSchema), gymOwnerController.createBodyPart.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/body-parts/{id}:
+ *   put:
+ *     summary: Update a body part
+ *     tags: [Gym Owner - Body Parts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Body Part ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               bodyPartName:
+ *                 type: string
+ *                 description: Body part name
+ *               description:
+ *                 type: string
+ *                 description: Description of the body part
+ *               isActive:
+ *                 type: boolean
+ *                 description: Active status
+ *     responses:
+ *       200:
+ *         description: Body part updated successfully
+ *       404:
+ *         description: Body part not found
+ *       409:
+ *         description: Body part with this name already exists
+ */
+router.put('/body-parts/:id', validate(idParamSchema, 'params'), validate(updateBodyPartSchema), gymOwnerController.updateBodyPart.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/body-parts/{id}:
+ *   delete:
+ *     summary: Delete a body part
+ *     tags: [Gym Owner - Body Parts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Body Part ID
+ *     responses:
+ *       200:
+ *         description: Body part deleted successfully
+ *       404:
+ *         description: Body part not found
+ */
+router.delete('/body-parts/:id', validate(idParamSchema, 'params'), gymOwnerController.deleteBodyPart.bind(gymOwnerController));
+
 // Workout Exercise Master CRUD
 /**
  * @swagger
@@ -971,8 +1121,13 @@ router.get('/workout-exercises/:id', validate(idParamSchema, 'params'), gymOwner
  *           schema:
  *             type: object
  *             required:
+ *               - bodyPartId
  *               - exerciseName
  *             properties:
+ *               bodyPartId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: ID of the body part this exercise belongs to
  *               exerciseName:
  *                 type: string
  *                 minLength: 2
@@ -991,6 +1146,8 @@ router.get('/workout-exercises/:id', validate(idParamSchema, 'params'), gymOwner
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/WorkoutExercise'
+ *       404:
+ *         description: Body part not found
  *       409:
  *         description: Workout exercise with this name already exists
  */
@@ -1019,6 +1176,10 @@ router.post('/workout-exercises', validate(createWorkoutExerciseSchema), gymOwne
  *           schema:
  *             type: object
  *             properties:
+ *               bodyPartId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: ID of the body part this exercise belongs to
  *               exerciseName:
  *                 type: string
  *                 minLength: 2
@@ -1041,7 +1202,7 @@ router.post('/workout-exercises', validate(createWorkoutExerciseSchema), gymOwne
  *             schema:
  *               $ref: '#/components/schemas/WorkoutExercise'
  *       404:
- *         description: Workout exercise not found
+ *         description: Workout exercise or body part not found
  *       409:
  *         description: Workout exercise with this name already exists
  */
@@ -1049,9 +1210,9 @@ router.put('/workout-exercises/:id', validate(idParamSchema, 'params'), validate
 
 /**
  * @swagger
- * /api/v1/gym-owner/workout-exercises/{id}:
- *   delete:
- *     summary: Delete a workout exercise (hard delete)
+ * /api/v1/gym-owner/workout-exercises/{id}/toggle-status:
+ *   patch:
+ *     summary: Toggle workout exercise active status
  *     tags: [Gym Owner - Workout Exercises]
  *     security:
  *       - bearerAuth: []
@@ -1065,10 +1226,14 @@ router.put('/workout-exercises/:id', validate(idParamSchema, 'params'), validate
  *         description: Workout Exercise ID
  *     responses:
  *       200:
- *         description: Workout exercise deleted successfully
+ *         description: Workout exercise status toggled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WorkoutExercise'
  *       404:
  *         description: Workout exercise not found
  */
-router.delete('/workout-exercises/:id', validate(idParamSchema, 'params'), gymOwnerController.deleteWorkoutExercise.bind(gymOwnerController));
+router.patch('/workout-exercises/:id/toggle-status', validate(idParamSchema, 'params'), gymOwnerController.toggleWorkoutExerciseStatus.bind(gymOwnerController));
 
 export default router;

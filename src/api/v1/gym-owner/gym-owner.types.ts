@@ -374,6 +374,29 @@ export interface UpdateDesignationRequest {
   designationName: string;
 }
 
+// Body Part Master Types
+export interface BodyPart {
+  id: string;
+  bodyPartName: string;
+  description?: string | null;
+  isActive: boolean;
+  gymId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  exercises?: WorkoutExercise[];
+}
+
+export interface CreateBodyPartRequest {
+  bodyPartName: string;
+  description?: string;
+}
+
+export interface UpdateBodyPartRequest {
+  bodyPartName?: string;
+  description?: string;
+  isActive?: boolean;
+}
+
 // Workout Exercise Master Types
 export interface WorkoutExercise {
   id: string;
@@ -382,17 +405,21 @@ export interface WorkoutExercise {
   description?: string | null;
   isActive: boolean;
   gymId: string;
+  bodyPartId?: string | null;
+  bodyPartName?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface CreateWorkoutExerciseRequest {
+  bodyPartId: string;
   exerciseName: string;
   shortCode?: string;
   description?: string;
 }
 
 export interface UpdateWorkoutExerciseRequest {
+  bodyPartId?: string;
   exerciseName?: string;
   shortCode?: string;
   description?: string;
