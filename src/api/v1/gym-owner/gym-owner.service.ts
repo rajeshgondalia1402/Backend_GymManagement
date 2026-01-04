@@ -39,6 +39,9 @@ import {
   Designation,
   CreateDesignationRequest,
   UpdateDesignationRequest,
+  BodyPart,
+  CreateBodyPartRequest,
+  UpdateBodyPartRequest,
   WorkoutExercise,
   CreateWorkoutExerciseRequest,
   UpdateWorkoutExerciseRequest,
@@ -1646,25 +1649,217 @@ class GymOwnerService {
     });
   }
 
+  // Body Part Master CRUD
+  async getBodyParts(gymId: string): Promise<BodyPart[]> {
+    const bodyParts = await prisma.bodyPartMaster.findMany({
+      where: { gymId },
+      include: {
+        exercises: true,
+      },
+      orderBy: { bodyPartName: 'asc' },
+    });
+
+    return bodyParts.map((bp) => ({
+      id: bp.id,
+      bodyPartName: bp.bodyPartName,
+      description: bp.description,
+      isActive: bp.isActive,
+      gymId: bp.gymId,
+      createdAt: bp.createdAt,
+      updatedAt: bp.updatedAt,
+      exercises: bp.exercises.map((e) => ({
+        id: e.id,
+        exerciseName: e.exerciseName,
+        shortCode: e.shortCode,
+        description: e.description,
+        isActive: e.isActive,
+        gymId: e.gymId,
+        bodyPartId: e.bodyPartId,
+        bodyPartName: bp.bodyPartName,
+        createdAt: e.createdAt,
+        updatedAt: e.updatedAt,
+      })),
+    }));
+  }
+
+  async getBodyPartById(gymId: string, id: string): Promise<BodyPart> {
+    const bodyPart = await prisma.bodyPartMaster.findFirst({
+      where: { id, gymId },
+      include: {
+        exercises: true,
+      },
+    });
+    if (!bodyPart) throw new NotFoundException('Body part not found');
+
+    return {
+      id: bodyPart.id,
+      bodyPartName: bodyPart.bodyPartName,
+      description: bodyPart.description,
+      isActive: bodyPart.isActive,
+      gymId: bodyPart.gymId,
+      createdAt: bodyPart.createdAt,
+      updatedAt: bodyPart.updatedAt,
+      exercises: bodyPart.exercises.map((e) => ({
+        id: e.id,
+        exerciseName: e.exerciseName,
+        shortCode: e.shortCode,
+        description: e.description,
+        isActive: e.isActive,
+        gymId: e.gymId,
+        bodyPartId: e.bodyPartId,
+        bodyPartName: bodyPart.bodyPartName,
+        createdAt: e.createdAt,
+        updatedAt: e.updatedAt,
+      })),
+    };
+  }
+
+  async createBodyPart(gymId: string, data: CreateBodyPartRequest): Promise<BodyPart> {
+    const existingBodyPart = await prisma.bodyPartMaster.findFirst({
+      where: {
+        bodyPartName: data.bodyPartName,
+        gymId,
+      },
+    });
+    if (existingBodyPart) {
+      throw new ConflictException('Body part with this name already exists');
+    }
+
+    const bodyPart = await prisma.bodyPartMaster.create({
+      data: {
+        bodyPartName: data.bodyPartName,
+        description: data.description,
+        gymId,
+      },
+    });
+
+    return {
+      id: bodyPart.id,
+      bodyPartName: bodyPart.bodyPartName,
+      description: bodyPart.description,
+      isActive: bodyPart.isActive,
+      gymId: bodyPart.gymId,
+      createdAt: bodyPart.createdAt,
+      updatedAt: bodyPart.updatedAt,
+      exercises: [],
+    };
+  }
+
+  async updateBodyPart(gymId: string, id: string, data: UpdateBodyPartRequest): Promise<BodyPart> {
+    await this.getBodyPartById(gymId, id);
+
+    if (data.bodyPartName) {
+      const existingBodyPart = await prisma.bodyPartMaster.findFirst({
+        where: {
+          bodyPartName: data.bodyPartName,
+          gymId,
+          NOT: { id },
+        },
+      });
+      if (existingBodyPart) {
+        throw new ConflictException('Body part with this name already exists');
+      }
+    }
+
+    const bodyPart = await prisma.bodyPartMaster.update({
+      where: { id },
+      data: {
+        bodyPartName: data.bodyPartName,
+        description: data.description,
+        isActive: data.isActive,
+      },
+      include: {
+        exercises: true,
+      },
+    });
+
+    return {
+      id: bodyPart.id,
+      bodyPartName: bodyPart.bodyPartName,
+      description: bodyPart.description,
+      isActive: bodyPart.isActive,
+      gymId: bodyPart.gymId,
+      createdAt: bodyPart.createdAt,
+      updatedAt: bodyPart.updatedAt,
+      exercises: bodyPart.exercises.map((e) => ({
+        id: e.id,
+        exerciseName: e.exerciseName,
+        shortCode: e.shortCode,
+        description: e.description,
+        isActive: e.isActive,
+        gymId: e.gymId,
+        bodyPartId: e.bodyPartId,
+        bodyPartName: bodyPart.bodyPartName,
+        createdAt: e.createdAt,
+        updatedAt: e.updatedAt,
+      })),
+    };
+  }
+
+  async deleteBodyPart(gymId: string, id: string): Promise<void> {
+    await this.getBodyPartById(gymId, id);
+
+    await prisma.bodyPartMaster.delete({
+      where: { id },
+    });
+  }
+
   // Workout Exercise Master CRUD
   async getWorkoutExercises(gymId: string): Promise<WorkoutExercise[]> {
     const exercises = await prisma.workoutExerciseMaster.findMany({
       where: { gymId },
-      orderBy: { exerciseName: 'asc' },
+      include: {
+        bodyPart: true,
+      },
+      orderBy: [{ bodyPart: { bodyPartName: 'asc' } }, { exerciseName: 'asc' }],
     });
 
-    return exercises;
+    return exercises.map((e) => ({
+      id: e.id,
+      exerciseName: e.exerciseName,
+      shortCode: e.shortCode,
+      description: e.description,
+      isActive: e.isActive,
+      gymId: e.gymId,
+      bodyPartId: e.bodyPartId,
+      bodyPartName: e.bodyPart?.bodyPartName || null,
+      createdAt: e.createdAt,
+      updatedAt: e.updatedAt,
+    }));
   }
 
   async getWorkoutExerciseById(gymId: string, id: string): Promise<WorkoutExercise> {
     const exercise = await prisma.workoutExerciseMaster.findFirst({
       where: { id, gymId },
+      include: {
+        bodyPart: true,
+      },
     });
     if (!exercise) throw new NotFoundException('Workout exercise not found');
-    return exercise;
+
+    return {
+      id: exercise.id,
+      exerciseName: exercise.exerciseName,
+      shortCode: exercise.shortCode,
+      description: exercise.description,
+      isActive: exercise.isActive,
+      gymId: exercise.gymId,
+      bodyPartId: exercise.bodyPartId,
+      bodyPartName: exercise.bodyPart?.bodyPartName || null,
+      createdAt: exercise.createdAt,
+      updatedAt: exercise.updatedAt,
+    };
   }
 
   async createWorkoutExercise(gymId: string, data: CreateWorkoutExerciseRequest): Promise<WorkoutExercise> {
+    // Verify body part exists and belongs to this gym
+    const bodyPart = await prisma.bodyPartMaster.findFirst({
+      where: { id: data.bodyPartId, gymId },
+    });
+    if (!bodyPart) {
+      throw new NotFoundException('Body part not found');
+    }
+
     // Check if exercise with same name exists for this gym
     const existingExercise = await prisma.workoutExerciseMaster.findFirst({
       where: {
@@ -1681,15 +1876,40 @@ class GymOwnerService {
         exerciseName: data.exerciseName,
         shortCode: data.shortCode,
         description: data.description,
+        bodyPartId: data.bodyPartId,
         gymId,
+      },
+      include: {
+        bodyPart: true,
       },
     });
 
-    return exercise;
+    return {
+      id: exercise.id,
+      exerciseName: exercise.exerciseName,
+      shortCode: exercise.shortCode,
+      description: exercise.description,
+      isActive: exercise.isActive,
+      gymId: exercise.gymId,
+      bodyPartId: exercise.bodyPartId,
+      bodyPartName: exercise.bodyPart?.bodyPartName || null,
+      createdAt: exercise.createdAt,
+      updatedAt: exercise.updatedAt,
+    };
   }
 
   async updateWorkoutExercise(gymId: string, id: string, data: UpdateWorkoutExerciseRequest): Promise<WorkoutExercise> {
     await this.getWorkoutExerciseById(gymId, id);
+
+    // Verify body part exists if provided
+    if (data.bodyPartId) {
+      const bodyPart = await prisma.bodyPartMaster.findFirst({
+        where: { id: data.bodyPartId, gymId },
+      });
+      if (!bodyPart) {
+        throw new NotFoundException('Body part not found');
+      }
+    }
 
     // Check for duplicate name if updating exerciseName
     if (data.exerciseName) {
@@ -1711,20 +1931,53 @@ class GymOwnerService {
         exerciseName: data.exerciseName,
         shortCode: data.shortCode,
         description: data.description,
+        bodyPartId: data.bodyPartId,
         isActive: data.isActive,
+      },
+      include: {
+        bodyPart: true,
       },
     });
 
-    return exercise;
+    return {
+      id: exercise.id,
+      exerciseName: exercise.exerciseName,
+      shortCode: exercise.shortCode,
+      description: exercise.description,
+      isActive: exercise.isActive,
+      gymId: exercise.gymId,
+      bodyPartId: exercise.bodyPartId,
+      bodyPartName: exercise.bodyPart?.bodyPartName || null,
+      createdAt: exercise.createdAt,
+      updatedAt: exercise.updatedAt,
+    };
   }
 
-  async deleteWorkoutExercise(gymId: string, id: string): Promise<void> {
-    // Hard delete
-    await this.getWorkoutExerciseById(gymId, id);
-
-    await prisma.workoutExerciseMaster.delete({
-      where: { id },
+  async toggleWorkoutExerciseStatus(gymId: string, id: string): Promise<WorkoutExercise> {
+    const exercise = await prisma.workoutExerciseMaster.findFirst({
+      where: { id, gymId },
+      include: { bodyPart: true },
     });
+    if (!exercise) throw new NotFoundException('Workout exercise not found');
+
+    const updatedExercise = await prisma.workoutExerciseMaster.update({
+      where: { id },
+      data: { isActive: !exercise.isActive },
+      include: { bodyPart: true },
+    });
+
+    return {
+      id: updatedExercise.id,
+      exerciseName: updatedExercise.exerciseName,
+      shortCode: updatedExercise.shortCode,
+      description: updatedExercise.description,
+      isActive: updatedExercise.isActive,
+      gymId: updatedExercise.gymId,
+      bodyPartId: updatedExercise.bodyPartId,
+      bodyPartName: updatedExercise.bodyPart?.bodyPartName || null,
+      createdAt: updatedExercise.createdAt,
+      updatedAt: updatedExercise.updatedAt,
+    };
   }
 }
 

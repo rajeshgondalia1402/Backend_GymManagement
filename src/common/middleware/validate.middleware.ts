@@ -124,14 +124,28 @@ export const updateDesignationSchema = z.object({
   designationName: z.string().min(2, 'Designation name must be at least 2 characters'),
 });
 
+// Body Part Master validation schemas
+export const createBodyPartSchema = z.object({
+  bodyPartName: z.string().min(2, 'Body part name must be at least 2 characters'),
+  description: z.string().optional(),
+});
+
+export const updateBodyPartSchema = z.object({
+  bodyPartName: z.string().min(2, 'Body part name must be at least 2 characters').optional(),
+  description: z.string().optional(),
+  isActive: z.boolean().optional(),
+});
+
 // Workout Exercise Master validation schemas
 export const createWorkoutExerciseSchema = z.object({
+  bodyPartId: z.string().uuid('Invalid body part ID'),
   exerciseName: z.string().min(2, 'Exercise name must be at least 2 characters'),
   shortCode: z.string().max(20, 'Short code must be at most 20 characters').optional(),
   description: z.string().optional(),
 });
 
 export const updateWorkoutExerciseSchema = z.object({
+  bodyPartId: z.string().uuid('Invalid body part ID').optional(),
   exerciseName: z.string().min(2, 'Exercise name must be at least 2 characters').optional(),
   shortCode: z.string().max(20, 'Short code must be at most 20 characters').optional(),
   description: z.string().optional(),
@@ -149,6 +163,15 @@ export const createGymOwnerSchema = z.object({
   (data) => data.name || (data.firstName && data.lastName),
   { message: 'Either name or both firstName and lastName are required', path: ['name'] }
 );
+
+export const updateGymOwnerSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters').optional(),
+  firstName: z.string().min(2, 'First name must be at least 2 characters').optional(),
+  lastName: z.string().min(2, 'Last name must be at least 2 characters').optional(),
+  email: z.string().email('Invalid email format').optional(),
+  phone: z.string().min(10, 'Phone must be at least 10 characters').optional(),
+  isActive: z.boolean().optional(),
+});
 
 // Gym Owner validation schemas
 export const createTrainerSchema = z.object({
