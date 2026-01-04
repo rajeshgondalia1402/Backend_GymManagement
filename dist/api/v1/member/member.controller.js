@@ -69,6 +69,42 @@ class MemberController {
             next(error);
         }
     }
+    async getMyDietPlan(req, res, next) {
+        try {
+            const dietPlan = await member_service_1.default.getMyDietPlan(req.user.id);
+            (0, utils_1.successResponse)(res, dietPlan, 'Personal diet plan retrieved successfully');
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    async getMyDietPlanHistory(req, res, next) {
+        try {
+            const dietPlans = await member_service_1.default.getMyDietPlanHistory(req.user.id);
+            (0, utils_1.successResponse)(res, dietPlans, 'Diet plan history retrieved successfully');
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    async getMySupplements(req, res, next) {
+        try {
+            const supplements = await member_service_1.default.getMySupplements(req.user.id);
+            (0, utils_1.successResponse)(res, supplements, 'Supplements retrieved successfully');
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    async getMyPTMembership(req, res, next) {
+        try {
+            const ptMembership = await member_service_1.default.getMyPTMembership(req.user.id);
+            (0, utils_1.successResponse)(res, ptMembership, 'PT membership retrieved successfully');
+        }
+        catch (error) {
+            next(error);
+        }
+    }
 }
 exports.default = new MemberController();
 //# sourceMappingURL=member.controller.js.map

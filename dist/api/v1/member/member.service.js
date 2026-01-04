@@ -284,6 +284,123 @@ class MemberService {
             gym: member.gym,
         };
     }
+    async getMyDietPlan(userId) {
+        const member = await database_1.prisma.member.findUnique({ where: { userId } });
+        if (!member)
+            throw new exceptions_1.NotFoundException('Member not found');
+        const dietPlan = await database_1.prisma.memberDietPlan.findFirst({
+            where: {
+                memberId: member.id,
+                isActive: true,
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+        if (!dietPlan)
+            return null;
+        return {
+            id: dietPlan.id,
+            planName: dietPlan.planName,
+            description: dietPlan.description,
+            meals: dietPlan.meals,
+            calories: dietPlan.calories,
+            startDate: dietPlan.startDate,
+            endDate: dietPlan.endDate,
+            isActive: dietPlan.isActive,
+            createdAt: dietPlan.createdAt,
+            updatedAt: dietPlan.updatedAt,
+        };
+    }
+    async getMyDietPlanHistory(userId) {
+        const member = await database_1.prisma.member.findUnique({ where: { userId } });
+        if (!member)
+            throw new exceptions_1.NotFoundException('Member not found');
+        const dietPlans = await database_1.prisma.memberDietPlan.findMany({
+            where: {
+                memberId: member.id,
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+        return dietPlans.map((plan) => ({
+            id: plan.id,
+            planName: plan.planName,
+            description: plan.description,
+            meals: plan.meals,
+            calories: plan.calories,
+            startDate: plan.startDate,
+            endDate: plan.endDate,
+            isActive: plan.isActive,
+            createdAt: plan.createdAt,
+            updatedAt: plan.updatedAt,
+        }));
+    }
+    async getMySupplements(userId) {
+        const member = await database_1.prisma.member.findUnique({ where: { userId } });
+        if (!member)
+            throw new exceptions_1.NotFoundException('Member not found');
+        const ptMember = await database_1.prisma.pTMember.findFirst({
+            where: {
+                memberId: member.id,
+                isActive: true,
+            },
+        });
+        if (!ptMember) {
+            return [];
+        }
+        const supplements = await database_1.prisma.supplement.findMany({
+            where: {
+                ptMemberId: ptMember.id,
+                isActive: true,
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+        return supplements.map((sup) => ({
+            id: sup.id,
+            name: sup.name,
+            dosage: sup.dosage,
+            frequency: sup.frequency,
+            timing: sup.timing,
+            notes: sup.notes,
+            startDate: sup.startDate,
+            endDate: sup.endDate,
+            isActive: sup.isActive,
+            createdAt: sup.createdAt,
+        }));
+    }
+    async getMyPTMembership(userId) {
+        const member = await database_1.prisma.member.findUnique({ where: { userId } });
+        if (!member)
+            throw new exceptions_1.NotFoundException('Member not found');
+        const ptMember = await database_1.prisma.pTMember.findFirst({
+            where: {
+                memberId: member.id,
+                isActive: true,
+            },
+            include: {
+                trainer: {
+                    include: {
+                        user: { select: { id: true, name: true, email: true } },
+                    },
+                },
+            },
+        });
+        if (!ptMember)
+            return null;
+        return {
+            id: ptMember.id,
+            sessionsTotal: ptMember.sessionsTotal,
+            sessionsUsed: ptMember.sessionsUsed,
+            sessionsRemaining: ptMember.sessionsTotal - ptMember.sessionsUsed,
+            startDate: ptMember.startDate,
+            endDate: ptMember.endDate,
+            isActive: ptMember.isActive,
+            trainer: {
+                id: ptMember.trainer.id,
+                name: ptMember.trainer.user.name,
+                email: ptMember.trainer.user.email,
+                specialization: ptMember.trainer.specialization,
+            },
+        };
+    }
 }
 exports.default = new MemberService();
 //# sourceMappingURL=member.service.js.map

@@ -27,6 +27,178 @@ const options: swaggerJsdoc.Options = {
           bearerFormat: 'JWT',
           description: 'Enter your JWT token'
         }
+      },
+      schemas: {
+        Occupation: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              format: 'uuid',
+              description: 'Unique identifier'
+            },
+            occupationName: {
+              type: 'string',
+              description: 'Name of the occupation'
+            },
+            description: {
+              type: 'string',
+              nullable: true,
+              description: 'Description of the occupation'
+            },
+            isActive: {
+              type: 'boolean',
+              description: 'Active status'
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Creation timestamp'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Last update timestamp'
+            },
+            createdBy: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+              description: 'ID of the user who created this occupation'
+            }
+          }
+        },
+        EnquiryType: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              format: 'uuid',
+              description: 'Unique identifier'
+            },
+            name: {
+              type: 'string',
+              description: 'Name of the enquiry type'
+            },
+            isActive: {
+              type: 'boolean',
+              description: 'Active status'
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Creation timestamp'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Last update timestamp'
+            },
+            createdBy: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+              description: 'ID of the user who created this enquiry type'
+            }
+          }
+        },
+        PaymentType: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              format: 'uuid',
+              description: 'Unique identifier'
+            },
+            paymentTypeName: {
+              type: 'string',
+              description: 'Name of the payment type'
+            },
+            description: {
+              type: 'string',
+              nullable: true,
+              description: 'Description of the payment type'
+            },
+            isActive: {
+              type: 'boolean',
+              description: 'Active status'
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Creation timestamp'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Last update timestamp'
+            },
+            createdBy: {
+              type: 'string',
+              format: 'uuid',
+              nullable: true,
+              description: 'ID of the user who created this payment type'
+            }
+          }
+        },
+        ExpenseGroup: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              format: 'uuid',
+              description: 'Unique identifier'
+            },
+            expenseGroupName: {
+              type: 'string',
+              description: 'Name of the expense group'
+            },
+            gymId: {
+              type: 'string',
+              format: 'uuid',
+              description: 'ID of the gym this expense group belongs to'
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Creation timestamp'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Last update timestamp'
+            }
+          }
+        },
+        Designation: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'string',
+              format: 'uuid',
+              description: 'Unique identifier'
+            },
+            designationName: {
+              type: 'string',
+              description: 'Name of the designation'
+            },
+            gymId: {
+              type: 'string',
+              format: 'uuid',
+              description: 'ID of the gym this designation belongs to'
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Creation timestamp'
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Last update timestamp'
+            }
+          }
+        }
       }
     },
     tags: [

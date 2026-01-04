@@ -128,6 +128,16 @@ class AdminController {
             next(error);
         }
     }
+    async assignGymOwner(req, res, next) {
+        try {
+            const { ownerId } = req.body;
+            const gym = await admin_service_1.default.assignGymOwner(req.params.id, ownerId);
+            (0, utils_1.successResponse)(res, gym, 'Owner assigned to gym successfully');
+        }
+        catch (error) {
+            next(error);
+        }
+    }
     async getGymOwners(req, res, next) {
         try {
             const { page = 1, limit = 10, search, sortBy, sortOrder } = req.query;
@@ -157,6 +167,141 @@ class AdminController {
         try {
             const result = await admin_service_1.default.toggleUserStatus(req.params.id);
             (0, utils_1.successResponse)(res, result, 'User status updated successfully');
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    async getOccupations(req, res, next) {
+        try {
+            const occupations = await admin_service_1.default.getOccupations();
+            (0, utils_1.successResponse)(res, occupations, 'Occupations retrieved successfully');
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    async getOccupationById(req, res, next) {
+        try {
+            const occupation = await admin_service_1.default.getOccupationById(req.params.id);
+            (0, utils_1.successResponse)(res, occupation, 'Occupation retrieved successfully');
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    async createOccupation(req, res, next) {
+        try {
+            const occupation = await admin_service_1.default.createOccupation(req.body, req.user?.id);
+            (0, utils_1.successResponse)(res, occupation, 'Occupation created successfully', 201);
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    async updateOccupation(req, res, next) {
+        try {
+            const occupation = await admin_service_1.default.updateOccupation(req.params.id, req.body);
+            (0, utils_1.successResponse)(res, occupation, 'Occupation updated successfully');
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    async deleteOccupation(req, res, next) {
+        try {
+            const occupation = await admin_service_1.default.deleteOccupation(req.params.id);
+            (0, utils_1.successResponse)(res, occupation, 'Occupation deleted successfully (soft delete)');
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    async getEnquiryTypes(req, res, next) {
+        try {
+            const enquiryTypes = await admin_service_1.default.getEnquiryTypes();
+            (0, utils_1.successResponse)(res, enquiryTypes, 'Enquiry types retrieved successfully');
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    async getEnquiryTypeById(req, res, next) {
+        try {
+            const enquiryType = await admin_service_1.default.getEnquiryTypeById(req.params.id);
+            (0, utils_1.successResponse)(res, enquiryType, 'Enquiry type retrieved successfully');
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    async createEnquiryType(req, res, next) {
+        try {
+            const enquiryType = await admin_service_1.default.createEnquiryType(req.body, req.user?.id);
+            (0, utils_1.successResponse)(res, enquiryType, 'Enquiry type created successfully', 201);
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    async updateEnquiryType(req, res, next) {
+        try {
+            const enquiryType = await admin_service_1.default.updateEnquiryType(req.params.id, req.body);
+            (0, utils_1.successResponse)(res, enquiryType, 'Enquiry type updated successfully');
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    async deleteEnquiryType(req, res, next) {
+        try {
+            const enquiryType = await admin_service_1.default.deleteEnquiryType(req.params.id);
+            (0, utils_1.successResponse)(res, enquiryType, 'Enquiry type deleted successfully (soft delete)');
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    async getPaymentTypes(req, res, next) {
+        try {
+            const paymentTypes = await admin_service_1.default.getPaymentTypes();
+            (0, utils_1.successResponse)(res, paymentTypes, 'Payment types retrieved successfully');
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    async getPaymentTypeById(req, res, next) {
+        try {
+            const paymentType = await admin_service_1.default.getPaymentTypeById(req.params.id);
+            (0, utils_1.successResponse)(res, paymentType, 'Payment type retrieved successfully');
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    async createPaymentType(req, res, next) {
+        try {
+            const paymentType = await admin_service_1.default.createPaymentType(req.body, req.user?.id);
+            (0, utils_1.successResponse)(res, paymentType, 'Payment type created successfully', 201);
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    async updatePaymentType(req, res, next) {
+        try {
+            const paymentType = await admin_service_1.default.updatePaymentType(req.params.id, req.body);
+            (0, utils_1.successResponse)(res, paymentType, 'Payment type updated successfully');
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    async deletePaymentType(req, res, next) {
+        try {
+            const paymentType = await admin_service_1.default.deletePaymentType(req.params.id);
+            (0, utils_1.successResponse)(res, paymentType, 'Payment type deleted successfully (soft delete)');
         }
         catch (error) {
             next(error);

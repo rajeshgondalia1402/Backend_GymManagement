@@ -15,6 +15,22 @@ import {
   assignPlanSchema,
   idParamSchema,
   paginationSchema,
+  createPTMemberSchema,
+  updatePTMemberSchema,
+  createSupplementSchema,
+  updateSupplementSchema,
+  createMemberDietPlanSchema,
+  updateMemberDietPlanSchema,
+  createInquirySchema,
+  updateInquirySchema,
+  memberIdParamSchema,
+  ptMemberIdParamSchema,
+  createExpenseGroupSchema,
+  updateExpenseGroupSchema,
+  createDesignationSchema,
+  updateDesignationSchema,
+  createWorkoutExerciseSchema,
+  updateWorkoutExerciseSchema,
 } from '../../../common/middleware';
 
 const router = Router();
@@ -71,6 +87,26 @@ router.put('/trainers/:id', validate(idParamSchema, 'params'), validate(updateTr
 
 router.delete('/trainers/:id', validate(idParamSchema, 'params'), gymOwnerController.deleteTrainer.bind(gymOwnerController));
 
+/**
+ * @swagger
+ * /api/v1/gym-owner/trainers/{id}/toggle-status:
+ *   patch:
+ *     summary: Toggle trainer active status
+ *     tags: [Gym Owner]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Trainer status toggled successfully
+ */
+router.patch('/trainers/:id/toggle-status', validate(idParamSchema, 'params'), gymOwnerController.toggleTrainerStatus.bind(gymOwnerController));
+
 // Members
 /**
  * @swagger
@@ -105,6 +141,26 @@ router.post('/members', validate(createMemberSchema), gymOwnerController.createM
 router.put('/members/:id', validate(idParamSchema, 'params'), validate(updateMemberSchema), gymOwnerController.updateMember.bind(gymOwnerController));
 
 router.delete('/members/:id', validate(idParamSchema, 'params'), gymOwnerController.deleteMember.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/members/{id}/toggle-status:
+ *   patch:
+ *     summary: Toggle member active status
+ *     tags: [Gym Owner]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Member status toggled successfully
+ */
+router.patch('/members/:id/toggle-status', validate(idParamSchema, 'params'), gymOwnerController.toggleMemberStatus.bind(gymOwnerController));
 
 // Diet Plans
 /**
@@ -194,5 +250,825 @@ router.post('/assign-exercise-plan', validate(assignPlanSchema), gymOwnerControl
  *         description: Trainer assigned successfully
  */
 router.post('/assign-trainer', gymOwnerController.assignTrainer.bind(gymOwnerController));
+
+// =============================================
+// PT Members Routes
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/pt-members:
+ *   get:
+ *     summary: Get all PT members
+ *     tags: [Gym Owner - PT]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: PT Members retrieved successfully
+ */
+router.get('/pt-members', validate(paginationSchema, 'query'), gymOwnerController.getPTMembers.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/pt-members/{id}:
+ *   get:
+ *     summary: Get PT member by ID
+ *     tags: [Gym Owner - PT]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: PT Member retrieved successfully
+ */
+router.get('/pt-members/:id', validate(idParamSchema, 'params'), gymOwnerController.getPTMemberById.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/pt-members:
+ *   post:
+ *     summary: Create a new PT member
+ *     tags: [Gym Owner - PT]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       201:
+ *         description: PT Member created successfully
+ */
+router.post('/pt-members', validate(createPTMemberSchema), gymOwnerController.createPTMember.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/pt-members/{id}:
+ *   put:
+ *     summary: Update PT member
+ *     tags: [Gym Owner - PT]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: PT Member updated successfully
+ */
+router.put('/pt-members/:id', validate(idParamSchema, 'params'), validate(updatePTMemberSchema), gymOwnerController.updatePTMember.bind(gymOwnerController));
+
+// =============================================
+// Supplements Routes
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/supplements/{ptMemberId}:
+ *   get:
+ *     summary: Get supplements for a PT member
+ *     tags: [Gym Owner - Supplements]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: ptMemberId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Supplements retrieved successfully
+ */
+router.get('/supplements/:ptMemberId', validate(ptMemberIdParamSchema, 'params'), gymOwnerController.getSupplements.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/supplements/{ptMemberId}:
+ *   post:
+ *     summary: Create supplement for a PT member
+ *     tags: [Gym Owner - Supplements]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: ptMemberId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       201:
+ *         description: Supplement created successfully
+ */
+router.post('/supplements/:ptMemberId', validate(ptMemberIdParamSchema, 'params'), validate(createSupplementSchema), gymOwnerController.createSupplement.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/supplements/{id}:
+ *   put:
+ *     summary: Update supplement
+ *     tags: [Gym Owner - Supplements]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Supplement updated successfully
+ */
+router.put('/supplements/:id', validate(idParamSchema, 'params'), validate(updateSupplementSchema), gymOwnerController.updateSupplement.bind(gymOwnerController));
+
+// =============================================
+// Member Diet Plans Routes (per member)
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/diet-plans/{memberId}:
+ *   get:
+ *     summary: Get diet plans for a member
+ *     tags: [Gym Owner - Member Diet]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: memberId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Member diet plans retrieved successfully
+ */
+router.get('/member-diet-plans/:memberId', validate(memberIdParamSchema, 'params'), gymOwnerController.getMemberDietPlans.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/diet-plans/{memberId}:
+ *   post:
+ *     summary: Create diet plan for a member
+ *     tags: [Gym Owner - Member Diet]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: memberId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       201:
+ *         description: Member diet plan created successfully
+ */
+router.post('/member-diet-plans/:memberId', validate(memberIdParamSchema, 'params'), validate(createMemberDietPlanSchema), gymOwnerController.createMemberDietPlan.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/diet-plans/{id}:
+ *   put:
+ *     summary: Update member diet plan
+ *     tags: [Gym Owner - Member Diet]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Member diet plan updated successfully
+ */
+router.put('/member-diet-plans/:id', validate(idParamSchema, 'params'), validate(updateMemberDietPlanSchema), gymOwnerController.updateMemberDietPlan.bind(gymOwnerController));
+
+// =============================================
+// Inquiries Routes
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/inquiries:
+ *   get:
+ *     summary: Get all inquiries
+ *     tags: [Gym Owner - Inquiries]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [NEW, CONTACTED, INTERESTED, NOT_INTERESTED, CONVERTED, FOLLOW_UP]
+ *     responses:
+ *       200:
+ *         description: Inquiries retrieved successfully
+ */
+router.get('/inquiries', validate(paginationSchema, 'query'), gymOwnerController.getInquiries.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/inquiries:
+ *   post:
+ *     summary: Create a new inquiry
+ *     tags: [Gym Owner - Inquiries]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       201:
+ *         description: Inquiry created successfully
+ */
+router.post('/inquiries', validate(createInquirySchema), gymOwnerController.createInquiry.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/inquiries/{id}:
+ *   put:
+ *     summary: Update inquiry
+ *     tags: [Gym Owner - Inquiries]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Inquiry updated successfully
+ */
+router.put('/inquiries/:id', validate(idParamSchema, 'params'), validate(updateInquirySchema), gymOwnerController.updateInquiry.bind(gymOwnerController));
+
+// =============================================
+// Reports Routes
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/reports/members:
+ *   get:
+ *     summary: Get member report
+ *     tags: [Gym Owner - Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Member report retrieved successfully
+ */
+router.get('/reports/members', gymOwnerController.getMemberReport.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/reports/pt-progress:
+ *   get:
+ *     summary: Get PT progress report
+ *     tags: [Gym Owner - Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: PT progress report retrieved successfully
+ */
+router.get('/reports/pt-progress', gymOwnerController.getPTProgressReport.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/reports/trainers:
+ *   get:
+ *     summary: Get trainer report
+ *     tags: [Gym Owner - Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Trainer report retrieved successfully
+ */
+router.get('/reports/trainers', gymOwnerController.getTrainerReport.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/reports/revenue:
+ *   get:
+ *     summary: Get revenue report
+ *     tags: [Gym Owner - Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Revenue report retrieved successfully
+ */
+router.get('/reports/revenue', gymOwnerController.getRevenueReport.bind(gymOwnerController));
+
+// Expense Group Master CRUD
+/**
+ * @swagger
+ * /api/v1/gym-owner/expense-groups:
+ *   get:
+ *     summary: Get all expense groups for the gym
+ *     tags: [Gym Owner - Expense Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Expense groups retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/ExpenseGroup'
+ */
+router.get('/expense-groups', gymOwnerController.getExpenseGroups.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/expense-groups/{id}:
+ *   get:
+ *     summary: Get expense group by ID
+ *     tags: [Gym Owner - Expense Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Expense Group ID
+ *     responses:
+ *       200:
+ *         description: Expense group retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ExpenseGroup'
+ *       404:
+ *         description: Expense group not found
+ */
+router.get('/expense-groups/:id', validate(idParamSchema, 'params'), gymOwnerController.getExpenseGroupById.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/expense-groups:
+ *   post:
+ *     summary: Create a new expense group
+ *     tags: [Gym Owner - Expense Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - expenseGroupName
+ *             properties:
+ *               expenseGroupName:
+ *                 type: string
+ *                 minLength: 2
+ *                 description: Name of the expense group (unique per gym)
+ *     responses:
+ *       201:
+ *         description: Expense group created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ExpenseGroup'
+ *       409:
+ *         description: Expense group with this name already exists
+ */
+router.post('/expense-groups', validate(createExpenseGroupSchema), gymOwnerController.createExpenseGroup.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/expense-groups/{id}:
+ *   put:
+ *     summary: Update an expense group
+ *     tags: [Gym Owner - Expense Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Expense Group ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - expenseGroupName
+ *             properties:
+ *               expenseGroupName:
+ *                 type: string
+ *                 minLength: 2
+ *                 description: Name of the expense group (unique per gym)
+ *     responses:
+ *       200:
+ *         description: Expense group updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ExpenseGroup'
+ *       404:
+ *         description: Expense group not found
+ *       409:
+ *         description: Expense group with this name already exists
+ */
+router.put('/expense-groups/:id', validate(idParamSchema, 'params'), validate(updateExpenseGroupSchema), gymOwnerController.updateExpenseGroup.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/expense-groups/{id}:
+ *   delete:
+ *     summary: Delete an expense group (hard delete)
+ *     tags: [Gym Owner - Expense Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Expense Group ID
+ *     responses:
+ *       200:
+ *         description: Expense group deleted successfully
+ *       404:
+ *         description: Expense group not found
+ */
+router.delete('/expense-groups/:id', validate(idParamSchema, 'params'), gymOwnerController.deleteExpenseGroup.bind(gymOwnerController));
+
+// Designation Master CRUD
+/**
+ * @swagger
+ * /api/v1/gym-owner/designations:
+ *   get:
+ *     summary: Get all designations for the gym
+ *     tags: [Gym Owner - Designations]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Designations retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Designation'
+ */
+router.get('/designations', gymOwnerController.getDesignations.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/designations/{id}:
+ *   get:
+ *     summary: Get designation by ID
+ *     tags: [Gym Owner - Designations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Designation ID
+ *     responses:
+ *       200:
+ *         description: Designation retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Designation'
+ *       404:
+ *         description: Designation not found
+ */
+router.get('/designations/:id', validate(idParamSchema, 'params'), gymOwnerController.getDesignationById.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/designations:
+ *   post:
+ *     summary: Create a new designation
+ *     tags: [Gym Owner - Designations]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - designationName
+ *             properties:
+ *               designationName:
+ *                 type: string
+ *                 minLength: 2
+ *                 description: Name of the designation (unique per gym)
+ *     responses:
+ *       201:
+ *         description: Designation created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Designation'
+ *       409:
+ *         description: Designation with this name already exists
+ */
+router.post('/designations', validate(createDesignationSchema), gymOwnerController.createDesignation.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/designations/{id}:
+ *   put:
+ *     summary: Update a designation
+ *     tags: [Gym Owner - Designations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Designation ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - designationName
+ *             properties:
+ *               designationName:
+ *                 type: string
+ *                 minLength: 2
+ *                 description: Name of the designation (unique per gym)
+ *     responses:
+ *       200:
+ *         description: Designation updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Designation'
+ *       404:
+ *         description: Designation not found
+ *       409:
+ *         description: Designation with this name already exists
+ */
+router.put('/designations/:id', validate(idParamSchema, 'params'), validate(updateDesignationSchema), gymOwnerController.updateDesignation.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/designations/{id}:
+ *   delete:
+ *     summary: Delete a designation (hard delete)
+ *     tags: [Gym Owner - Designations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Designation ID
+ *     responses:
+ *       200:
+ *         description: Designation deleted successfully
+ *       404:
+ *         description: Designation not found
+ */
+router.delete('/designations/:id', validate(idParamSchema, 'params'), gymOwnerController.deleteDesignation.bind(gymOwnerController));
+
+// Workout Exercise Master CRUD
+/**
+ * @swagger
+ * /api/v1/gym-owner/workout-exercises:
+ *   get:
+ *     summary: Get all workout exercises for the gym
+ *     tags: [Gym Owner - Workout Exercises]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Workout exercises retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/WorkoutExercise'
+ */
+router.get('/workout-exercises', gymOwnerController.getWorkoutExercises.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/workout-exercises/{id}:
+ *   get:
+ *     summary: Get workout exercise by ID
+ *     tags: [Gym Owner - Workout Exercises]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Workout Exercise ID
+ *     responses:
+ *       200:
+ *         description: Workout exercise retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WorkoutExercise'
+ *       404:
+ *         description: Workout exercise not found
+ */
+router.get('/workout-exercises/:id', validate(idParamSchema, 'params'), gymOwnerController.getWorkoutExerciseById.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/workout-exercises:
+ *   post:
+ *     summary: Create a new workout exercise
+ *     tags: [Gym Owner - Workout Exercises]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - exerciseName
+ *             properties:
+ *               exerciseName:
+ *                 type: string
+ *                 minLength: 2
+ *                 description: Name of the exercise (unique per gym)
+ *               shortCode:
+ *                 type: string
+ *                 maxLength: 20
+ *                 description: Short code for the exercise
+ *               description:
+ *                 type: string
+ *                 description: Description of the exercise
+ *     responses:
+ *       201:
+ *         description: Workout exercise created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WorkoutExercise'
+ *       409:
+ *         description: Workout exercise with this name already exists
+ */
+router.post('/workout-exercises', validate(createWorkoutExerciseSchema), gymOwnerController.createWorkoutExercise.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/workout-exercises/{id}:
+ *   put:
+ *     summary: Update a workout exercise
+ *     tags: [Gym Owner - Workout Exercises]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Workout Exercise ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               exerciseName:
+ *                 type: string
+ *                 minLength: 2
+ *                 description: Name of the exercise (unique per gym)
+ *               shortCode:
+ *                 type: string
+ *                 maxLength: 20
+ *                 description: Short code for the exercise
+ *               description:
+ *                 type: string
+ *                 description: Description of the exercise
+ *               isActive:
+ *                 type: boolean
+ *                 description: Whether the exercise is active
+ *     responses:
+ *       200:
+ *         description: Workout exercise updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/WorkoutExercise'
+ *       404:
+ *         description: Workout exercise not found
+ *       409:
+ *         description: Workout exercise with this name already exists
+ */
+router.put('/workout-exercises/:id', validate(idParamSchema, 'params'), validate(updateWorkoutExerciseSchema), gymOwnerController.updateWorkoutExercise.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/workout-exercises/{id}:
+ *   delete:
+ *     summary: Delete a workout exercise (hard delete)
+ *     tags: [Gym Owner - Workout Exercises]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Workout Exercise ID
+ *     responses:
+ *       200:
+ *         description: Workout exercise deleted successfully
+ *       404:
+ *         description: Workout exercise not found
+ */
+router.delete('/workout-exercises/:id', validate(idParamSchema, 'params'), gymOwnerController.deleteWorkoutExercise.bind(gymOwnerController));
 
 export default router;

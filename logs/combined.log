@@ -239,3 +239,1310 @@ An operation failed because it depends on one or more records that were required
     at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
     at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
 2025-12-30 16:24:00 [info]: SIGINT received. Shutting down gracefully...
+2025-12-30 16:45:22 [info]: 🚀 Server is running on port 5000
+2025-12-30 16:45:22 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 16:45:22 [info]: 🌍 Environment: development
+2025-12-30 16:47:45 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:31:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2025-12-30 16:47:48 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:31:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2025-12-30 16:47:49 [error]: Error: Refresh token not found or expired
+    at AuthService.refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.service.ts:103:13)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.controller.ts:18:22)
+2025-12-30 16:49:25 [info]: SIGINT received. Shutting down gracefully...
+2025-12-30 18:38:09 [info]: 🚀 Server is running on port 5000
+2025-12-30 18:38:09 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 18:38:09 [info]: 🌍 Environment: development
+2025-12-30 18:40:35 [error]: ZodError: [
+  {
+    "code": "too_small",
+    "minimum": 10,
+    "type": "string",
+    "inclusive": true,
+    "exact": false,
+    "message": "Phone must be at least 10 characters",
+    "path": [
+      "phone"
+    ]
+  }
+]
+    at Object.get error [as error] (E:\Gym\gym-management\backend\node_modules\zod\v3\types.cjs:45:31)
+    at ZodObject.parseAsync (E:\Gym\gym-management\backend\node_modules\zod\v3\types.cjs:183:22)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at E:\Gym\gym-management\backend\src\common\middleware\validate.middleware.ts:147:20
+2025-12-30 18:42:18 [error]: ZodError: [
+  {
+    "code": "too_small",
+    "minimum": 10,
+    "type": "string",
+    "inclusive": true,
+    "exact": false,
+    "message": "Phone must be at least 10 characters",
+    "path": [
+      "phone"
+    ]
+  }
+]
+    at Object.get error [as error] (E:\Gym\gym-management\backend\node_modules\zod\v3\types.cjs:45:31)
+    at ZodObject.parseAsync (E:\Gym\gym-management\backend\node_modules\zod\v3\types.cjs:183:22)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at E:\Gym\gym-management\backend\src\common\middleware\validate.middleware.ts:147:20
+2025-12-30 18:42:19 [error]: ZodError: [
+  {
+    "code": "too_small",
+    "minimum": 10,
+    "type": "string",
+    "inclusive": true,
+    "exact": false,
+    "message": "Phone must be at least 10 characters",
+    "path": [
+      "phone"
+    ]
+  }
+]
+    at Object.get error [as error] (E:\Gym\gym-management\backend\node_modules\zod\v3\types.cjs:45:31)
+    at ZodObject.parseAsync (E:\Gym\gym-management\backend\node_modules\zod\v3\types.cjs:183:22)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at E:\Gym\gym-management\backend\src\common\middleware\validate.middleware.ts:147:20
+2025-12-30 18:42:52 [error]: Error: Gym with this email already exists
+    at AdminService.createGym (E:\Gym\gym-management\backend\src\api\v1\admin\admin.service.ts:221:30)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at createGym (E:\Gym\gym-management\backend\src\api\v1\admin\admin.controller.ts:98:19)
+2025-12-30 18:53:45 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:31:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2025-12-30 19:00:47 [info]: 🚀 Server is running on port 5000
+2025-12-30 19:00:47 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 19:00:47 [info]: 🌍 Environment: development
+2025-12-30 19:02:03 [info]: 🚀 Server is running on port 5000
+2025-12-30 19:02:03 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 19:02:03 [info]: 🌍 Environment: development
+2025-12-30 19:02:26 [info]: SIGINT received. Shutting down gracefully...
+2025-12-30 19:02:32 [info]: 🚀 Server is running on port 5000
+2025-12-30 19:02:32 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 19:02:32 [info]: 🌍 Environment: development
+2025-12-30 19:04:29 [error]: Error: User already owns another gym
+    at AdminService.assignGymOwner (E:\Gym\gym-management\backend\src\api\v1\admin\admin.service.ts:281:13)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at assignGymOwner (E:\Gym\gym-management\backend\src\api\v1\admin\admin.controller.ts:135:19)
+2025-12-30 19:04:31 [error]: Error: User already owns another gym
+    at AdminService.assignGymOwner (E:\Gym\gym-management\backend\src\api\v1\admin\admin.service.ts:281:13)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at assignGymOwner (E:\Gym\gym-management\backend\src\api\v1\admin\admin.controller.ts:135:19)
+2025-12-30 19:04:48 [error]: Error: User already owns another gym
+    at AdminService.assignGymOwner (E:\Gym\gym-management\backend\src\api\v1\admin\admin.service.ts:281:13)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at assignGymOwner (E:\Gym\gym-management\backend\src\api\v1\admin\admin.controller.ts:135:19)
+2025-12-30 19:08:50 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:31:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2025-12-30 19:08:50 [error]: Error: Refresh token not found or expired
+    at AuthService.refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.service.ts:103:13)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.controller.ts:18:22)
+2025-12-30 19:12:14 [error]: ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "string",
+    "received": "undefined",
+    "path": [
+      "firstName"
+    ],
+    "message": "Required"
+  },
+  {
+    "code": "invalid_type",
+    "expected": "string",
+    "received": "undefined",
+    "path": [
+      "lastName"
+    ],
+    "message": "Required"
+  },
+  {
+    "code": "invalid_type",
+    "expected": "string",
+    "received": "undefined",
+    "path": [
+      "phone"
+    ],
+    "message": "Required"
+  }
+]
+    at Object.get error [as error] (E:\Gym\gym-management\backend\node_modules\zod\v3\types.cjs:45:31)
+    at ZodObject.parseAsync (E:\Gym\gym-management\backend\node_modules\zod\v3\types.cjs:183:22)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at E:\Gym\gym-management\backend\src\common\middleware\validate.middleware.ts:147:20
+2025-12-30 19:12:21 [error]: ZodError: [
+  {
+    "code": "invalid_type",
+    "expected": "string",
+    "received": "undefined",
+    "path": [
+      "firstName"
+    ],
+    "message": "Required"
+  },
+  {
+    "code": "invalid_type",
+    "expected": "string",
+    "received": "undefined",
+    "path": [
+      "lastName"
+    ],
+    "message": "Required"
+  },
+  {
+    "code": "invalid_type",
+    "expected": "string",
+    "received": "undefined",
+    "path": [
+      "phone"
+    ],
+    "message": "Required"
+  }
+]
+    at Object.get error [as error] (E:\Gym\gym-management\backend\node_modules\zod\v3\types.cjs:45:31)
+    at ZodObject.parseAsync (E:\Gym\gym-management\backend\node_modules\zod\v3\types.cjs:183:22)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at E:\Gym\gym-management\backend\src\common\middleware\validate.middleware.ts:147:20
+2025-12-30 19:13:52 [info]: 🚀 Server is running on port 5000
+2025-12-30 19:13:52 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 19:13:52 [info]: 🌍 Environment: development
+2025-12-30 19:14:11 [info]: 🚀 Server is running on port 5000
+2025-12-30 19:14:11 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 19:14:11 [info]: 🌍 Environment: development
+2025-12-30 19:14:25 [info]: 🚀 Server is running on port 5000
+2025-12-30 19:14:25 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 19:14:25 [info]: 🌍 Environment: development
+2025-12-30 19:14:44 [info]: 🚀 Server is running on port 5000
+2025-12-30 19:14:44 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 19:14:44 [info]: 🌍 Environment: development
+2025-12-30 19:23:11 [info]: 🚀 Server is running on port 5000
+2025-12-30 19:23:11 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 19:23:11 [info]: 🌍 Environment: development
+2025-12-30 19:23:22 [info]: 🚀 Server is running on port 5000
+2025-12-30 19:23:22 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 19:23:22 [info]: 🌍 Environment: development
+2025-12-30 19:25:23 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:31:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2025-12-30 19:26:30 [info]: 🚀 Server is running on port 5000
+2025-12-30 19:26:30 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 19:26:30 [info]: 🌍 Environment: development
+2025-12-30 19:26:38 [info]: 🚀 Server is running on port 5000
+2025-12-30 19:26:38 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 19:26:38 [info]: 🌍 Environment: development
+2025-12-30 20:19:12 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:31:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2025-12-30 20:19:12 [error]: Error: Refresh token not found or expired
+    at AuthService.refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.service.ts:103:13)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.controller.ts:18:22)
+2025-12-30 21:27:34 [error]: Error: User already owns another gym
+    at AdminService.assignGymOwner (E:\Gym\gym-management\backend\src\api\v1\admin\admin.service.ts:281:13)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at assignGymOwner (E:\Gym\gym-management\backend\src\api\v1\admin\admin.controller.ts:135:19)
+2025-12-30 21:30:04 [error]: Error: Invalid email or password
+    at AuthService.login (E:\Gym\gym-management\backend\src\api\v1\auth\auth.service.ts:43:13)
+    at login (E:\Gym\gym-management\backend\src\api\v1\auth\auth.controller.ts:9:22)
+2025-12-30 21:39:49 [info]: 🚀 Server is running on port 5000
+2025-12-30 21:39:49 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 21:39:49 [info]: 🌍 Environment: development
+2025-12-30 21:43:15 [info]: 🚀 Server is running on port 5000
+2025-12-30 21:43:15 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 21:43:15 [info]: 🌍 Environment: development
+2025-12-30 21:43:44 [info]: 🚀 Server is running on port 5000
+2025-12-30 21:43:44 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 21:43:44 [info]: 🌍 Environment: development
+2025-12-30 21:44:08 [info]: 🚀 Server is running on port 5000
+2025-12-30 21:44:08 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 21:44:08 [info]: 🌍 Environment: development
+2025-12-30 21:44:23 [info]: 🚀 Server is running on port 5000
+2025-12-30 21:44:23 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 21:44:23 [info]: 🌍 Environment: development
+2025-12-30 21:44:30 [info]: 🚀 Server is running on port 5000
+2025-12-30 21:44:30 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 21:44:30 [info]: 🌍 Environment: development
+2025-12-30 21:44:35 [info]: 🚀 Server is running on port 5000
+2025-12-30 21:44:35 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 21:44:35 [info]: 🌍 Environment: development
+2025-12-30 21:44:39 [info]: SIGINT received. Shutting down gracefully...
+2025-12-30 21:46:04 [info]: 🚀 Server is running on port 5000
+2025-12-30 21:46:04 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 21:46:04 [info]: 🌍 Environment: development
+2025-12-30 21:46:28 [info]: 🚀 Server is running on port 5000
+2025-12-30 21:46:28 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 21:46:28 [info]: 🌍 Environment: development
+2025-12-30 21:47:51 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:33:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2025-12-30 21:48:21 [error]: Error: Insufficient permissions
+    at E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:99:19
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:83:5)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+2025-12-30 21:48:21 [error]: Error: Insufficient permissions
+    at E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:99:19
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:83:5)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+2025-12-30 21:48:23 [error]: Error: Insufficient permissions
+    at E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:99:19
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:83:5)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+2025-12-30 21:48:24 [error]: Error: Insufficient permissions
+    at E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:99:19
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:83:5)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+2025-12-30 21:48:26 [error]: Error: Insufficient permissions
+    at E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:99:19
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:83:5)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+2025-12-30 21:48:26 [error]: Error: Insufficient permissions
+    at E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:99:19
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:83:5)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+2025-12-30 21:48:27 [error]: Error: Insufficient permissions
+    at E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:99:19
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:83:5)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+2025-12-30 21:48:27 [error]: Error: Insufficient permissions
+    at E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:99:19
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:83:5)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+2025-12-30 22:08:55 [info]: 🚀 Server is running on port 5000
+2025-12-30 22:08:55 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 22:08:55 [info]: 🌍 Environment: development
+2025-12-30 22:09:05 [info]: 🚀 Server is running on port 5000
+2025-12-30 22:09:05 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 22:09:05 [info]: 🌍 Environment: development
+2025-12-30 22:09:21 [info]: 🚀 Server is running on port 5000
+2025-12-30 22:09:21 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 22:09:21 [info]: 🌍 Environment: development
+2025-12-30 22:09:38 [info]: 🚀 Server is running on port 5000
+2025-12-30 22:09:38 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 22:09:38 [info]: 🌍 Environment: development
+2025-12-30 22:09:47 [info]: 🚀 Server is running on port 5000
+2025-12-30 22:09:47 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 22:09:47 [info]: 🌍 Environment: development
+2025-12-30 22:11:04 [info]: 🚀 Server is running on port 5000
+2025-12-30 22:11:04 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 22:11:04 [info]: 🌍 Environment: development
+2025-12-30 22:11:36 [info]: 🚀 Server is running on port 5000
+2025-12-30 22:11:36 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 22:11:36 [info]: 🌍 Environment: development
+2025-12-30 22:11:48 [info]: 🚀 Server is running on port 5000
+2025-12-30 22:11:48 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 22:11:48 [info]: 🌍 Environment: development
+2025-12-30 22:12:16 [info]: 🚀 Server is running on port 5000
+2025-12-30 22:12:16 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 22:12:16 [info]: 🌍 Environment: development
+2025-12-30 22:12:48 [info]: 🚀 Server is running on port 5000
+2025-12-30 22:12:48 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 22:12:48 [info]: 🌍 Environment: development
+2025-12-30 22:13:07 [info]: 🚀 Server is running on port 5000
+2025-12-30 22:13:07 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 22:13:07 [info]: 🌍 Environment: development
+2025-12-30 22:13:32 [info]: 🚀 Server is running on port 5000
+2025-12-30 22:13:32 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 22:13:32 [info]: 🌍 Environment: development
+2025-12-30 22:14:58 [info]: 🚀 Server is running on port 5000
+2025-12-30 22:14:58 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 22:14:58 [info]: 🌍 Environment: development
+2025-12-30 22:15:28 [info]: 🚀 Server is running on port 5000
+2025-12-30 22:15:28 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 22:15:28 [info]: 🌍 Environment: development
+2025-12-30 22:15:46 [info]: 🚀 Server is running on port 5000
+2025-12-30 22:15:46 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 22:15:46 [info]: 🌍 Environment: development
+2025-12-30 22:15:54 [info]: 🚀 Server is running on port 5000
+2025-12-30 22:15:54 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 22:15:54 [info]: 🌍 Environment: development
+2025-12-30 22:16:03 [info]: SIGINT received. Shutting down gracefully...
+2025-12-30 22:18:41 [info]: 🚀 Server is running on port 5000
+2025-12-30 22:18:41 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 22:18:41 [info]: 🌍 Environment: development
+2025-12-30 22:21:44 [info]: 🚀 Server is running on port 5000
+2025-12-30 22:21:44 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-30 22:21:44 [info]: 🌍 Environment: development
+2025-12-30 22:21:47 [info]: SIGINT received. Shutting down gracefully...
+2025-12-31 12:35:35 [info]: 🚀 Server is running on port 5000
+2025-12-31 12:35:35 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2025-12-31 12:35:35 [info]: 🌍 Environment: development
+2025-12-31 12:36:24 [error]: Error: Insufficient permissions
+    at E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:99:19
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:83:5)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+2025-12-31 12:36:25 [error]: Error: Insufficient permissions
+    at E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:99:19
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:83:5)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+2025-12-31 12:36:33 [error]: Error: Insufficient permissions
+    at E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:99:19
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:83:5)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+2025-12-31 12:36:33 [error]: Error: Insufficient permissions
+    at E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:99:19
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:83:5)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+2025-12-31 12:36:33 [error]: Error: Insufficient permissions
+    at E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:99:19
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:83:5)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+2025-12-31 12:36:34 [error]: Error: Insufficient permissions
+    at E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:99:19
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:83:5)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+2025-12-31 12:36:34 [error]: Error: Insufficient permissions
+    at E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:99:19
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:83:5)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+2025-12-31 12:36:34 [error]: Error: Insufficient permissions
+    at E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:99:19
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:83:5)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+2025-12-31 12:36:34 [error]: Error: Insufficient permissions
+    at E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:99:19
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:83:5)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+2025-12-31 12:36:35 [error]: Error: Insufficient permissions
+    at E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:99:19
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:83:5)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+2025-12-31 12:36:36 [error]: Error: Insufficient permissions
+    at E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:99:19
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:83:5)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+2025-12-31 12:36:37 [error]: Error: Insufficient permissions
+    at E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:99:19
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:83:5)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+2025-12-31 12:36:38 [error]: Error: Insufficient permissions
+    at E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:99:19
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:83:5)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+2025-12-31 12:37:01 [error]: Error: Insufficient permissions
+    at E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:99:19
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:83:5)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+2025-12-31 12:37:02 [error]: Error: Insufficient permissions
+    at E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:99:19
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:83:5)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+2025-12-31 12:37:12 [error]: Error: Insufficient permissions
+    at E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:99:19
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:83:5)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+2025-12-31 12:37:13 [error]: Error: Insufficient permissions
+    at E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:99:19
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:83:5)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+2025-12-31 12:39:21 [error]: Error: Insufficient permissions
+    at E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:99:19
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:83:5)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+2025-12-31 12:39:22 [error]: Error: Insufficient permissions
+    at E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:99:19
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:83:5)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+2025-12-31 12:59:42 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:33:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2025-12-31 13:38:04 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:33:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2025-12-31 13:38:04 [error]: Error: Refresh token not found or expired
+    at AuthService.refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.service.ts:103:13)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.controller.ts:18:22)
+2026-01-01 14:32:49 [info]: 🚀 Server is running on port 5000
+2026-01-01 14:32:49 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 14:32:49 [info]: 🌍 Environment: development
+2026-01-01 14:33:59 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:33:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2026-01-01 15:06:25 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:33:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2026-01-01 15:15:33 [info]: SIGINT received. Shutting down gracefully...
+2026-01-01 15:26:39 [info]: 🚀 Server is running on port 5000
+2026-01-01 15:26:39 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 15:26:39 [info]: 🌍 Environment: development
+2026-01-01 15:28:34 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:33:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2026-01-01 15:42:54 [info]: 🚀 Server is running on port 5000
+2026-01-01 15:42:54 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 15:42:54 [info]: 🌍 Environment: development
+2026-01-01 15:42:59 [info]: 🚀 Server is running on port 5000
+2026-01-01 15:42:59 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 15:42:59 [info]: 🌍 Environment: development
+2026-01-01 15:43:05 [info]: 🚀 Server is running on port 5000
+2026-01-01 15:43:05 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 15:43:05 [info]: 🌍 Environment: development
+2026-01-01 15:43:17 [info]: 🚀 Server is running on port 5000
+2026-01-01 15:43:17 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 15:43:17 [info]: 🌍 Environment: development
+2026-01-01 15:43:28 [info]: 🚀 Server is running on port 5000
+2026-01-01 15:43:28 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 15:43:28 [info]: 🌍 Environment: development
+2026-01-01 15:43:34 [info]: 🚀 Server is running on port 5000
+2026-01-01 15:43:34 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 15:43:34 [info]: 🌍 Environment: development
+2026-01-01 15:43:49 [info]: 🚀 Server is running on port 5000
+2026-01-01 15:43:49 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 15:43:49 [info]: 🌍 Environment: development
+2026-01-01 15:47:28 [info]: 🚀 Server is running on port 5000
+2026-01-01 15:47:28 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 15:47:28 [info]: 🌍 Environment: development
+2026-01-01 15:50:06 [info]: 🚀 Server is running on port 5000
+2026-01-01 15:50:06 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 15:50:06 [info]: 🌍 Environment: development
+2026-01-01 15:53:43 [info]: 🚀 Server is running on port 5000
+2026-01-01 15:53:43 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 15:53:43 [info]: 🌍 Environment: development
+2026-01-01 15:53:54 [info]: 🚀 Server is running on port 5000
+2026-01-01 15:53:54 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 15:53:54 [info]: 🌍 Environment: development
+2026-01-01 15:53:59 [info]: SIGINT received. Shutting down gracefully...
+2026-01-01 15:55:13 [info]: 🚀 Server is running on port 5000
+2026-01-01 15:55:13 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 15:55:13 [info]: 🌍 Environment: development
+2026-01-01 16:02:37 [error]: Error: Access token is required
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:26:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2026-01-01 16:07:09 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:33:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2026-01-01 16:07:09 [error]: Error: Refresh token not found or expired
+    at AuthService.refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.service.ts:103:13)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.controller.ts:18:22)
+2026-01-01 16:13:13 [info]: 🚀 Server is running on port 5000
+2026-01-01 16:13:13 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 16:13:13 [info]: 🌍 Environment: development
+2026-01-01 16:13:17 [info]: SIGINT received. Shutting down gracefully...
+2026-01-01 16:15:09 [info]: 🚀 Server is running on port 5000
+2026-01-01 16:15:09 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 16:15:09 [info]: 🌍 Environment: development
+2026-01-01 16:17:00 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:33:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2026-01-01 16:17:00 [error]: Error: Refresh token not found or expired
+    at AuthService.refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.service.ts:103:13)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.controller.ts:18:22)
+2026-01-01 16:29:55 [info]: 🚀 Server is running on port 5000
+2026-01-01 16:29:55 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 16:29:55 [info]: 🌍 Environment: development
+2026-01-01 16:30:03 [info]: 🚀 Server is running on port 5000
+2026-01-01 16:30:03 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 16:30:03 [info]: 🌍 Environment: development
+2026-01-01 16:30:11 [info]: 🚀 Server is running on port 5000
+2026-01-01 16:30:11 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 16:30:11 [info]: 🌍 Environment: development
+2026-01-01 16:30:24 [info]: 🚀 Server is running on port 5000
+2026-01-01 16:30:24 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 16:30:24 [info]: 🌍 Environment: development
+2026-01-01 16:30:34 [info]: 🚀 Server is running on port 5000
+2026-01-01 16:30:34 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 16:30:34 [info]: 🌍 Environment: development
+2026-01-01 16:30:42 [info]: 🚀 Server is running on port 5000
+2026-01-01 16:30:42 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 16:30:42 [info]: 🌍 Environment: development
+2026-01-01 16:30:59 [info]: 🚀 Server is running on port 5000
+2026-01-01 16:30:59 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 16:30:59 [info]: 🌍 Environment: development
+2026-01-01 16:31:11 [info]: 🚀 Server is running on port 5000
+2026-01-01 16:31:11 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 16:31:11 [info]: 🌍 Environment: development
+2026-01-01 16:31:16 [info]: SIGINT received. Shutting down gracefully...
+2026-01-01 16:34:49 [info]: 🚀 Server is running on port 5000
+2026-01-01 16:34:49 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 16:34:49 [info]: 🌍 Environment: development
+2026-01-01 16:39:35 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:33:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2026-01-01 18:09:04 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:33:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2026-01-01 18:09:04 [error]: Error: Refresh token not found or expired
+    at AuthService.refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.service.ts:103:13)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.controller.ts:18:22)
+2026-01-01 18:13:29 [info]: 🚀 Server is running on port 5000
+2026-01-01 18:13:29 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 18:13:29 [info]: 🌍 Environment: development
+2026-01-01 18:13:49 [info]: 🚀 Server is running on port 5000
+2026-01-01 18:13:49 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 18:13:49 [info]: 🌍 Environment: development
+2026-01-01 18:14:01 [info]: 🚀 Server is running on port 5000
+2026-01-01 18:14:01 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 18:14:01 [info]: 🌍 Environment: development
+2026-01-01 18:14:12 [info]: 🚀 Server is running on port 5000
+2026-01-01 18:14:12 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 18:14:12 [info]: 🌍 Environment: development
+2026-01-01 18:14:21 [info]: 🚀 Server is running on port 5000
+2026-01-01 18:14:21 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 18:14:21 [info]: 🌍 Environment: development
+2026-01-01 18:14:29 [info]: 🚀 Server is running on port 5000
+2026-01-01 18:14:29 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 18:14:29 [info]: 🌍 Environment: development
+2026-01-01 18:14:43 [info]: 🚀 Server is running on port 5000
+2026-01-01 18:14:43 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 18:14:43 [info]: 🌍 Environment: development
+2026-01-01 18:14:53 [info]: 🚀 Server is running on port 5000
+2026-01-01 18:14:53 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 18:14:53 [info]: 🌍 Environment: development
+2026-01-01 18:15:47 [info]: SIGINT received. Shutting down gracefully...
+2026-01-01 18:17:11 [info]: 🚀 Server is running on port 5000
+2026-01-01 18:17:11 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 18:17:11 [info]: 🌍 Environment: development
+2026-01-01 18:33:22 [info]: 🚀 Server is running on port 5000
+2026-01-01 18:33:22 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 18:33:22 [info]: 🌍 Environment: development
+2026-01-01 18:33:46 [info]: 🚀 Server is running on port 5000
+2026-01-01 18:33:46 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 18:33:46 [info]: 🌍 Environment: development
+2026-01-01 18:33:59 [info]: 🚀 Server is running on port 5000
+2026-01-01 18:33:59 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 18:33:59 [info]: 🌍 Environment: development
+2026-01-01 18:34:12 [info]: 🚀 Server is running on port 5000
+2026-01-01 18:34:12 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 18:34:12 [info]: 🌍 Environment: development
+2026-01-01 18:34:22 [info]: 🚀 Server is running on port 5000
+2026-01-01 18:34:22 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 18:34:22 [info]: 🌍 Environment: development
+2026-01-01 18:34:39 [info]: 🚀 Server is running on port 5000
+2026-01-01 18:34:39 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 18:34:39 [info]: 🌍 Environment: development
+2026-01-01 18:34:51 [info]: 🚀 Server is running on port 5000
+2026-01-01 18:34:51 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 18:34:51 [info]: 🌍 Environment: development
+2026-01-01 18:34:57 [info]: SIGINT received. Shutting down gracefully...
+2026-01-01 18:36:01 [info]: 🚀 Server is running on port 5000
+2026-01-01 18:36:01 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 18:36:01 [info]: 🌍 Environment: development
+2026-01-01 18:47:12 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:33:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2026-01-01 18:58:32 [info]: 🚀 Server is running on port 5000
+2026-01-01 18:58:32 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 18:58:32 [info]: 🌍 Environment: development
+2026-01-01 18:58:42 [info]: 🚀 Server is running on port 5000
+2026-01-01 18:58:42 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 18:58:42 [info]: 🌍 Environment: development
+2026-01-01 18:58:56 [info]: 🚀 Server is running on port 5000
+2026-01-01 18:58:56 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 18:58:56 [info]: 🌍 Environment: development
+2026-01-01 18:59:09 [info]: 🚀 Server is running on port 5000
+2026-01-01 18:59:09 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 18:59:09 [info]: 🌍 Environment: development
+2026-01-01 18:59:19 [info]: 🚀 Server is running on port 5000
+2026-01-01 18:59:19 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 18:59:19 [info]: 🌍 Environment: development
+2026-01-01 18:59:36 [info]: 🚀 Server is running on port 5000
+2026-01-01 18:59:36 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 18:59:36 [info]: 🌍 Environment: development
+2026-01-01 18:59:50 [info]: 🚀 Server is running on port 5000
+2026-01-01 18:59:50 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 18:59:50 [info]: 🌍 Environment: development
+2026-01-01 19:00:39 [info]: SIGINT received. Shutting down gracefully...
+2026-01-01 19:16:11 [info]: 🚀 Server is running on port 5000
+2026-01-01 19:16:11 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-01 19:16:11 [info]: 🌍 Environment: development
+2026-01-01 19:17:26 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:33:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2026-01-01 19:44:10 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:33:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2026-01-01 19:44:10 [error]: Error: Refresh token not found or expired
+    at AuthService.refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.service.ts:103:13)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.controller.ts:18:22)
+2026-01-03 11:43:58 [info]: 🚀 Server is running on port 5000
+2026-01-03 11:43:58 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-03 11:43:58 [info]: 🌍 Environment: development
+2026-01-03 12:10:06 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:33:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2026-01-03 12:10:07 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:33:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2026-01-03 12:10:07 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:33:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2026-01-03 12:10:07 [error]: PrismaClientKnownRequestError: 
+Invalid `prisma.refreshToken.delete()` invocation in
+E:\Gym\gym-management\backend\src\api\v1\auth\auth.service.ts:116:37
+
+  113 }
+  114 
+  115 // Delete old token
+→ 116 await prisma.refreshToken.delete(
+An operation failed because it depends on one or more records that were required but not found. No record was found for a delete.
+    at qr.handleRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at qr.handleAndLogRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at qr.request (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at a (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:805:24)
+    at AuthService.refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.service.ts:116:5)
+    at refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.controller.ts:18:22)
+2026-01-03 12:10:07 [error]: PrismaClientKnownRequestError: 
+Invalid `prisma.refreshToken.delete()` invocation in
+E:\Gym\gym-management\backend\src\api\v1\auth\auth.service.ts:116:37
+
+  113 }
+  114 
+  115 // Delete old token
+→ 116 await prisma.refreshToken.delete(
+An operation failed because it depends on one or more records that were required but not found. No record was found for a delete.
+    at qr.handleRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at qr.handleAndLogRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at qr.request (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at a (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:805:24)
+    at AuthService.refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.service.ts:116:5)
+    at refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.controller.ts:18:22)
+2026-01-03 12:14:06 [info]: 🚀 Server is running on port 5000
+2026-01-03 12:14:06 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-03 12:14:06 [info]: 🌍 Environment: development
+2026-01-03 12:14:14 [info]: 🚀 Server is running on port 5000
+2026-01-03 12:14:14 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-03 12:14:14 [info]: 🌍 Environment: development
+2026-01-03 12:14:25 [info]: 🚀 Server is running on port 5000
+2026-01-03 12:14:25 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-03 12:14:25 [info]: 🌍 Environment: development
+2026-01-03 12:20:25 [info]: 🚀 Server is running on port 5000
+2026-01-03 12:20:25 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-03 12:20:25 [info]: 🌍 Environment: development
+2026-01-03 12:20:57 [info]: 🚀 Server is running on port 5000
+2026-01-03 12:20:57 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-03 12:20:57 [info]: 🌍 Environment: development
+2026-01-03 12:21:28 [info]: 🚀 Server is running on port 5000
+2026-01-03 12:21:28 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-03 12:21:28 [info]: 🌍 Environment: development
+2026-01-03 12:21:50 [info]: 🚀 Server is running on port 5000
+2026-01-03 12:21:50 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-03 12:21:50 [info]: 🌍 Environment: development
+2026-01-03 12:25:09 [error]: PrismaClientKnownRequestError: 
+Invalid `prisma.gym.findMany()` invocation in
+E:\Gym\gym-management\backend\src\api\v1\admin\admin.service.ts:202:18
+
+  199   : {};
+  200 
+  201 const [gyms, total] = await Promise.all([
+→ 202   prisma.gym.findMany(
+The column `(not available)` does not exist in the current database.
+    at qr.handleRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at qr.handleAndLogRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at qr.request (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at a (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:805:24)
+    at async Promise.all (index 0)
+    at AdminService.getGyms (E:\Gym\gym-management\backend\src\api\v1\admin\admin.service.ts:201:27)
+    at getGyms (E:\Gym\gym-management\backend\src\api\v1\admin\admin.controller.ts:75:31)
+2026-01-03 12:25:10 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:33:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2026-01-03 12:25:11 [error]: PrismaClientKnownRequestError: 
+Invalid `prisma.gym.findMany()` invocation in
+E:\Gym\gym-management\backend\src\api\v1\admin\admin.service.ts:202:18
+
+  199   : {};
+  200 
+  201 const [gyms, total] = await Promise.all([
+→ 202   prisma.gym.findMany(
+The column `(not available)` does not exist in the current database.
+    at qr.handleRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at qr.handleAndLogRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at qr.request (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at a (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:805:24)
+    at async Promise.all (index 0)
+    at AdminService.getGyms (E:\Gym\gym-management\backend\src\api\v1\admin\admin.service.ts:201:27)
+    at getGyms (E:\Gym\gym-management\backend\src\api\v1\admin\admin.controller.ts:75:31)
+2026-01-03 12:25:48 [info]: 🚀 Server is running on port 5000
+2026-01-03 12:25:48 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-03 12:25:48 [info]: 🌍 Environment: development
+2026-01-03 12:27:19 [info]: 🚀 Server is running on port 5000
+2026-01-03 12:27:19 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-03 12:27:19 [info]: 🌍 Environment: development
+2026-01-03 12:50:59 [error]: ZodError: [
+  {
+    "validation": "url",
+    "code": "invalid_string",
+    "message": "Invalid website URL",
+    "path": [
+      "website"
+    ]
+  }
+]
+    at Object.get error [as error] (E:\Gym\gym-management\backend\node_modules\zod\v3\types.cjs:45:31)
+    at ZodObject.parseAsync (E:\Gym\gym-management\backend\node_modules\zod\v3\types.cjs:183:22)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at E:\Gym\gym-management\backend\src\common\middleware\validate.middleware.ts:297:20
+2026-01-03 12:51:08 [error]: ZodError: [
+  {
+    "validation": "url",
+    "code": "invalid_string",
+    "message": "Invalid website URL",
+    "path": [
+      "website"
+    ]
+  }
+]
+    at Object.get error [as error] (E:\Gym\gym-management\backend\node_modules\zod\v3\types.cjs:45:31)
+    at ZodObject.parseAsync (E:\Gym\gym-management\backend\node_modules\zod\v3\types.cjs:183:22)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at E:\Gym\gym-management\backend\src\common\middleware\validate.middleware.ts:297:20
+2026-01-03 12:54:55 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:33:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2026-01-03 12:54:55 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:33:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2026-01-03 12:54:55 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:33:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2026-01-03 12:54:56 [error]: PrismaClientKnownRequestError: 
+Invalid `prisma.refreshToken.delete()` invocation in
+E:\Gym\gym-management\backend\src\api\v1\auth\auth.service.ts:116:37
+
+  113 }
+  114 
+  115 // Delete old token
+→ 116 await prisma.refreshToken.delete(
+An operation failed because it depends on one or more records that were required but not found. No record was found for a delete.
+    at qr.handleRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at qr.handleAndLogRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at qr.request (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at a (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:805:24)
+    at AuthService.refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.service.ts:116:5)
+    at refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.controller.ts:18:22)
+2026-01-03 12:54:56 [error]: PrismaClientKnownRequestError: 
+Invalid `prisma.refreshToken.delete()` invocation in
+E:\Gym\gym-management\backend\src\api\v1\auth\auth.service.ts:116:37
+
+  113 }
+  114 
+  115 // Delete old token
+→ 116 await prisma.refreshToken.delete(
+An operation failed because it depends on one or more records that were required but not found. No record was found for a delete.
+    at qr.handleRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at qr.handleAndLogRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at qr.request (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at a (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:805:24)
+    at AuthService.refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.service.ts:116:5)
+    at refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.controller.ts:18:22)
+2026-01-03 13:07:33 [error]: ZodError: [
+  {
+    "validation": "url",
+    "code": "invalid_string",
+    "message": "Invalid website URL",
+    "path": [
+      "website"
+    ]
+  }
+]
+    at Object.get error [as error] (E:\Gym\gym-management\backend\node_modules\zod\v3\types.cjs:45:31)
+    at ZodObject.parseAsync (E:\Gym\gym-management\backend\node_modules\zod\v3\types.cjs:183:22)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at E:\Gym\gym-management\backend\src\common\middleware\validate.middleware.ts:297:20
+2026-01-03 13:07:37 [error]: ZodError: [
+  {
+    "validation": "url",
+    "code": "invalid_string",
+    "message": "Invalid website URL",
+    "path": [
+      "website"
+    ]
+  }
+]
+    at Object.get error [as error] (E:\Gym\gym-management\backend\node_modules\zod\v3\types.cjs:45:31)
+    at ZodObject.parseAsync (E:\Gym\gym-management\backend\node_modules\zod\v3\types.cjs:183:22)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at E:\Gym\gym-management\backend\src\common\middleware\validate.middleware.ts:297:20
+2026-01-03 13:09:13 [info]: 🚀 Server is running on port 5000
+2026-01-03 13:09:13 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-03 13:09:13 [info]: 🌍 Environment: development
+2026-01-03 13:09:23 [info]: 🚀 Server is running on port 5000
+2026-01-03 13:09:23 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-03 13:09:23 [info]: 🌍 Environment: development
+2026-01-03 13:19:42 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:33:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2026-01-03 13:19:42 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:33:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2026-01-03 13:19:42 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:33:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2026-01-03 13:19:42 [error]: PrismaClientKnownRequestError: 
+Invalid `prisma.refreshToken.delete()` invocation in
+E:\Gym\gym-management\backend\src\api\v1\auth\auth.service.ts:116:37
+
+  113 }
+  114 
+  115 // Delete old token
+→ 116 await prisma.refreshToken.delete(
+An operation failed because it depends on one or more records that were required but not found. No record was found for a delete.
+    at qr.handleRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:228:13)
+    at qr.handleAndLogRequestError (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:174:12)
+    at qr.request (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\RequestHandler.ts:143:12)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at a (E:\Gym\gym-management\backend\node_modules\@prisma\client\src\runtime\getPrismaClient.ts:805:24)
+    at AuthService.refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.service.ts:116:5)
+    at refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.controller.ts:18:22)
+2026-01-03 13:19:42 [error]: Error: Refresh token not found or expired
+    at AuthService.refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.service.ts:103:13)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at refreshToken (E:\Gym\gym-management\backend\src\api\v1\auth\auth.controller.ts:18:22)
+2026-01-03 13:26:10 [error]: ZodError: [
+  {
+    "code": "too_small",
+    "minimum": 10,
+    "type": "string",
+    "inclusive": true,
+    "exact": false,
+    "message": "Phone No must be at least 10 digits",
+    "path": [
+      "phoneNo"
+    ]
+  }
+]
+    at Object.get error [as error] (E:\Gym\gym-management\backend\node_modules\zod\v3\types.cjs:45:31)
+    at ZodObject.parseAsync (E:\Gym\gym-management\backend\node_modules\zod\v3\types.cjs:183:22)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at E:\Gym\gym-management\backend\src\common\middleware\validate.middleware.ts:297:20
+2026-01-03 13:26:16 [error]: ZodError: [
+  {
+    "code": "too_small",
+    "minimum": 10,
+    "type": "string",
+    "inclusive": true,
+    "exact": false,
+    "message": "Phone No must be at least 10 digits",
+    "path": [
+      "phoneNo"
+    ]
+  }
+]
+    at Object.get error [as error] (E:\Gym\gym-management\backend\node_modules\zod\v3\types.cjs:45:31)
+    at ZodObject.parseAsync (E:\Gym\gym-management\backend\node_modules\zod\v3\types.cjs:183:22)
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at E:\Gym\gym-management\backend\src\common\middleware\validate.middleware.ts:297:20
+2026-01-03 13:35:50 [error]: Error: Invalid or expired token
+    at authenticate (E:\Gym\gym-management\backend\src\common\middleware\auth.middleware.ts:33:13)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+    at E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:286:9
+    at router.process_params (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:346:12)
+    at next (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:280:10)
+    at router.handle (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:175:3)
+    at router (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:47:12)
+    at Layer.handle [as handle_request] (E:\Gym\gym-management\backend\node_modules\express\lib\router\layer.js:95:5)
+    at trim_prefix (E:\Gym\gym-management\backend\node_modules\express\lib\router\index.js:328:13)
+2026-01-03 13:56:07 [info]: 🚀 Server is running on port 5000
+2026-01-03 13:56:07 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-03 13:56:07 [info]: 🌍 Environment: development
+2026-01-03 13:56:20 [info]: 🚀 Server is running on port 5000
+2026-01-03 13:56:20 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-03 13:56:20 [info]: 🌍 Environment: development
+2026-01-03 13:56:30 [info]: 🚀 Server is running on port 5000
+2026-01-03 13:56:30 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-03 13:56:30 [info]: 🌍 Environment: development
+2026-01-03 13:56:42 [info]: 🚀 Server is running on port 5000
+2026-01-03 13:56:42 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-03 13:56:42 [info]: 🌍 Environment: development
+2026-01-03 13:56:51 [info]: 🚀 Server is running on port 5000
+2026-01-03 13:56:51 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-03 13:56:51 [info]: 🌍 Environment: development
+2026-01-03 13:57:02 [info]: 🚀 Server is running on port 5000
+2026-01-03 13:57:02 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-03 13:57:02 [info]: 🌍 Environment: development
+2026-01-03 13:57:21 [info]: 🚀 Server is running on port 5000
+2026-01-03 13:57:21 [info]: 📚 API Documentation available at http://localhost:5000/api-docs
+2026-01-03 13:57:21 [info]: 🌍 Environment: development
+2026-01-03 13:57:31 [info]: SIGINT received. Shutting down gracefully...
