@@ -25,6 +25,8 @@ async function main() {
   console.log('🌱 Starting database seed...');
 
   // Clean existing data
+  await prisma.workoutExerciseMaster.deleteMany();
+  await prisma.bodyPartMaster.deleteMany();
   await prisma.memberExerciseAssignment.deleteMany();
   await prisma.memberDietAssignment.deleteMany();
   await prisma.memberTrainerAssignment.deleteMany();
@@ -362,6 +364,199 @@ async function main() {
     })
   ]);
   console.log('✅ Created assignments');
+
+  // Create Body Parts
+  const bodyParts = await Promise.all([
+    prisma.bodyPartMaster.create({
+      data: {
+        bodyPartName: 'Chest',
+        description: 'Pectoral muscles including upper, middle, and lower chest',
+        gymId: gym.id
+      }
+    }),
+    prisma.bodyPartMaster.create({
+      data: {
+        bodyPartName: 'Back',
+        description: 'Upper and lower back muscles including lats, traps, and rhomboids',
+        gymId: gym.id
+      }
+    }),
+    prisma.bodyPartMaster.create({
+      data: {
+        bodyPartName: 'Shoulders',
+        description: 'Deltoid muscles - anterior, lateral, and posterior',
+        gymId: gym.id
+      }
+    }),
+    prisma.bodyPartMaster.create({
+      data: {
+        bodyPartName: 'Arms',
+        description: 'Biceps, triceps, and forearms',
+        gymId: gym.id
+      }
+    }),
+    prisma.bodyPartMaster.create({
+      data: {
+        bodyPartName: 'Legs',
+        description: 'Quadriceps, hamstrings, glutes, and calves',
+        gymId: gym.id
+      }
+    }),
+    prisma.bodyPartMaster.create({
+      data: {
+        bodyPartName: 'Core',
+        description: 'Abdominal muscles, obliques, and lower back',
+        gymId: gym.id
+      }
+    })
+  ]);
+  console.log('✅ Created body parts');
+
+  // Create Workout Exercises for each body part
+  const workoutExercises = await Promise.all([
+    // Chest exercises
+    prisma.workoutExerciseMaster.create({
+      data: {
+        exerciseName: 'Bench Press',
+        shortCode: 'BP',
+        description: 'Barbell bench press for chest development',
+        gymId: gym.id,
+        bodyPartId: bodyParts[0].id // Chest
+      }
+    }),
+    prisma.workoutExerciseMaster.create({
+      data: {
+        exerciseName: 'Incline Dumbbell Press',
+        shortCode: 'IDP',
+        description: 'Incline press targeting upper chest',
+        gymId: gym.id,
+        bodyPartId: bodyParts[0].id // Chest
+      }
+    }),
+    prisma.workoutExerciseMaster.create({
+      data: {
+        exerciseName: 'Cable Fly',
+        shortCode: 'CF',
+        description: 'Cable crossover fly for chest isolation',
+        gymId: gym.id,
+        bodyPartId: bodyParts[0].id // Chest
+      }
+    }),
+    // Back exercises
+    prisma.workoutExerciseMaster.create({
+      data: {
+        exerciseName: 'Deadlift',
+        shortCode: 'DL',
+        description: 'Conventional deadlift for overall back strength',
+        gymId: gym.id,
+        bodyPartId: bodyParts[1].id // Back
+      }
+    }),
+    prisma.workoutExerciseMaster.create({
+      data: {
+        exerciseName: 'Lat Pulldown',
+        shortCode: 'LP',
+        description: 'Cable lat pulldown for back width',
+        gymId: gym.id,
+        bodyPartId: bodyParts[1].id // Back
+      }
+    }),
+    prisma.workoutExerciseMaster.create({
+      data: {
+        exerciseName: 'Bent Over Row',
+        shortCode: 'BOR',
+        description: 'Barbell bent over row for back thickness',
+        gymId: gym.id,
+        bodyPartId: bodyParts[1].id // Back
+      }
+    }),
+    // Shoulder exercises
+    prisma.workoutExerciseMaster.create({
+      data: {
+        exerciseName: 'Overhead Press',
+        shortCode: 'OHP',
+        description: 'Barbell overhead press for shoulder strength',
+        gymId: gym.id,
+        bodyPartId: bodyParts[2].id // Shoulders
+      }
+    }),
+    prisma.workoutExerciseMaster.create({
+      data: {
+        exerciseName: 'Lateral Raise',
+        shortCode: 'LR',
+        description: 'Dumbbell lateral raise for side delts',
+        gymId: gym.id,
+        bodyPartId: bodyParts[2].id // Shoulders
+      }
+    }),
+    // Arm exercises
+    prisma.workoutExerciseMaster.create({
+      data: {
+        exerciseName: 'Barbell Curl',
+        shortCode: 'BC',
+        description: 'Barbell curl for biceps',
+        gymId: gym.id,
+        bodyPartId: bodyParts[3].id // Arms
+      }
+    }),
+    prisma.workoutExerciseMaster.create({
+      data: {
+        exerciseName: 'Tricep Pushdown',
+        shortCode: 'TP',
+        description: 'Cable tricep pushdown',
+        gymId: gym.id,
+        bodyPartId: bodyParts[3].id // Arms
+      }
+    }),
+    // Leg exercises
+    prisma.workoutExerciseMaster.create({
+      data: {
+        exerciseName: 'Squat',
+        shortCode: 'SQ',
+        description: 'Barbell back squat for leg development',
+        gymId: gym.id,
+        bodyPartId: bodyParts[4].id // Legs
+      }
+    }),
+    prisma.workoutExerciseMaster.create({
+      data: {
+        exerciseName: 'Leg Press',
+        shortCode: 'LEP',
+        description: 'Machine leg press',
+        gymId: gym.id,
+        bodyPartId: bodyParts[4].id // Legs
+      }
+    }),
+    prisma.workoutExerciseMaster.create({
+      data: {
+        exerciseName: 'Romanian Deadlift',
+        shortCode: 'RDL',
+        description: 'Romanian deadlift for hamstrings',
+        gymId: gym.id,
+        bodyPartId: bodyParts[4].id // Legs
+      }
+    }),
+    // Core exercises
+    prisma.workoutExerciseMaster.create({
+      data: {
+        exerciseName: 'Plank',
+        shortCode: 'PLK',
+        description: 'Core stability exercise',
+        gymId: gym.id,
+        bodyPartId: bodyParts[5].id // Core
+      }
+    }),
+    prisma.workoutExerciseMaster.create({
+      data: {
+        exerciseName: 'Cable Crunch',
+        shortCode: 'CC',
+        description: 'Weighted cable crunch for abs',
+        gymId: gym.id,
+        bodyPartId: bodyParts[5].id // Core
+      }
+    })
+  ]);
+  console.log('✅ Created workout exercises');
 
   console.log('\n🎉 Database seeded successfully!\n');
   console.log('📋 Login Credentials:');
