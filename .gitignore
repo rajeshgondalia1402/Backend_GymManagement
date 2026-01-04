@@ -1,7 +1,7 @@
 node_modules
 dist
 .env
-logs/*.log
+logs/
 
 # Uploads - ignore uploaded files but keep folder structure
 uploads/**/*
