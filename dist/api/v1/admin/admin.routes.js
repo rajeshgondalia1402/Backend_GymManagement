@@ -20,8 +20,24 @@ router.post('/gyms', (0, middleware_1.validate)(middleware_1.createGymSchema), a
 router.put('/gyms/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), (0, middleware_1.validate)(middleware_1.updateGymSchema), admin_controller_1.default.updateGym);
 router.delete('/gyms/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), admin_controller_1.default.deleteGym);
 router.patch('/gyms/:id/toggle-status', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), admin_controller_1.default.toggleGymStatus);
+router.patch('/gyms/:id/assign-owner', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), admin_controller_1.default.assignGymOwner);
 router.get('/gym-owners', (0, middleware_1.validate)(middleware_1.paginationSchema, 'query'), admin_controller_1.default.getGymOwners);
 router.post('/gym-owners', (0, middleware_1.validate)(middleware_1.createGymOwnerSchema), admin_controller_1.default.createGymOwner);
 router.patch('/users/:id/toggle-status', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), admin_controller_1.default.toggleUserStatus);
+router.get('/occupations', admin_controller_1.default.getOccupations);
+router.get('/occupations/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), admin_controller_1.default.getOccupationById);
+router.post('/occupations', (0, middleware_1.validate)(middleware_1.createOccupationSchema), admin_controller_1.default.createOccupation);
+router.put('/occupations/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), (0, middleware_1.validate)(middleware_1.updateOccupationSchema), admin_controller_1.default.updateOccupation);
+router.delete('/occupations/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), admin_controller_1.default.deleteOccupation);
+router.get('/enquiry-types', admin_controller_1.default.getEnquiryTypes);
+router.get('/enquiry-types/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), admin_controller_1.default.getEnquiryTypeById);
+router.post('/enquiry-types', (0, middleware_1.validate)(middleware_1.createEnquiryTypeSchema), admin_controller_1.default.createEnquiryType);
+router.put('/enquiry-types/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), (0, middleware_1.validate)(middleware_1.updateEnquiryTypeSchema), admin_controller_1.default.updateEnquiryType);
+router.delete('/enquiry-types/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), admin_controller_1.default.deleteEnquiryType);
+router.get('/payment-types', admin_controller_1.default.getPaymentTypes);
+router.get('/payment-types/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), admin_controller_1.default.getPaymentTypeById);
+router.post('/payment-types', (0, middleware_1.validate)(middleware_1.createPaymentTypeSchema), admin_controller_1.default.createPaymentType);
+router.put('/payment-types/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), (0, middleware_1.validate)(middleware_1.updatePaymentTypeSchema), admin_controller_1.default.updatePaymentType);
+router.delete('/payment-types/:id', (0, middleware_1.validate)(middleware_1.idParamSchema, 'params'), admin_controller_1.default.deletePaymentType);
 exports.default = router;
 //# sourceMappingURL=admin.routes.js.map

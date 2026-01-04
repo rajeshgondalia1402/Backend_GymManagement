@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import swaggerUi from 'swagger-ui-express';
+import path from 'path';
 import { config, swaggerSpec } from './config';
 import { errorHandler } from './common/middleware';
 import apiRoutes from './api';
@@ -10,7 +11,9 @@ import apiRoutes from './api';
 const app: Application = express();
 
 // Security middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allow serving images from different origins
+}));
 app.use(cors({
   origin: [config.env.FRONTEND_URL, 'http://localhost:5000'],
   credentials: true,
@@ -24,6 +27,9 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Compression middleware
 app.use(compression());
+
+// Static file serving for uploads (gym logos, etc.)
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // API Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {

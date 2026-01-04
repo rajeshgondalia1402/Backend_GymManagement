@@ -8,11 +8,14 @@ const database_1 = require("../../../config/database");
 const exceptions_1 = require("../../../common/exceptions");
 class GymOwnerService {
     async getDashboardStats(gymId) {
-        const [totalMembers, totalTrainers, totalDietPlans, totalExercisePlans] = await Promise.all([
+        const [totalMembers, totalTrainers, totalDietPlans, totalExercisePlans, totalPTMembers, totalInquiries, newInquiries] = await Promise.all([
             database_1.prisma.member.count({ where: { gymId } }),
             database_1.prisma.trainer.count({ where: { gymId } }),
             database_1.prisma.dietPlan.count({ where: { gymId } }),
             database_1.prisma.exercisePlan.count({ where: { gymId } }),
+            database_1.prisma.pTMember.count({ where: { gymId } }),
+            database_1.prisma.inquiry.count({ where: { gymId } }),
+            database_1.prisma.inquiry.count({ where: { gymId, status: 'NEW' } }),
         ]);
         const activeMembers = await database_1.prisma.member.count({
             where: {
@@ -39,6 +42,9 @@ class GymOwnerService {
             expiringMemberships,
             totalDietPlans,
             totalExercisePlans,
+            totalPTMembers,
+            totalInquiries,
+            newInquiries,
         };
     }
     async getTrainers(gymId, params) {
@@ -236,6 +242,7 @@ class GymOwnerService {
                 isActive: m.user.isActive,
                 gymId: m.gymId,
                 trainerId: activeTrainer?.id,
+                memberType: m.memberType,
                 membershipStartDate: m.membershipStart,
                 membershipEndDate: m.membershipEnd,
                 createdAt: m.createdAt,
@@ -267,6 +274,7 @@ class GymOwnerService {
             isActive: member.user.isActive,
             gymId: member.gymId,
             trainerId: activeTrainer?.id,
+            memberType: member.memberType,
             membershipStartDate: member.membershipStart,
             membershipEndDate: member.membershipEnd,
             createdAt: member.createdAt,
@@ -326,6 +334,7 @@ class GymOwnerService {
             isActive: result.user.isActive,
             gymId: result.gymId,
             trainerId: data.trainerId,
+            memberType: result.memberType,
             membershipStartDate: result.membershipStart,
             membershipEndDate: result.membershipEnd,
             createdAt: result.createdAt,
@@ -386,6 +395,7 @@ class GymOwnerService {
             isActive: result.user.isActive,
             gymId: result.gymId,
             trainerId: data.trainerId || result.trainerAssignments[0]?.trainerId,
+            memberType: result.memberType,
             membershipStartDate: result.membershipStart,
             membershipEndDate: result.membershipEnd,
             createdAt: result.createdAt,
@@ -635,6 +645,771 @@ class GymOwnerService {
             data: { memberId, trainerId }
         });
         return { ...member, trainerId };
+    }
+    async toggleTrainerStatus(gymId, trainerId) {
+        const trainer = await database_1.prisma.trainer.findFirst({
+            where: { id: trainerId, gymId },
+            include: { user: true }
+        });
+        if (!trainer)
+            throw new exceptions_1.NotFoundException('Trainer not found');
+        const newStatus = !trainer.user.isActive;
+        await database_1.prisma.$transaction(async (tx) => {
+            await tx.trainer.update({
+                where: { id: trainerId },
+                data: { isActive: newStatus }
+            });
+            await tx.user.update({
+                where: { id: trainer.userId },
+                data: { isActive: newStatus }
+            });
+        });
+        return { isActive: newStatus };
+    }
+    async toggleMemberStatus(gymId, memberId) {
+        const member = await database_1.prisma.member.findFirst({
+            where: { id: memberId, gymId },
+            include: { user: true }
+        });
+        if (!member)
+            throw new exceptions_1.NotFoundException('Member not found');
+        const newStatus = !member.user.isActive;
+        await database_1.prisma.user.update({
+            where: { id: member.userId },
+            data: { isActive: newStatus }
+        });
+        return { isActive: newStatus };
+    }
+    async getPTMembers(gymId, params) {
+        const { page, limit, search, sortBy = 'createdAt', sortOrder = 'desc' } = params;
+        const skip = (page - 1) * limit;
+        const where = { gymId };
+        if (search) {
+            where.OR = [
+                { member: { user: { name: { contains: search, mode: 'insensitive' } } } },
+                { trainer: { user: { name: { contains: search, mode: 'insensitive' } } } },
+                { packageName: { contains: search, mode: 'insensitive' } },
+            ];
+        }
+        const [ptMemberRecords, total] = await Promise.all([
+            database_1.prisma.pTMember.findMany({
+                where,
+                skip,
+                take: limit,
+                orderBy: { [sortBy]: sortOrder },
+                include: {
+                    member: { include: { user: { select: { name: true, email: true } } } },
+                    trainer: { include: { user: { select: { name: true } } } },
+                },
+            }),
+            database_1.prisma.pTMember.count({ where }),
+        ]);
+        const ptMembers = ptMemberRecords.map((pt) => ({
+            id: pt.id,
+            memberId: pt.memberId,
+            memberName: pt.member.user.name,
+            memberEmail: pt.member.user.email,
+            trainerId: pt.trainerId,
+            trainerName: pt.trainer.user.name,
+            packageName: pt.packageName,
+            sessionsTotal: pt.sessionsTotal,
+            sessionsUsed: pt.sessionsUsed,
+            sessionsRemaining: pt.sessionsTotal - pt.sessionsUsed,
+            sessionDuration: pt.sessionDuration,
+            startDate: pt.startDate,
+            endDate: pt.endDate || undefined,
+            goals: pt.goals || undefined,
+            notes: pt.notes || undefined,
+            isActive: pt.isActive,
+            gymId: pt.gymId,
+            createdAt: pt.createdAt,
+            createdBy: pt.createdBy || undefined,
+            updatedBy: pt.updatedBy || undefined,
+        }));
+        return { ptMembers, total };
+    }
+    async getPTMemberById(gymId, ptMemberId) {
+        const pt = await database_1.prisma.pTMember.findFirst({
+            where: { id: ptMemberId, gymId },
+            include: {
+                member: { include: { user: { select: { name: true, email: true } } } },
+                trainer: { include: { user: { select: { name: true } } } },
+            },
+        });
+        if (!pt)
+            throw new exceptions_1.NotFoundException('PT Member not found');
+        return {
+            id: pt.id,
+            memberId: pt.memberId,
+            memberName: pt.member.user.name,
+            memberEmail: pt.member.user.email,
+            trainerId: pt.trainerId,
+            trainerName: pt.trainer.user.name,
+            packageName: pt.packageName,
+            sessionsTotal: pt.sessionsTotal,
+            sessionsUsed: pt.sessionsUsed,
+            sessionsRemaining: pt.sessionsTotal - pt.sessionsUsed,
+            sessionDuration: pt.sessionDuration,
+            startDate: pt.startDate,
+            endDate: pt.endDate || undefined,
+            goals: pt.goals || undefined,
+            notes: pt.notes || undefined,
+            isActive: pt.isActive,
+            gymId: pt.gymId,
+            createdAt: pt.createdAt,
+            createdBy: pt.createdBy || undefined,
+            updatedBy: pt.updatedBy || undefined,
+        };
+    }
+    async createPTMember(gymId, userId, data) {
+        const member = await database_1.prisma.member.findFirst({ where: { id: data.memberId, gymId } });
+        if (!member)
+            throw new exceptions_1.NotFoundException('Member not found');
+        const trainer = await database_1.prisma.trainer.findFirst({ where: { id: data.trainerId, gymId } });
+        if (!trainer)
+            throw new exceptions_1.NotFoundException('Trainer not found');
+        const existingPT = await database_1.prisma.pTMember.findFirst({ where: { memberId: data.memberId, isActive: true } });
+        if (existingPT)
+            throw new exceptions_1.ConflictException('Member already has an active PT membership');
+        await database_1.prisma.member.update({ where: { id: data.memberId }, data: { memberType: 'PT', updatedBy: userId } });
+        const pt = await database_1.prisma.pTMember.create({
+            data: {
+                memberId: data.memberId,
+                trainerId: data.trainerId,
+                packageName: data.packageName,
+                sessionsTotal: data.sessionsTotal,
+                sessionDuration: data.sessionDuration || 60,
+                startDate: data.startDate ? new Date(data.startDate) : new Date(),
+                endDate: data.endDate ? new Date(data.endDate) : null,
+                goals: data.goals,
+                notes: data.notes,
+                gymId,
+                createdBy: userId,
+            },
+            include: {
+                member: { include: { user: { select: { name: true, email: true } } } },
+                trainer: { include: { user: { select: { name: true } } } },
+            },
+        });
+        return {
+            id: pt.id,
+            memberId: pt.memberId,
+            memberName: pt.member.user.name,
+            memberEmail: pt.member.user.email,
+            trainerId: pt.trainerId,
+            trainerName: pt.trainer.user.name,
+            packageName: pt.packageName,
+            sessionsTotal: pt.sessionsTotal,
+            sessionsUsed: pt.sessionsUsed,
+            sessionsRemaining: pt.sessionsTotal - pt.sessionsUsed,
+            sessionDuration: pt.sessionDuration,
+            startDate: pt.startDate,
+            endDate: pt.endDate || undefined,
+            goals: pt.goals || undefined,
+            notes: pt.notes || undefined,
+            isActive: pt.isActive,
+            gymId: pt.gymId,
+            createdAt: pt.createdAt,
+            createdBy: pt.createdBy || undefined,
+            updatedBy: pt.updatedBy || undefined,
+        };
+    }
+    async updatePTMember(gymId, userId, ptMemberId, data) {
+        const existing = await database_1.prisma.pTMember.findFirst({ where: { id: ptMemberId, gymId } });
+        if (!existing)
+            throw new exceptions_1.NotFoundException('PT Member not found');
+        if (data.trainerId) {
+            const trainer = await database_1.prisma.trainer.findFirst({ where: { id: data.trainerId, gymId } });
+            if (!trainer)
+                throw new exceptions_1.NotFoundException('Trainer not found');
+        }
+        const pt = await database_1.prisma.pTMember.update({
+            where: { id: ptMemberId },
+            data: {
+                ...(data.trainerId && { trainerId: data.trainerId }),
+                ...(data.packageName && { packageName: data.packageName }),
+                ...(data.sessionsTotal !== undefined && { sessionsTotal: data.sessionsTotal }),
+                ...(data.sessionsUsed !== undefined && { sessionsUsed: data.sessionsUsed }),
+                ...(data.sessionDuration && { sessionDuration: data.sessionDuration }),
+                ...(data.endDate && { endDate: new Date(data.endDate) }),
+                ...(data.goals !== undefined && { goals: data.goals }),
+                ...(data.notes !== undefined && { notes: data.notes }),
+                ...(data.isActive !== undefined && { isActive: data.isActive }),
+                updatedBy: userId,
+            },
+            include: {
+                member: { include: { user: { select: { name: true, email: true } } } },
+                trainer: { include: { user: { select: { name: true } } } },
+            },
+        });
+        return {
+            id: pt.id,
+            memberId: pt.memberId,
+            memberName: pt.member.user.name,
+            memberEmail: pt.member.user.email,
+            trainerId: pt.trainerId,
+            trainerName: pt.trainer.user.name,
+            packageName: pt.packageName,
+            sessionsTotal: pt.sessionsTotal,
+            sessionsUsed: pt.sessionsUsed,
+            sessionsRemaining: pt.sessionsTotal - pt.sessionsUsed,
+            sessionDuration: pt.sessionDuration,
+            startDate: pt.startDate,
+            endDate: pt.endDate || undefined,
+            goals: pt.goals || undefined,
+            notes: pt.notes || undefined,
+            isActive: pt.isActive,
+            gymId: pt.gymId,
+            createdAt: pt.createdAt,
+            createdBy: pt.createdBy || undefined,
+            updatedBy: pt.updatedBy || undefined,
+        };
+    }
+    async getSupplements(gymId, ptMemberId) {
+        const pt = await database_1.prisma.pTMember.findFirst({ where: { id: ptMemberId, gymId } });
+        if (!pt)
+            throw new exceptions_1.NotFoundException('PT Member not found');
+        const supplements = await database_1.prisma.supplement.findMany({
+            where: { ptMemberId, gymId },
+            include: { ptMember: { include: { member: { include: { user: { select: { name: true } } } } } } },
+            orderBy: { createdAt: 'desc' },
+        });
+        return supplements.map((s) => ({
+            id: s.id,
+            ptMemberId: s.ptMemberId,
+            memberName: s.ptMember.member.user.name,
+            name: s.name,
+            dosage: s.dosage || undefined,
+            frequency: s.frequency || undefined,
+            timing: s.timing || undefined,
+            notes: s.notes || undefined,
+            startDate: s.startDate,
+            endDate: s.endDate || undefined,
+            isActive: s.isActive,
+            gymId: s.gymId,
+            createdAt: s.createdAt,
+            createdBy: s.createdBy || undefined,
+            updatedBy: s.updatedBy || undefined,
+        }));
+    }
+    async createSupplement(gymId, userId, ptMemberId, data) {
+        const pt = await database_1.prisma.pTMember.findFirst({
+            where: { id: ptMemberId, gymId },
+            include: { member: { include: { user: { select: { name: true } } } } },
+        });
+        if (!pt)
+            throw new exceptions_1.NotFoundException('PT Member not found');
+        const supplement = await database_1.prisma.supplement.create({
+            data: {
+                ptMemberId,
+                name: data.name,
+                dosage: data.dosage,
+                frequency: data.frequency,
+                timing: data.timing,
+                notes: data.notes,
+                startDate: data.startDate ? new Date(data.startDate) : new Date(),
+                endDate: data.endDate ? new Date(data.endDate) : null,
+                gymId,
+                createdBy: userId,
+            },
+        });
+        return {
+            id: supplement.id,
+            ptMemberId: supplement.ptMemberId,
+            memberName: pt.member.user.name,
+            name: supplement.name,
+            dosage: supplement.dosage || undefined,
+            frequency: supplement.frequency || undefined,
+            timing: supplement.timing || undefined,
+            notes: supplement.notes || undefined,
+            startDate: supplement.startDate,
+            endDate: supplement.endDate || undefined,
+            isActive: supplement.isActive,
+            gymId: supplement.gymId,
+            createdAt: supplement.createdAt,
+            createdBy: supplement.createdBy || undefined,
+            updatedBy: supplement.updatedBy || undefined,
+        };
+    }
+    async updateSupplement(gymId, userId, supplementId, data) {
+        const existing = await database_1.prisma.supplement.findFirst({ where: { id: supplementId, gymId } });
+        if (!existing)
+            throw new exceptions_1.NotFoundException('Supplement not found');
+        const supplement = await database_1.prisma.supplement.update({
+            where: { id: supplementId },
+            data: {
+                ...(data.name && { name: data.name }),
+                ...(data.dosage !== undefined && { dosage: data.dosage }),
+                ...(data.frequency !== undefined && { frequency: data.frequency }),
+                ...(data.timing !== undefined && { timing: data.timing }),
+                ...(data.notes !== undefined && { notes: data.notes }),
+                ...(data.endDate && { endDate: new Date(data.endDate) }),
+                ...(data.isActive !== undefined && { isActive: data.isActive }),
+                updatedBy: userId,
+            },
+            include: { ptMember: { include: { member: { include: { user: { select: { name: true } } } } } } },
+        });
+        return {
+            id: supplement.id,
+            ptMemberId: supplement.ptMemberId,
+            memberName: supplement.ptMember.member.user.name,
+            name: supplement.name,
+            dosage: supplement.dosage || undefined,
+            frequency: supplement.frequency || undefined,
+            timing: supplement.timing || undefined,
+            notes: supplement.notes || undefined,
+            startDate: supplement.startDate,
+            endDate: supplement.endDate || undefined,
+            isActive: supplement.isActive,
+            gymId: supplement.gymId,
+            createdAt: supplement.createdAt,
+            createdBy: supplement.createdBy || undefined,
+            updatedBy: supplement.updatedBy || undefined,
+        };
+    }
+    async getMemberDietPlans(gymId, memberId) {
+        const member = await database_1.prisma.member.findFirst({ where: { id: memberId, gymId } });
+        if (!member)
+            throw new exceptions_1.NotFoundException('Member not found');
+        const plans = await database_1.prisma.memberDietPlan.findMany({
+            where: { memberId, gymId },
+            include: { member: { include: { user: { select: { name: true } } } } },
+            orderBy: { createdAt: 'desc' },
+        });
+        return plans.map((p) => ({
+            id: p.id,
+            memberId: p.memberId,
+            memberName: p.member.user.name,
+            planName: p.planName,
+            description: p.description || undefined,
+            calories: p.calories || undefined,
+            meals: p.meals,
+            startDate: p.startDate,
+            endDate: p.endDate || undefined,
+            isActive: p.isActive,
+            gymId: p.gymId,
+            createdAt: p.createdAt,
+            createdBy: p.createdBy || undefined,
+            updatedBy: p.updatedBy || undefined,
+        }));
+    }
+    async createMemberDietPlan(gymId, userId, memberId, data) {
+        const member = await database_1.prisma.member.findFirst({
+            where: { id: memberId, gymId },
+            include: { user: { select: { name: true } } },
+        });
+        if (!member)
+            throw new exceptions_1.NotFoundException('Member not found');
+        await database_1.prisma.memberDietPlan.updateMany({
+            where: { memberId, isActive: true },
+            data: { isActive: false },
+        });
+        const plan = await database_1.prisma.memberDietPlan.create({
+            data: {
+                memberId,
+                planName: data.planName,
+                description: data.description,
+                calories: data.calories,
+                meals: data.meals,
+                startDate: data.startDate ? new Date(data.startDate) : new Date(),
+                endDate: data.endDate ? new Date(data.endDate) : null,
+                gymId,
+                createdBy: userId,
+            },
+        });
+        return {
+            id: plan.id,
+            memberId: plan.memberId,
+            memberName: member.user.name,
+            planName: plan.planName,
+            description: plan.description || undefined,
+            calories: plan.calories || undefined,
+            meals: plan.meals,
+            startDate: plan.startDate,
+            endDate: plan.endDate || undefined,
+            isActive: plan.isActive,
+            gymId: plan.gymId,
+            createdAt: plan.createdAt,
+            createdBy: plan.createdBy || undefined,
+            updatedBy: plan.updatedBy || undefined,
+        };
+    }
+    async updateMemberDietPlan(gymId, userId, planId, data) {
+        const existing = await database_1.prisma.memberDietPlan.findFirst({ where: { id: planId, gymId } });
+        if (!existing)
+            throw new exceptions_1.NotFoundException('Diet plan not found');
+        const plan = await database_1.prisma.memberDietPlan.update({
+            where: { id: planId },
+            data: {
+                ...(data.planName && { planName: data.planName }),
+                ...(data.description !== undefined && { description: data.description }),
+                ...(data.calories !== undefined && { calories: data.calories }),
+                ...(data.meals && { meals: data.meals }),
+                ...(data.endDate && { endDate: new Date(data.endDate) }),
+                ...(data.isActive !== undefined && { isActive: data.isActive }),
+                updatedBy: userId,
+            },
+            include: { member: { include: { user: { select: { name: true } } } } },
+        });
+        return {
+            id: plan.id,
+            memberId: plan.memberId,
+            memberName: plan.member.user.name,
+            planName: plan.planName,
+            description: plan.description || undefined,
+            calories: plan.calories || undefined,
+            meals: plan.meals,
+            startDate: plan.startDate,
+            endDate: plan.endDate || undefined,
+            isActive: plan.isActive,
+            gymId: plan.gymId,
+            createdAt: plan.createdAt,
+            createdBy: plan.createdBy || undefined,
+            updatedBy: plan.updatedBy || undefined,
+        };
+    }
+    async getInquiries(gymId, params) {
+        const { page, limit, search, sortBy = 'createdAt', sortOrder = 'desc', status } = params;
+        const skip = (page - 1) * limit;
+        const where = { gymId };
+        if (search) {
+            where.OR = [
+                { name: { contains: search, mode: 'insensitive' } },
+                { email: { contains: search, mode: 'insensitive' } },
+                { phone: { contains: search, mode: 'insensitive' } },
+            ];
+        }
+        if (status) {
+            where.status = status;
+        }
+        const [inquiryRecords, total] = await Promise.all([
+            database_1.prisma.inquiry.findMany({
+                where,
+                skip,
+                take: limit,
+                orderBy: { [sortBy]: sortOrder },
+            }),
+            database_1.prisma.inquiry.count({ where }),
+        ]);
+        const inquiries = inquiryRecords.map((i) => ({
+            id: i.id,
+            name: i.name,
+            email: i.email || undefined,
+            phone: i.phone,
+            source: i.source,
+            interest: i.interest || undefined,
+            notes: i.notes || undefined,
+            status: i.status,
+            followUpDate: i.followUpDate || undefined,
+            isActive: i.isActive,
+            gymId: i.gymId,
+            createdAt: i.createdAt,
+            createdBy: i.createdBy || undefined,
+            updatedBy: i.updatedBy || undefined,
+        }));
+        return { inquiries, total };
+    }
+    async createInquiry(gymId, userId, data) {
+        const inquiry = await database_1.prisma.inquiry.create({
+            data: {
+                name: data.name,
+                email: data.email,
+                phone: data.phone,
+                source: data.source || 'WALK_IN',
+                interest: data.interest,
+                notes: data.notes,
+                followUpDate: data.followUpDate ? new Date(data.followUpDate) : null,
+                gymId,
+                createdBy: userId,
+            },
+        });
+        return {
+            id: inquiry.id,
+            name: inquiry.name,
+            email: inquiry.email || undefined,
+            phone: inquiry.phone,
+            source: inquiry.source,
+            interest: inquiry.interest || undefined,
+            notes: inquiry.notes || undefined,
+            status: inquiry.status,
+            followUpDate: inquiry.followUpDate || undefined,
+            isActive: inquiry.isActive,
+            gymId: inquiry.gymId,
+            createdAt: inquiry.createdAt,
+            createdBy: inquiry.createdBy || undefined,
+            updatedBy: inquiry.updatedBy || undefined,
+        };
+    }
+    async updateInquiry(gymId, userId, inquiryId, data) {
+        const existing = await database_1.prisma.inquiry.findFirst({ where: { id: inquiryId, gymId } });
+        if (!existing)
+            throw new exceptions_1.NotFoundException('Inquiry not found');
+        const inquiry = await database_1.prisma.inquiry.update({
+            where: { id: inquiryId },
+            data: {
+                ...(data.name && { name: data.name }),
+                ...(data.email !== undefined && { email: data.email }),
+                ...(data.phone && { phone: data.phone }),
+                ...(data.source && { source: data.source }),
+                ...(data.interest !== undefined && { interest: data.interest }),
+                ...(data.notes !== undefined && { notes: data.notes }),
+                ...(data.status && { status: data.status }),
+                ...(data.followUpDate && { followUpDate: new Date(data.followUpDate) }),
+                updatedBy: userId,
+            },
+        });
+        return {
+            id: inquiry.id,
+            name: inquiry.name,
+            email: inquiry.email || undefined,
+            phone: inquiry.phone,
+            source: inquiry.source,
+            interest: inquiry.interest || undefined,
+            notes: inquiry.notes || undefined,
+            status: inquiry.status,
+            followUpDate: inquiry.followUpDate || undefined,
+            isActive: inquiry.isActive,
+            gymId: inquiry.gymId,
+            createdAt: inquiry.createdAt,
+            createdBy: inquiry.createdBy || undefined,
+            updatedBy: inquiry.updatedBy || undefined,
+        };
+    }
+    async getMemberReport(gymId) {
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const sevenDaysFromNow = new Date();
+        sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+        const [totalMembers, activeMembers, regularMembers, ptMembers, newMembersThisMonth, expiringThisWeek] = await Promise.all([
+            database_1.prisma.member.count({ where: { gymId } }),
+            database_1.prisma.member.count({ where: { gymId, membershipStatus: 'ACTIVE', user: { isActive: true } } }),
+            database_1.prisma.member.count({ where: { gymId, memberType: 'REGULAR' } }),
+            database_1.prisma.member.count({ where: { gymId, memberType: 'PT' } }),
+            database_1.prisma.member.count({ where: { gymId, createdAt: { gte: startOfMonth } } }),
+            database_1.prisma.member.count({ where: { gymId, membershipEnd: { gte: now, lte: sevenDaysFromNow } } }),
+        ]);
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+        const membersByMonthRaw = await database_1.prisma.member.groupBy({
+            by: ['createdAt'],
+            where: { gymId, createdAt: { gte: sixMonthsAgo } },
+            _count: true,
+        });
+        const monthCounts = {};
+        membersByMonthRaw.forEach((m) => {
+            const monthKey = `${m.createdAt.getFullYear()}-${String(m.createdAt.getMonth() + 1).padStart(2, '0')}`;
+            monthCounts[monthKey] = (monthCounts[monthKey] || 0) + m._count;
+        });
+        const membersByMonth = Object.entries(monthCounts).map(([month, count]) => ({ month, count }));
+        return {
+            totalMembers,
+            activeMembers,
+            regularMembers,
+            ptMembers,
+            newMembersThisMonth,
+            expiringThisWeek,
+            membersByMonth,
+        };
+    }
+    async getPTProgressReport(gymId) {
+        const ptMembers = await database_1.prisma.pTMember.findMany({
+            where: { gymId },
+            include: { trainer: { include: { user: { select: { name: true } } } } },
+        });
+        const totalPTMembers = ptMembers.length;
+        const activePTMembers = ptMembers.filter((p) => p.isActive).length;
+        const totalSessions = ptMembers.reduce((sum, p) => sum + p.sessionsTotal, 0);
+        const completedSessions = ptMembers.reduce((sum, p) => sum + p.sessionsUsed, 0);
+        const remainingSessions = totalSessions - completedSessions;
+        const completionRate = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0;
+        const trainerCounts = {};
+        ptMembers.forEach((p) => {
+            const name = p.trainer.user.name;
+            trainerCounts[name] = (trainerCounts[name] || 0) + 1;
+        });
+        const ptMembersByTrainer = Object.entries(trainerCounts).map(([trainerName, count]) => ({ trainerName, count }));
+        return {
+            totalPTMembers,
+            activePTMembers,
+            totalSessions,
+            completedSessions,
+            remainingSessions,
+            completionRate,
+            ptMembersByTrainer,
+        };
+    }
+    async getTrainerReport(gymId) {
+        const trainers = await database_1.prisma.trainer.findMany({
+            where: { gymId },
+            include: {
+                user: { select: { name: true, isActive: true } },
+                ptMembers: true,
+            },
+        });
+        const totalTrainers = trainers.length;
+        const activeTrainers = trainers.filter((t) => t.isActive && t.user.isActive).length;
+        const trainersWithPTMembers = trainers.filter((t) => t.ptMembers.length > 0).length;
+        const trainerWorkload = trainers.map((t) => ({
+            trainerName: t.user.name,
+            ptMembers: t.ptMembers.filter((p) => p.isActive).length,
+            totalSessions: t.ptMembers.reduce((sum, p) => sum + p.sessionsTotal, 0),
+        }));
+        return {
+            totalTrainers,
+            activeTrainers,
+            trainersWithPTMembers,
+            trainerWorkload,
+        };
+    }
+    async getRevenueReport(gymId) {
+        const [totalMembers, ptMembers, regularMembers] = await Promise.all([
+            database_1.prisma.member.count({ where: { gymId } }),
+            database_1.prisma.member.count({ where: { gymId, memberType: 'PT' } }),
+            database_1.prisma.member.count({ where: { gymId, memberType: 'REGULAR' } }),
+        ]);
+        const membershipsByStatusRaw = await database_1.prisma.member.groupBy({
+            by: ['membershipStatus'],
+            where: { gymId },
+            _count: true,
+        });
+        const membershipsByStatus = membershipsByStatusRaw.map((m) => ({
+            status: m.membershipStatus,
+            count: m._count,
+        }));
+        const [totalInquiries, convertedInquiries] = await Promise.all([
+            database_1.prisma.inquiry.count({ where: { gymId } }),
+            database_1.prisma.inquiry.count({ where: { gymId, status: 'CONVERTED' } }),
+        ]);
+        const inquiriesConversionRate = totalInquiries > 0 ? Math.round((convertedInquiries / totalInquiries) * 100) : 0;
+        return {
+            totalMembers,
+            ptMembers,
+            regularMembers,
+            membershipsByStatus,
+            inquiriesConversionRate,
+        };
+    }
+    async getExpenseGroups(gymId) {
+        const expenseGroups = await database_1.prisma.expenseGroupMaster.findMany({
+            where: { gymId },
+            orderBy: { expenseGroupName: 'asc' },
+        });
+        return expenseGroups;
+    }
+    async getExpenseGroupById(gymId, id) {
+        const expenseGroup = await database_1.prisma.expenseGroupMaster.findFirst({
+            where: { id, gymId },
+        });
+        if (!expenseGroup)
+            throw new exceptions_1.NotFoundException('Expense group not found');
+        return expenseGroup;
+    }
+    async createExpenseGroup(gymId, data) {
+        const existingExpenseGroup = await database_1.prisma.expenseGroupMaster.findFirst({
+            where: {
+                expenseGroupName: data.expenseGroupName,
+                gymId,
+            },
+        });
+        if (existingExpenseGroup) {
+            throw new exceptions_1.ConflictException('Expense group with this name already exists');
+        }
+        const expenseGroup = await database_1.prisma.expenseGroupMaster.create({
+            data: {
+                expenseGroupName: data.expenseGroupName,
+                gymId,
+            },
+        });
+        return expenseGroup;
+    }
+    async updateExpenseGroup(gymId, id, data) {
+        await this.getExpenseGroupById(gymId, id);
+        if (data.expenseGroupName) {
+            const existingExpenseGroup = await database_1.prisma.expenseGroupMaster.findFirst({
+                where: {
+                    expenseGroupName: data.expenseGroupName,
+                    gymId,
+                    NOT: { id },
+                },
+            });
+            if (existingExpenseGroup) {
+                throw new exceptions_1.ConflictException('Expense group with this name already exists');
+            }
+        }
+        const expenseGroup = await database_1.prisma.expenseGroupMaster.update({
+            where: { id },
+            data: {
+                expenseGroupName: data.expenseGroupName,
+            },
+        });
+        return expenseGroup;
+    }
+    async deleteExpenseGroup(gymId, id) {
+        await this.getExpenseGroupById(gymId, id);
+        await database_1.prisma.expenseGroupMaster.delete({
+            where: { id },
+        });
+    }
+    async getDesignations(gymId) {
+        const designations = await database_1.prisma.designationMaster.findMany({
+            where: { gymId },
+            orderBy: { designationName: 'asc' },
+        });
+        return designations;
+    }
+    async getDesignationById(gymId, id) {
+        const designation = await database_1.prisma.designationMaster.findFirst({
+            where: { id, gymId },
+        });
+        if (!designation)
+            throw new exceptions_1.NotFoundException('Designation not found');
+        return designation;
+    }
+    async createDesignation(gymId, data) {
+        const existingDesignation = await database_1.prisma.designationMaster.findFirst({
+            where: {
+                designationName: data.designationName,
+                gymId,
+            },
+        });
+        if (existingDesignation) {
+            throw new exceptions_1.ConflictException('Designation with this name already exists');
+        }
+        const designation = await database_1.prisma.designationMaster.create({
+            data: {
+                designationName: data.designationName,
+                gymId,
+            },
+        });
+        return designation;
+    }
+    async updateDesignation(gymId, id, data) {
+        await this.getDesignationById(gymId, id);
+        if (data.designationName) {
+            const existingDesignation = await database_1.prisma.designationMaster.findFirst({
+                where: {
+                    designationName: data.designationName,
+                    gymId,
+                    NOT: { id },
+                },
+            });
+            if (existingDesignation) {
+                throw new exceptions_1.ConflictException('Designation with this name already exists');
+            }
+        }
+        const designation = await database_1.prisma.designationMaster.update({
+            where: { id },
+            data: {
+                designationName: data.designationName,
+            },
+        });
+        return designation;
+    }
+    async deleteDesignation(gymId, id) {
+        await this.getDesignationById(gymId, id);
+        await database_1.prisma.designationMaster.delete({
+            where: { id },
+        });
     }
 }
 exports.default = new GymOwnerService();

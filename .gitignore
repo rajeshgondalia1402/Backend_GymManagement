@@ -1,0 +1,9 @@
+node_modules
+dist
+.env
+logs/*.log
+
+# Uploads - ignore uploaded files but keep folder structure
+uploads/**/*
+!uploads/.gitkeep
+!uploads/gym-logos/.gitkeep
