@@ -45,6 +45,9 @@ import {
   WorkoutExercise,
   CreateWorkoutExerciseRequest,
   UpdateWorkoutExerciseRequest,
+  MemberInquiry,
+  CreateMemberInquiryRequest,
+  UpdateMemberInquiryRequest,
 } from './gym-owner.types';
 
 class GymOwnerService {
@@ -1977,6 +1980,318 @@ class GymOwnerService {
       bodyPartName: updatedExercise.bodyPart?.bodyPartName || null,
       createdAt: updatedExercise.createdAt,
       updatedAt: updatedExercise.updatedAt,
+    };
+  }
+
+  // Member Inquiry Methods
+  async getMemberInquiries(gymId: string, params: PaginationParams): Promise<{ inquiries: MemberInquiry[]; total: number }> {
+    const { page, limit, search, sortBy = 'createdAt', sortOrder = 'desc' } = params;
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      gymId,
+      ...(search && {
+        OR: [
+          { fullName: { contains: search, mode: 'insensitive' as const } },
+          { contactNo: { contains: search, mode: 'insensitive' as const } },
+          { address: { contains: search, mode: 'insensitive' as const } },
+        ],
+      }),
+    };
+
+    const [inquiryRecords, total] = await Promise.all([
+      prisma.memberInquiry.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+        },
+      }),
+      prisma.memberInquiry.count({ where }),
+    ]);
+
+    const inquiries: MemberInquiry[] = inquiryRecords.map((inquiry) => ({
+      id: inquiry.id,
+      fullName: inquiry.fullName,
+      contactNo: inquiry.contactNo,
+      inquiryDate: inquiry.inquiryDate,
+      dob: inquiry.dob || undefined,
+      followUp: inquiry.followUp,
+      followUpDate: inquiry.followUpDate || undefined,
+      gender: inquiry.gender || undefined,
+      address: inquiry.address || undefined,
+      heardAbout: inquiry.heardAbout || undefined,
+      userId: inquiry.userId,
+      userName: inquiry.user.name,
+      comments: inquiry.comments || undefined,
+      memberPhoto: inquiry.memberPhoto || undefined,
+      height: inquiry.height ? Number(inquiry.height) : undefined,
+      weight: inquiry.weight ? Number(inquiry.weight) : undefined,
+      referenceName: inquiry.referenceName || undefined,
+      gymId: inquiry.gymId,
+      isActive: inquiry.isActive,
+      createdAt: inquiry.createdAt,
+      updatedAt: inquiry.updatedAt,
+      createdBy: inquiry.createdBy || undefined,
+      updatedBy: inquiry.updatedBy || undefined,
+    }));
+
+    return { inquiries, total };
+  }
+
+  async getMemberInquiriesByUserId(gymId: string, userId: string, params: PaginationParams): Promise<{ inquiries: MemberInquiry[]; total: number }> {
+    const { page, limit, search, sortBy = 'createdAt', sortOrder = 'desc' } = params;
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      gymId,
+      userId,
+      ...(search && {
+        OR: [
+          { fullName: { contains: search, mode: 'insensitive' as const } },
+          { contactNo: { contains: search, mode: 'insensitive' as const } },
+        ],
+      }),
+    };
+
+    const [inquiryRecords, total] = await Promise.all([
+      prisma.memberInquiry.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+        },
+      }),
+      prisma.memberInquiry.count({ where }),
+    ]);
+
+    const inquiries: MemberInquiry[] = inquiryRecords.map((inquiry) => ({
+      id: inquiry.id,
+      fullName: inquiry.fullName,
+      contactNo: inquiry.contactNo,
+      inquiryDate: inquiry.inquiryDate,
+      dob: inquiry.dob || undefined,
+      followUp: inquiry.followUp,
+      followUpDate: inquiry.followUpDate || undefined,
+      gender: inquiry.gender || undefined,
+      address: inquiry.address || undefined,
+      heardAbout: inquiry.heardAbout || undefined,
+      userId: inquiry.userId,
+      userName: inquiry.user.name,
+      comments: inquiry.comments || undefined,
+      memberPhoto: inquiry.memberPhoto || undefined,
+      height: inquiry.height ? Number(inquiry.height) : undefined,
+      weight: inquiry.weight ? Number(inquiry.weight) : undefined,
+      referenceName: inquiry.referenceName || undefined,
+      gymId: inquiry.gymId,
+      isActive: inquiry.isActive,
+      createdAt: inquiry.createdAt,
+      updatedAt: inquiry.updatedAt,
+      createdBy: inquiry.createdBy || undefined,
+      updatedBy: inquiry.updatedBy || undefined,
+    }));
+
+    return { inquiries, total };
+  }
+
+  async getMemberInquiryById(gymId: string, id: string): Promise<MemberInquiry> {
+    const inquiry = await prisma.memberInquiry.findFirst({
+      where: { id, gymId },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    if (!inquiry) {
+      throw new NotFoundException('Member inquiry not found');
+    }
+
+    return {
+      id: inquiry.id,
+      fullName: inquiry.fullName,
+      contactNo: inquiry.contactNo,
+      inquiryDate: inquiry.inquiryDate,
+      dob: inquiry.dob || undefined,
+      followUp: inquiry.followUp,
+      followUpDate: inquiry.followUpDate || undefined,
+      gender: inquiry.gender || undefined,
+      address: inquiry.address || undefined,
+      heardAbout: inquiry.heardAbout || undefined,
+      userId: inquiry.userId,
+      userName: inquiry.user.name,
+      comments: inquiry.comments || undefined,
+      memberPhoto: inquiry.memberPhoto || undefined,
+      height: inquiry.height ? Number(inquiry.height) : undefined,
+      weight: inquiry.weight ? Number(inquiry.weight) : undefined,
+      referenceName: inquiry.referenceName || undefined,
+      gymId: inquiry.gymId,
+      isActive: inquiry.isActive,
+      createdAt: inquiry.createdAt,
+      updatedAt: inquiry.updatedAt,
+      createdBy: inquiry.createdBy || undefined,
+      updatedBy: inquiry.updatedBy || undefined,
+    };
+  }
+
+  async createMemberInquiry(gymId: string, userId: string, data: CreateMemberInquiryRequest): Promise<MemberInquiry> {
+    const inquiry = await prisma.memberInquiry.create({
+      data: {
+        fullName: data.fullName,
+        contactNo: data.contactNo,
+        inquiryDate: data.inquiryDate ? new Date(data.inquiryDate) : new Date(),
+        dob: data.dob ? new Date(data.dob) : null,
+        followUp: data.followUp || false,
+        followUpDate: data.followUpDate ? new Date(data.followUpDate) : null,
+        gender: data.gender,
+        address: data.address,
+        heardAbout: data.heardAbout,
+        userId: userId,
+        comments: data.comments,
+        memberPhoto: data.memberPhoto || null,
+        height: data.height,
+        weight: data.weight,
+        referenceName: data.referenceName || null,
+        gymId: gymId,
+        createdBy: userId,
+      },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    return {
+      id: inquiry.id,
+      fullName: inquiry.fullName,
+      contactNo: inquiry.contactNo,
+      inquiryDate: inquiry.inquiryDate,
+      dob: inquiry.dob || undefined,
+      followUp: inquiry.followUp,
+      followUpDate: inquiry.followUpDate || undefined,
+      gender: inquiry.gender || undefined,
+      address: inquiry.address || undefined,
+      heardAbout: inquiry.heardAbout || undefined,
+      userId: inquiry.userId,
+      userName: inquiry.user.name,
+      comments: inquiry.comments || undefined,
+      memberPhoto: inquiry.memberPhoto || undefined,
+      height: inquiry.height ? Number(inquiry.height) : undefined,
+      weight: inquiry.weight ? Number(inquiry.weight) : undefined,
+      referenceName: inquiry.referenceName || undefined,
+      gymId: inquiry.gymId,
+      isActive: inquiry.isActive,
+      createdAt: inquiry.createdAt,
+      updatedAt: inquiry.updatedAt,
+      createdBy: inquiry.createdBy || undefined,
+      updatedBy: inquiry.updatedBy || undefined,
+    };
+  }
+
+  async updateMemberInquiry(gymId: string, id: string, userId: string, data: UpdateMemberInquiryRequest): Promise<MemberInquiry> {
+    await this.getMemberInquiryById(gymId, id);
+
+    const updateData: any = {
+      updatedBy: userId,
+    };
+
+    if (data.fullName !== undefined) updateData.fullName = data.fullName;
+    if (data.contactNo !== undefined) updateData.contactNo = data.contactNo;
+    if (data.inquiryDate !== undefined) updateData.inquiryDate = new Date(data.inquiryDate);
+    if (data.dob !== undefined) updateData.dob = data.dob ? new Date(data.dob) : null;
+    if (data.followUp !== undefined) updateData.followUp = data.followUp;
+    if (data.followUpDate !== undefined) updateData.followUpDate = data.followUpDate ? new Date(data.followUpDate) : null;
+    if (data.gender !== undefined) updateData.gender = data.gender;
+    if (data.address !== undefined) updateData.address = data.address;
+    if (data.heardAbout !== undefined) updateData.heardAbout = data.heardAbout;
+    if (data.comments !== undefined) updateData.comments = data.comments;
+    if (data.memberPhoto !== undefined) updateData.memberPhoto = data.memberPhoto;
+    if (data.height !== undefined) updateData.height = data.height;
+    if (data.weight !== undefined) updateData.weight = data.weight;
+    if (data.referenceName !== undefined) updateData.referenceName = data.referenceName;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+
+    const inquiry = await prisma.memberInquiry.update({
+      where: { id },
+      data: updateData,
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    return {
+      id: inquiry.id,
+      fullName: inquiry.fullName,
+      contactNo: inquiry.contactNo,
+      inquiryDate: inquiry.inquiryDate,
+      dob: inquiry.dob || undefined,
+      followUp: inquiry.followUp,
+      followUpDate: inquiry.followUpDate || undefined,
+      gender: inquiry.gender || undefined,
+      address: inquiry.address || undefined,
+      heardAbout: inquiry.heardAbout || undefined,
+      userId: inquiry.userId,
+      userName: inquiry.user.name,
+      comments: inquiry.comments || undefined,
+      memberPhoto: inquiry.memberPhoto || undefined,
+      height: inquiry.height ? Number(inquiry.height) : undefined,
+      weight: inquiry.weight ? Number(inquiry.weight) : undefined,
+      referenceName: inquiry.referenceName || undefined,
+      gymId: inquiry.gymId,
+      isActive: inquiry.isActive,
+      createdAt: inquiry.createdAt,
+      updatedAt: inquiry.updatedAt,
+      createdBy: inquiry.createdBy || undefined,
+      updatedBy: inquiry.updatedBy || undefined,
+    };
+  }
+
+  async deleteMemberInquiry(gymId: string, id: string): Promise<void> {
+    await this.getMemberInquiryById(gymId, id);
+    await prisma.memberInquiry.delete({
+      where: { id },
+    });
+  }
+
+  async toggleMemberInquiryStatus(gymId: string, id: string): Promise<MemberInquiry> {
+    const inquiry = await prisma.memberInquiry.findFirst({
+      where: { id, gymId },
+      include: { user: { select: { id: true, name: true, email: true } } },
+    });
+    if (!inquiry) throw new NotFoundException('Member inquiry not found');
+
+    const updatedInquiry = await prisma.memberInquiry.update({
+      where: { id },
+      data: { isActive: !inquiry.isActive },
+      include: { user: { select: { id: true, name: true, email: true } } },
+    });
+
+    return {
+      id: updatedInquiry.id,
+      fullName: updatedInquiry.fullName,
+      contactNo: updatedInquiry.contactNo,
+      inquiryDate: updatedInquiry.inquiryDate,
+      dob: updatedInquiry.dob || undefined,
+      followUp: updatedInquiry.followUp,
+      followUpDate: updatedInquiry.followUpDate || undefined,
+      gender: updatedInquiry.gender || undefined,
+      address: updatedInquiry.address || undefined,
+      heardAbout: updatedInquiry.heardAbout || undefined,
+      userId: updatedInquiry.userId,
+      userName: updatedInquiry.user.name,
+      comments: updatedInquiry.comments || undefined,
+      memberPhoto: updatedInquiry.memberPhoto || undefined,
+      height: updatedInquiry.height ? Number(updatedInquiry.height) : undefined,
+      weight: updatedInquiry.weight ? Number(updatedInquiry.weight) : undefined,
+      referenceName: updatedInquiry.referenceName || undefined,
+      gymId: updatedInquiry.gymId,
+      isActive: updatedInquiry.isActive,
+      createdAt: updatedInquiry.createdAt,
+      updatedAt: updatedInquiry.updatedAt,
+      createdBy: updatedInquiry.createdBy || undefined,
+      updatedBy: updatedInquiry.updatedBy || undefined,
     };
   }
 }

@@ -724,6 +724,102 @@ class GymOwnerController {
       next(error);
     }
   }
+
+  // Member Inquiry CRUD
+  async getMemberInquiries(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { page = 1, limit = 10, search, sortBy, sortOrder } = req.query as any;
+      const { inquiries, total } = await gymOwnerService.getMemberInquiries(gymId, {
+        page: Number(page),
+        limit: Number(limit),
+        search,
+        sortBy,
+        sortOrder,
+      });
+      paginatedResponse(res, inquiries, Number(page), Number(limit), total, 'Member inquiries retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getMemberInquiriesByUserId(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const userId = req.params.userId;
+      const { page = 1, limit = 10, search, sortBy, sortOrder } = req.query as any;
+      const { inquiries, total } = await gymOwnerService.getMemberInquiriesByUserId(gymId, userId, {
+        page: Number(page),
+        limit: Number(limit),
+        search,
+        sortBy,
+        sortOrder,
+      });
+      paginatedResponse(res, inquiries, Number(page), Number(limit), total, 'Member inquiries retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getMemberInquiryById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const inquiry = await gymOwnerService.getMemberInquiryById(gymId, req.params.id);
+      successResponse(res, inquiry, 'Member inquiry retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createMemberInquiry(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const userId = req.user?.id;
+      if (!userId) {
+        throw new BadRequestException('User ID is required');
+      }
+      
+      const inquiry = await gymOwnerService.createMemberInquiry(gymId, userId, req.body);
+      successResponse(res, inquiry, 'Member inquiry created successfully', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateMemberInquiry(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const userId = req.user?.id;
+      if (!userId) {
+        throw new BadRequestException('User ID is required');
+      }
+      
+      const inquiry = await gymOwnerService.updateMemberInquiry(gymId, req.params.id, userId, req.body);
+      successResponse(res, inquiry, 'Member inquiry updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteMemberInquiry(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      await gymOwnerService.deleteMemberInquiry(gymId, req.params.id);
+      successResponse(res, null, 'Member inquiry deleted successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async toggleMemberInquiryStatus(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const inquiry = await gymOwnerService.toggleMemberInquiryStatus(gymId, req.params.id);
+      successResponse(res, inquiry, `Member inquiry ${inquiry.isActive ? 'activated' : 'deactivated'} successfully`);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new GymOwnerController();

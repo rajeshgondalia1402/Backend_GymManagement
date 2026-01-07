@@ -425,3 +425,65 @@ export interface UpdateWorkoutExerciseRequest {
   description?: string;
   isActive?: boolean;
 }
+
+// Member Inquiry Types
+export interface MemberInquiry {
+  id: string;
+  fullName: string;
+  contactNo: string;
+  inquiryDate: Date;
+  dob?: Date;
+  followUp: boolean;
+  followUpDate?: Date;
+  gender?: string;
+  address?: string;
+  heardAbout?: string;
+  userId: string;
+  userName?: string;
+  comments?: string;
+  memberPhoto?: string;
+  height?: number;
+  weight?: number;
+  referenceName?: string;
+  gymId: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy?: string;
+  updatedBy?: string;
+}
+
+export interface CreateMemberInquiryRequest {
+  fullName: string;
+  contactNo: string;
+  inquiryDate?: string;
+  dob?: string;
+  followUp?: boolean;
+  followUpDate?: string;
+  gender?: 'Male' | 'Female' | 'Other';
+  address?: string;
+  heardAbout?: string;
+  comments?: string;
+  memberPhoto?: string;
+  height?: number;
+  weight?: number;
+  referenceName?: string;
+}
+
+export interface UpdateMemberInquiryRequest {
+  fullName?: string;
+  contactNo?: string;
+  inquiryDate?: string;
+  dob?: string;
+  followUp?: boolean;
+  followUpDate?: string;
+  gender?: 'Male' | 'Female' | 'Other';
+  address?: string;
+  heardAbout?: string;
+  comments?: string;
+  memberPhoto?: string;
+  height?: number;
+  weight?: number;
+  referenceName?: string;
+  isActive?: boolean;
+}
