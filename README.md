@@ -9,7 +9,7 @@ npm install
 cp .env.example .env
 # Edit .env with your PostgreSQL DATABASE_URL
 npx prisma generate
-npx prisma migrate dev
+npx prisma migrate dev --name add_course_package
 npx prisma db seed
 npm run dev
 ```
@@ -23,7 +23,7 @@ When merging branches that have Prisma schema changes, **always run these comman
 npx prisma generate
 
 # 2. Apply pending migrations
-npx prisma migrate dev
+npx prisma migrate dev --name add_course_package
 
 # 3. If you get "drift detected" error, resolve with:
 npx prisma migrate resolve --applied <migration_name>
