@@ -327,6 +327,32 @@ export const updateProfileSchema = z.object({
   fitnessGoal: z.string().optional(),
 });
 
+// Member Inquiry validation schemas
+export const createMemberInquirySchema = z.object({
+  fullName: z.string().min(2, 'Full name must be at least 2 characters'),
+  contactNo: z.string().min(10, 'Contact number must be at least 10 characters'),
+  inquiryDate: z.string().datetime().optional(),
+  dob: z.string().datetime().optional(),
+  followUp: z.boolean().optional().default(false),
+  followUpDate: z.string().datetime().optional(),
+  gender: z.enum(['Male', 'Female', 'Other']).optional(),
+  address: z.string().optional(),
+  heardAbout: z.string().optional(),
+  comments: z.string().optional(),
+  memberPhoto: z.string().optional(),
+  height: z.any().optional(),
+  weight: z.any().optional(),
+  referenceName: z.string().optional(),
+});
+
+export const updateMemberInquirySchema = createMemberInquirySchema.partial().extend({
+  isActive: z.boolean().optional(),
+});
+
+export const userIdParamSchema = z.object({
+  userId: z.string().uuid('Invalid user ID format'),
+});
+
 // Validation middleware factory
 export const validate = (schema: ZodSchema, source: 'body' | 'query' | 'params' = 'body') => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {

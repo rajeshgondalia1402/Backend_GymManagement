@@ -7,19 +7,20 @@ datasource db {
 }
 
 model User {
-  id             String         @id @default(uuid())
-  email          String         @unique
-  password       String
-  name           String
-  isActive       Boolean        @default(true)
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  roleId         String?
-  ownedGym       Gym?           @relation("GymOwner")
-  memberProfile  Member?
-  refreshTokens  RefreshToken[]
-  trainerProfile Trainer?
-  role           Rolemaster?    @relation(fields: [roleId], references: [Id])
+  id              String          @id @default(uuid())
+  email           String          @unique
+  password        String
+  name            String
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  roleId          String?
+  ownedGym        Gym?            @relation("GymOwner")
+  memberProfile   Member?
+  refreshTokens   RefreshToken[]
+  trainerProfile  Trainer?
+  role            Rolemaster?     @relation(fields: [roleId], references: [Id])
+  memberInquiries MemberInquiry[]
 
   @@index([email])
   @@index([roleId])
@@ -89,6 +90,7 @@ model Gym {
   designations       DesignationMaster[]
   bodyParts          BodyPartMaster[]
   workoutExercises   WorkoutExerciseMaster[]
+  memberInquiries    MemberInquiry[]
 
   @@index([ownerId])
   @@index([city])
@@ -237,6 +239,41 @@ model Inquiry {
 
   @@index([gymId])
   @@index([status])
+}
+
+model MemberInquiry {
+  id            String    @id @default(uuid())
+  fullName      String
+  contactNo     String
+  inquiryDate   DateTime  @default(now())
+  dob           DateTime?
+  followUp      Boolean   @default(false)
+  followUpDate  DateTime?
+  gender        String?   // Male/Female/Other
+  address       String?
+  heardAbout    String?
+  userId        String
+  comments      String?
+  memberPhoto   String?
+  height        Decimal?  @db.Decimal(5, 2)
+  weight        Decimal?  @db.Decimal(5, 2)
+  referenceName String?
+  gymId         String
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  createdBy     String?
+  updatedBy     String?
+  gym           Gym       @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("memberinquiry")
+  @@index([gymId])
+  @@index([userId])
+  @@index([contactNo])
+  @@index([inquiryDate])
+  @@index([followUp])
+  @@index([isActive])
 }
 
 model DietPlan {

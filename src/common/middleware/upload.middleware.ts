@@ -6,6 +6,7 @@ import fs from 'fs';
 // Ensure uploads directory exists
 const uploadsDir = path.join(process.cwd(), 'uploads');
 const gymLogosDir = path.join(uploadsDir, 'gym-logos');
+const memberInquiryPhotosDir = path.join(uploadsDir, 'member-inquiry-photos');
 
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
@@ -13,6 +14,10 @@ if (!fs.existsSync(uploadsDir)) {
 
 if (!fs.existsSync(gymLogosDir)) {
   fs.mkdirSync(gymLogosDir, { recursive: true });
+}
+
+if (!fs.existsSync(memberInquiryPhotosDir)) {
+  fs.mkdirSync(memberInquiryPhotosDir, { recursive: true });
 }
 
 // Configure storage for gym logos
@@ -92,4 +97,30 @@ export const deleteOldLogo = (logoPath: string | null | undefined): void => {
 // Get the relative path for storing in database
 export const getRelativeLogoPath = (filename: string): string => {
   return `/uploads/gym-logos/${filename}`;
+};
+
+// Configure storage for member inquiry photos
+const memberInquiryPhotoStorage = multer.diskStorage({
+  destination: (req: Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
+    cb(null, memberInquiryPhotosDir);
+  },
+  filename: (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, `member-inquiry-photo-${uniqueSuffix}${ext}`);
+  }
+});
+
+// Multer configuration for member inquiry photo uploads
+export const uploadMemberInquiryPhoto = multer({
+  storage: memberInquiryPhotoStorage,
+  fileFilter: imageFileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB max file size
+  }
+}).single('memberPhoto');
+
+// Get the relative path for member inquiry photo
+export const getRelativeMemberInquiryPhotoPath = (filename: string): string => {
+  return `/uploads/member-inquiry-photos/${filename}`;
 };

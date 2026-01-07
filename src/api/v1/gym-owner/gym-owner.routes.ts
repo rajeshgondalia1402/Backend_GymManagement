@@ -33,6 +33,9 @@ import {
   updateBodyPartSchema,
   createWorkoutExerciseSchema,
   updateWorkoutExerciseSchema,
+  createMemberInquirySchema,
+  updateMemberInquirySchema,
+  userIdParamSchema,
 } from '../../../common/middleware';
 
 const router = Router();
@@ -1235,5 +1238,336 @@ router.put('/workout-exercises/:id', validate(idParamSchema, 'params'), validate
  *         description: Workout exercise not found
  */
 router.patch('/workout-exercises/:id/toggle-status', validate(idParamSchema, 'params'), gymOwnerController.toggleWorkoutExerciseStatus.bind(gymOwnerController));
+
+// Member Inquiry Routes
+/**
+ * @swagger
+ * /api/v1/gym-owner/member-inquiries:
+ *   get:
+ *     summary: Get all member inquiries for the gym
+ *     tags: [Gym Owner - Member Inquiries]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search by full name, contact no, or address
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           default: createdAt
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           default: desc
+ *     responses:
+ *       200:
+ *         description: Member inquiries retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/MemberInquiry'
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
+ */
+router.get('/member-inquiries', validate(paginationSchema, 'query'), gymOwnerController.getMemberInquiries.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/member-inquiries/by-user/{userId}:
+ *   get:
+ *     summary: Get all member inquiries by user (login) ID
+ *     tags: [Gym Owner - Member Inquiries]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: User ID (Login ID)
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           default: createdAt
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           default: desc
+ *     responses:
+ *       200:
+ *         description: Member inquiries retrieved successfully
+ */
+router.get('/member-inquiries/by-user/:userId', validate(userIdParamSchema, 'params'), validate(paginationSchema, 'query'), gymOwnerController.getMemberInquiriesByUserId.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/member-inquiries/{id}:
+ *   get:
+ *     summary: Get a member inquiry by ID
+ *     tags: [Gym Owner - Member Inquiries]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Member Inquiry ID
+ *     responses:
+ *       200:
+ *         description: Member inquiry retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MemberInquiry'
+ *       404:
+ *         description: Member inquiry not found
+ */
+router.get('/member-inquiries/:id', validate(idParamSchema, 'params'), gymOwnerController.getMemberInquiryById.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/member-inquiries:
+ *   post:
+ *     summary: Create a new member inquiry
+ *     tags: [Gym Owner - Member Inquiries]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - fullName
+ *               - contactNo
+ *             properties:
+ *               fullName:
+ *                 type: string
+ *                 minLength: 2
+ *                 description: Full name of the inquiry member
+ *               contactNo:
+ *                 type: string
+ *                 minLength: 10
+ *                 description: Contact number
+ *               inquiryDate:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Date of inquiry
+ *               dob:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Date of birth
+ *               followUp:
+ *                 type: boolean
+ *                 default: false
+ *                 description: Follow up checkbox
+ *               followUpDate:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Follow up date
+ *               gender:
+ *                 type: string
+ *                 enum: [Male, Female, Other]
+ *                 description: Gender
+ *               address:
+ *                 type: string
+ *                 description: Address
+ *               heardAbout:
+ *                 type: string
+ *                 description: How they heard about the gym
+ *               comments:
+ *                 type: string
+ *                 description: Comments
+ *               memberPhoto:
+ *                 type: string
+ *                 description: Member photo URL or base64 string
+ *               height:
+ *                 type: number
+ *                 description: Height in cm
+ *               weight:
+ *                 type: number
+ *                 description: Weight in kg
+ *               referenceName:
+ *                 type: string
+ *                 description: Reference name (empty allowed)
+ *     responses:
+ *       201:
+ *         description: Member inquiry created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MemberInquiry'
+ */
+router.post('/member-inquiries', validate(createMemberInquirySchema), gymOwnerController.createMemberInquiry.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/member-inquiries/{id}:
+ *   put:
+ *     summary: Update a member inquiry
+ *     tags: [Gym Owner - Member Inquiries]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Member Inquiry ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               fullName:
+ *                 type: string
+ *                 minLength: 2
+ *               contactNo:
+ *                 type: string
+ *                 minLength: 10
+ *               inquiryDate:
+ *                 type: string
+ *                 format: date-time
+ *               dob:
+ *                 type: string
+ *                 format: date-time
+ *               followUp:
+ *                 type: boolean
+ *               followUpDate:
+ *                 type: string
+ *                 format: date-time
+ *               gender:
+ *                 type: string
+ *                 enum: [Male, Female, Other]
+ *               address:
+ *                 type: string
+ *               heardAbout:
+ *                 type: string
+ *               comments:
+ *                 type: string
+ *               memberPhoto:
+ *                 type: string
+ *                 description: Member photo URL or base64 string
+ *               height:
+ *                 type: number
+ *               weight:
+ *                 type: number
+ *               referenceName:
+ *                 type: string
+ *               isActive:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Member inquiry updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MemberInquiry'
+ *       404:
+ *         description: Member inquiry not found
+ */
+router.put('/member-inquiries/:id', validate(idParamSchema, 'params'), validate(updateMemberInquirySchema), gymOwnerController.updateMemberInquiry.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/member-inquiries/{id}:
+ *   delete:
+ *     summary: Delete a member inquiry
+ *     tags: [Gym Owner - Member Inquiries]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Member Inquiry ID
+ *     responses:
+ *       200:
+ *         description: Member inquiry deleted successfully
+ *       404:
+ *         description: Member inquiry not found
+ */
+router.delete('/member-inquiries/:id', validate(idParamSchema, 'params'), gymOwnerController.deleteMemberInquiry.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/member-inquiries/{id}/toggle-status:
+ *   patch:
+ *     summary: Toggle member inquiry active status
+ *     tags: [Gym Owner - Member Inquiries]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Member Inquiry ID
+ *     responses:
+ *       200:
+ *         description: Member inquiry status toggled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MemberInquiry'
+ *       404:
+ *         description: Member inquiry not found
+ */
+router.patch('/member-inquiries/:id/toggle-status', validate(idParamSchema, 'params'), gymOwnerController.toggleMemberInquiryStatus.bind(gymOwnerController));
 
 export default router;
