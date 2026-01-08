@@ -487,3 +487,36 @@ export interface UpdateMemberInquiryRequest {
   referenceName?: string;
   isActive?: boolean;
 }
+
+// Course Package Types
+export interface CoursePackage {
+  id: string;
+  packageName: string;
+  description?: string;
+  fees: number;
+  maxDiscount?: number;
+  discountType: 'PERCENTAGE' | 'AMOUNT';
+  isActive: boolean;
+  gymId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy?: string;
+  updatedBy?: string;
+}
+
+export interface CreateCoursePackageRequest {
+  packageName: string;
+  description?: string;
+  fees: number;
+  maxDiscount?: number;
+  discountType?: 'PERCENTAGE' | 'AMOUNT';
+}
+
+export interface UpdateCoursePackageRequest {
+  packageName?: string;
+  description?: string;
+  fees?: number;
+  maxDiscount?: number;
+  discountType?: 'PERCENTAGE' | 'AMOUNT';
+  isActive?: boolean;
+}

@@ -778,7 +778,7 @@ class GymOwnerController {
       if (!userId) {
         throw new BadRequestException('User ID is required');
       }
-      
+
       const inquiry = await gymOwnerService.createMemberInquiry(gymId, userId, req.body);
       successResponse(res, inquiry, 'Member inquiry created successfully', 201);
     } catch (error) {
@@ -793,7 +793,7 @@ class GymOwnerController {
       if (!userId) {
         throw new BadRequestException('User ID is required');
       }
-      
+
       const inquiry = await gymOwnerService.updateMemberInquiry(gymId, req.params.id, userId, req.body);
       successResponse(res, inquiry, 'Member inquiry updated successfully');
     } catch (error) {
@@ -816,6 +816,80 @@ class GymOwnerController {
       const gymId = this.getGymId(req);
       const inquiry = await gymOwnerService.toggleMemberInquiryStatus(gymId, req.params.id);
       successResponse(res, inquiry, `Member inquiry ${inquiry.isActive ? 'activated' : 'deactivated'} successfully`);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // =============================================
+  // Course Package Methods
+  // =============================================
+
+  async getCoursePackages(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { page = 1, limit = 10, search, sortBy, sortOrder, isActive } = req.query as any;
+      const { packages, total } = await gymOwnerService.getCoursePackages(gymId, {
+        page: Number(page),
+        limit: Number(limit),
+        search,
+        sortBy,
+        sortOrder,
+        isActive: isActive !== undefined ? isActive === 'true' : undefined,
+      });
+      paginatedResponse(res, packages, Number(page), Number(limit), total, 'Course packages retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getCoursePackageById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const coursePackage = await gymOwnerService.getCoursePackageById(gymId, req.params.id);
+      successResponse(res, coursePackage, 'Course package retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createCoursePackage(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const userId = req.user!.id;
+      const coursePackage = await gymOwnerService.createCoursePackage(gymId, userId, req.body);
+      successResponse(res, coursePackage, 'Course package created successfully', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateCoursePackage(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const userId = req.user!.id;
+      const coursePackage = await gymOwnerService.updateCoursePackage(gymId, userId, req.params.id, req.body);
+      successResponse(res, coursePackage, 'Course package updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteCoursePackage(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      await gymOwnerService.deleteCoursePackage(gymId, req.params.id);
+      successResponse(res, null, 'Course package deleted successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async toggleCoursePackageStatus(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const coursePackage = await gymOwnerService.toggleCoursePackageStatus(gymId, req.params.id);
+      successResponse(res, coursePackage, `Course package ${coursePackage.isActive ? 'activated' : 'deactivated'} successfully`);
     } catch (error) {
       next(error);
     }
