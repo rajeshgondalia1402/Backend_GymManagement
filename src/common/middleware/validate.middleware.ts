@@ -353,6 +353,19 @@ export const userIdParamSchema = z.object({
   userId: z.string().uuid('Invalid user ID format'),
 });
 
+// Course Package validation schemas
+export const createCoursePackageSchema = z.object({
+  packageName: z.string().min(2, 'Package name must be at least 2 characters'),
+  description: z.string().optional(),
+  fees: z.number().positive('Fees must be positive'),
+  maxDiscount: z.number().min(0, 'Max discount must be non-negative').optional(),
+  discountType: z.enum(['PERCENTAGE', 'AMOUNT']).optional(),
+});
+
+export const updateCoursePackageSchema = createCoursePackageSchema.partial().extend({
+  isActive: z.boolean().optional(),
+});
+
 // Validation middleware factory
 export const validate = (schema: ZodSchema, source: 'body' | 'query' | 'params' = 'body') => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {

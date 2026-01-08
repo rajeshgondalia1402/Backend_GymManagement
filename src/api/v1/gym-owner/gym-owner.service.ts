@@ -48,6 +48,9 @@ import {
   MemberInquiry,
   CreateMemberInquiryRequest,
   UpdateMemberInquiryRequest,
+  CoursePackage,
+  CreateCoursePackageRequest,
+  UpdateCoursePackageRequest,
 } from './gym-owner.types';
 
 class GymOwnerService {
@@ -66,8 +69,8 @@ class GymOwnerService {
 
     // Get active members
     const activeMembers = await prisma.member.count({
-      where: { 
-        gymId, 
+      where: {
+        gymId,
         membershipStatus: 'ACTIVE',
         user: { isActive: true }
       }
@@ -152,7 +155,7 @@ class GymOwnerService {
     });
 
     if (!trainer) throw new NotFoundException('Trainer not found');
-    
+
     return {
       id: trainer.id,
       email: trainer.user.email,
@@ -177,7 +180,7 @@ class GymOwnerService {
     if (!trainerRole) throw new NotFoundException('TRAINER role not found');
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
-    
+
     // Create user and trainer in transaction
     const result = await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
@@ -344,7 +347,7 @@ class GymOwnerService {
     });
 
     if (!member) throw new NotFoundException('Member not found');
-    
+
     const activeTrainer = member.trainerAssignments[0]?.trainer;
     return {
       id: member.id,
@@ -373,8 +376,8 @@ class GymOwnerService {
     if (!memberRole) throw new NotFoundException('MEMBER role not found');
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
-    const membershipEnd = data.membershipEndDate 
-      ? new Date(data.membershipEndDate) 
+    const membershipEnd = data.membershipEndDate
+      ? new Date(data.membershipEndDate)
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // Default 30 days
 
     const result = await prisma.$transaction(async (tx) => {
@@ -583,7 +586,7 @@ class GymOwnerService {
 
   async updateDietPlan(gymId: string, planId: string, data: UpdateDietPlanRequest): Promise<DietPlan> {
     await this.getDietPlanById(gymId, planId);
-    
+
     const updateData: any = {};
     if (data.name) updateData.name = data.name;
     if (data.description) updateData.description = data.description;
@@ -689,7 +692,7 @@ class GymOwnerService {
 
   async updateExercisePlan(gymId: string, planId: string, data: UpdateExercisePlanRequest): Promise<ExercisePlan> {
     await this.getExercisePlanById(gymId, planId);
-    
+
     const updateData: any = {};
     if (data.name) updateData.name = data.name;
     if (data.description) updateData.description = data.description;
@@ -772,7 +775,7 @@ class GymOwnerService {
       where: { id: trainerId, gymId },
       include: { user: true }
     });
-    
+
     if (!trainer) throw new NotFoundException('Trainer not found');
 
     const newStatus = !trainer.user.isActive;
@@ -796,7 +799,7 @@ class GymOwnerService {
       where: { id: memberId, gymId },
       include: { user: true }
     });
-    
+
     if (!member) throw new NotFoundException('Member not found');
 
     const newStatus = !member.user.isActive;
@@ -2292,6 +2295,198 @@ class GymOwnerService {
       updatedAt: updatedInquiry.updatedAt,
       createdBy: updatedInquiry.createdBy || undefined,
       updatedBy: updatedInquiry.updatedBy || undefined,
+    };
+  }
+
+  // =============================================
+  // Course Package Methods
+  // =============================================
+
+  async getCoursePackages(gymId: string, params: PaginationParams): Promise<{ packages: CoursePackage[]; total: number }> {
+    const { page, limit, search, sortBy = 'createdAt', sortOrder = 'desc', isActive } = params;
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      gymId,
+      ...(search && { packageName: { contains: search, mode: 'insensitive' as const } }),
+      ...(isActive !== undefined && { isActive }),
+    };
+
+    const [packageRecords, total] = await Promise.all([
+      prisma.coursePackage.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+      }),
+      prisma.coursePackage.count({ where }),
+    ]);
+
+    const packages: CoursePackage[] = packageRecords.map((p) => ({
+      id: p.id,
+      packageName: p.packageName,
+      description: p.description || undefined,
+      fees: Number(p.fees),
+      maxDiscount: p.maxDiscount ? Number(p.maxDiscount) : undefined,
+      discountType: p.discountType as 'PERCENTAGE' | 'AMOUNT',
+      isActive: p.isActive,
+      gymId: p.gymId,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+      createdBy: p.createdBy || undefined,
+      updatedBy: p.updatedBy || undefined,
+    }));
+
+    return { packages, total };
+  }
+
+  async getCoursePackageById(gymId: string, id: string): Promise<CoursePackage> {
+    const packageRecord = await prisma.coursePackage.findFirst({
+      where: { id, gymId },
+    });
+
+    if (!packageRecord) throw new NotFoundException('Course package not found');
+
+    return {
+      id: packageRecord.id,
+      packageName: packageRecord.packageName,
+      description: packageRecord.description || undefined,
+      fees: Number(packageRecord.fees),
+      maxDiscount: packageRecord.maxDiscount ? Number(packageRecord.maxDiscount) : undefined,
+      discountType: packageRecord.discountType as 'PERCENTAGE' | 'AMOUNT',
+      isActive: packageRecord.isActive,
+      gymId: packageRecord.gymId,
+      createdAt: packageRecord.createdAt,
+      updatedAt: packageRecord.updatedAt,
+      createdBy: packageRecord.createdBy || undefined,
+      updatedBy: packageRecord.updatedBy || undefined,
+    };
+  }
+
+  async createCoursePackage(gymId: string, userId: string, data: CreateCoursePackageRequest): Promise<CoursePackage> {
+    // Check for duplicate package name in the same gym
+    const existingPackage = await prisma.coursePackage.findFirst({
+      where: { packageName: data.packageName, gymId },
+    });
+
+    if (existingPackage) {
+      throw new ConflictException('A course package with this name already exists');
+    }
+
+    const packageRecord = await prisma.coursePackage.create({
+      data: {
+        packageName: data.packageName,
+        description: data.description,
+        fees: data.fees,
+        maxDiscount: data.maxDiscount,
+        discountType: data.discountType || 'PERCENTAGE',
+        gymId,
+        createdBy: userId,
+      },
+    });
+
+    return {
+      id: packageRecord.id,
+      packageName: packageRecord.packageName,
+      description: packageRecord.description || undefined,
+      fees: Number(packageRecord.fees),
+      maxDiscount: packageRecord.maxDiscount ? Number(packageRecord.maxDiscount) : undefined,
+      discountType: packageRecord.discountType as 'PERCENTAGE' | 'AMOUNT',
+      isActive: packageRecord.isActive,
+      gymId: packageRecord.gymId,
+      createdAt: packageRecord.createdAt,
+      updatedAt: packageRecord.updatedAt,
+      createdBy: packageRecord.createdBy || undefined,
+      updatedBy: packageRecord.updatedBy || undefined,
+    };
+  }
+
+  async updateCoursePackage(gymId: string, userId: string, id: string, data: UpdateCoursePackageRequest): Promise<CoursePackage> {
+    const existingPackage = await prisma.coursePackage.findFirst({
+      where: { id, gymId },
+    });
+
+    if (!existingPackage) throw new NotFoundException('Course package not found');
+
+    // Check for duplicate package name if updating the name
+    if (data.packageName && data.packageName !== existingPackage.packageName) {
+      const duplicatePackage = await prisma.coursePackage.findFirst({
+        where: { packageName: data.packageName, gymId, id: { not: id } },
+      });
+
+      if (duplicatePackage) {
+        throw new ConflictException('A course package with this name already exists');
+      }
+    }
+
+    const updateData: any = { updatedBy: userId };
+    if (data.packageName !== undefined) updateData.packageName = data.packageName;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.fees !== undefined) updateData.fees = data.fees;
+    if (data.maxDiscount !== undefined) updateData.maxDiscount = data.maxDiscount;
+    if (data.discountType !== undefined) updateData.discountType = data.discountType;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+
+    const packageRecord = await prisma.coursePackage.update({
+      where: { id },
+      data: updateData,
+    });
+
+    return {
+      id: packageRecord.id,
+      packageName: packageRecord.packageName,
+      description: packageRecord.description || undefined,
+      fees: Number(packageRecord.fees),
+      maxDiscount: packageRecord.maxDiscount ? Number(packageRecord.maxDiscount) : undefined,
+      discountType: packageRecord.discountType as 'PERCENTAGE' | 'AMOUNT',
+      isActive: packageRecord.isActive,
+      gymId: packageRecord.gymId,
+      createdAt: packageRecord.createdAt,
+      updatedAt: packageRecord.updatedAt,
+      createdBy: packageRecord.createdBy || undefined,
+      updatedBy: packageRecord.updatedBy || undefined,
+    };
+  }
+
+  async deleteCoursePackage(gymId: string, id: string): Promise<void> {
+    const existingPackage = await prisma.coursePackage.findFirst({
+      where: { id, gymId },
+    });
+
+    if (!existingPackage) throw new NotFoundException('Course package not found');
+
+    // Soft delete by setting isActive to false
+    await prisma.coursePackage.update({
+      where: { id },
+      data: { isActive: false },
+    });
+  }
+
+  async toggleCoursePackageStatus(gymId: string, id: string): Promise<CoursePackage> {
+    const existingPackage = await prisma.coursePackage.findFirst({
+      where: { id, gymId },
+    });
+
+    if (!existingPackage) throw new NotFoundException('Course package not found');
+
+    const packageRecord = await prisma.coursePackage.update({
+      where: { id },
+      data: { isActive: !existingPackage.isActive },
+    });
+
+    return {
+      id: packageRecord.id,
+      packageName: packageRecord.packageName,
+      description: packageRecord.description || undefined,
+      fees: Number(packageRecord.fees),
+      maxDiscount: packageRecord.maxDiscount ? Number(packageRecord.maxDiscount) : undefined,
+      discountType: packageRecord.discountType as 'PERCENTAGE' | 'AMOUNT',
+      isActive: packageRecord.isActive,
+      gymId: packageRecord.gymId,
+      createdAt: packageRecord.createdAt,
+      updatedAt: packageRecord.updatedAt,
+      createdBy: packageRecord.createdBy || undefined,
+      updatedBy: packageRecord.updatedBy || undefined,
     };
   }
 }

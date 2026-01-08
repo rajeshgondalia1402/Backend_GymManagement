@@ -91,6 +91,7 @@ model Gym {
   bodyParts          BodyPartMaster[]
   workoutExercises   WorkoutExerciseMaster[]
   memberInquiries    MemberInquiry[]
+  coursePackages     CoursePackage[]
 
   @@index([ownerId])
   @@index([city])
@@ -497,4 +498,31 @@ enum InquiryStatus {
   NOT_INTERESTED
   CONVERTED
   FOLLOW_UP
+}
+
+enum DiscountType {
+  PERCENTAGE
+  AMOUNT
+}
+
+model CoursePackage {
+  id            String       @id @default(uuid())
+  packageName   String
+  description   String?
+  fees          Decimal      @db.Decimal(10, 2)
+  maxDiscount   Decimal?     @db.Decimal(10, 2)
+  discountType  DiscountType @default(PERCENTAGE)
+  isActive      Boolean      @default(true)
+  gymId         String
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  createdBy     String?
+  updatedBy     String?
+  gym           Gym          @relation(fields: [gymId], references: [id], onDelete: Cascade)
+
+  @@unique([packageName, gymId])
+  @@map("coursepackage")
+  @@index([gymId])
+  @@index([packageName])
+  @@index([isActive])
 }

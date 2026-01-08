@@ -36,6 +36,8 @@ import {
   createMemberInquirySchema,
   updateMemberInquirySchema,
   userIdParamSchema,
+  createCoursePackageSchema,
+  updateCoursePackageSchema,
 } from '../../../common/middleware';
 
 const router = Router();
@@ -1569,5 +1571,251 @@ router.delete('/member-inquiries/:id', validate(idParamSchema, 'params'), gymOwn
  *         description: Member inquiry not found
  */
 router.patch('/member-inquiries/:id/toggle-status', validate(idParamSchema, 'params'), gymOwnerController.toggleMemberInquiryStatus.bind(gymOwnerController));
+
+// =============================================
+// Course Package Routes
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/course-packages:
+ *   get:
+ *     summary: Get all course packages for the gym
+ *     tags: [Gym Owner - Course Packages]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of items per page
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search by package name
+ *       - in: query
+ *         name: isActive
+ *         schema:
+ *           type: boolean
+ *         description: Filter by active status
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           enum: [packageName, fees, createdAt]
+ *         description: Sort field
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *         description: Sort order
+ *     responses:
+ *       200:
+ *         description: Course packages retrieved successfully
+ */
+router.get('/course-packages', validate(paginationSchema, 'query'), gymOwnerController.getCoursePackages.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/course-packages/{id}:
+ *   get:
+ *     summary: Get course package by ID
+ *     tags: [Gym Owner - Course Packages]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Course Package ID
+ *     responses:
+ *       200:
+ *         description: Course package retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CoursePackage'
+ *       404:
+ *         description: Course package not found
+ */
+router.get('/course-packages/:id', validate(idParamSchema, 'params'), gymOwnerController.getCoursePackageById.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/course-packages:
+ *   post:
+ *     summary: Create a new course package
+ *     tags: [Gym Owner - Course Packages]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - packageName
+ *               - fees
+ *             properties:
+ *               packageName:
+ *                 type: string
+ *                 minLength: 2
+ *                 description: Name of the course package (unique per gym)
+ *                 example: "Premium Monthly"
+ *               description:
+ *                 type: string
+ *                 description: Description of the course package
+ *                 example: "Full access to all gym facilities"
+ *               fees:
+ *                 type: number
+ *                 minimum: 0
+ *                 description: Package fees
+ *                 example: 2500
+ *               maxDiscount:
+ *                 type: number
+ *                 minimum: 0
+ *                 description: Maximum discount allowed
+ *                 example: 500
+ *               discountType:
+ *                 type: string
+ *                 enum: [PERCENTAGE, AMOUNT]
+ *                 default: PERCENTAGE
+ *                 description: Type of discount (PERCENTAGE or AMOUNT)
+ *     responses:
+ *       201:
+ *         description: Course package created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CoursePackage'
+ *       409:
+ *         description: Course package with this name already exists
+ */
+router.post('/course-packages', validate(createCoursePackageSchema), gymOwnerController.createCoursePackage.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/course-packages/{id}:
+ *   put:
+ *     summary: Update a course package
+ *     tags: [Gym Owner - Course Packages]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Course Package ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               packageName:
+ *                 type: string
+ *                 minLength: 2
+ *                 description: Name of the course package (unique per gym)
+ *               description:
+ *                 type: string
+ *                 description: Description of the course package
+ *               fees:
+ *                 type: number
+ *                 minimum: 0
+ *                 description: Package fees
+ *               maxDiscount:
+ *                 type: number
+ *                 minimum: 0
+ *                 description: Maximum discount allowed
+ *               discountType:
+ *                 type: string
+ *                 enum: [PERCENTAGE, AMOUNT]
+ *                 description: Type of discount
+ *               isActive:
+ *                 type: boolean
+ *                 description: Whether the package is active
+ *     responses:
+ *       200:
+ *         description: Course package updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CoursePackage'
+ *       404:
+ *         description: Course package not found
+ *       409:
+ *         description: Course package with this name already exists
+ */
+router.put('/course-packages/:id', validate(idParamSchema, 'params'), validate(updateCoursePackageSchema), gymOwnerController.updateCoursePackage.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/course-packages/{id}:
+ *   delete:
+ *     summary: Soft delete a course package (sets isActive to false)
+ *     tags: [Gym Owner - Course Packages]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Course Package ID
+ *     responses:
+ *       200:
+ *         description: Course package deleted successfully
+ *       404:
+ *         description: Course package not found
+ */
+router.delete('/course-packages/:id', validate(idParamSchema, 'params'), gymOwnerController.deleteCoursePackage.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/course-packages/{id}/toggle-status:
+ *   patch:
+ *     summary: Toggle course package active status
+ *     tags: [Gym Owner - Course Packages]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Course Package ID
+ *     responses:
+ *       200:
+ *         description: Course package status toggled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/CoursePackage'
+ *       404:
+ *         description: Course package not found
+ */
+router.patch('/course-packages/:id/toggle-status', validate(idParamSchema, 'params'), gymOwnerController.toggleCoursePackageStatus.bind(gymOwnerController));
 
 export default router;
