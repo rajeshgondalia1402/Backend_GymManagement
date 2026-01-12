@@ -122,12 +122,23 @@ model Trainer {
 
 model Member {
   id                  String                     @id @default(uuid())
+  memberId            String?                    // Auto-generated member ID (e.g., 1413)
   phone               String?
+  altContactNo        String?                    // Alternate contact number
   dateOfBirth         DateTime?
   gender              String?
   address             String?
+  occupation          String?                    // Member's occupation
+  maritalStatus       String?                    // Marital status
+  bloodGroup          String?                    // Blood group
+  anniversaryDate     DateTime?                  // Anniversary date
   emergencyContact    String?
   healthNotes         String?
+  idProofType         String?                    // Type of ID proof (Aadhar, PAN, etc.)
+  idProofDocument     String?                    // Path to uploaded ID document
+  memberPhoto         String?                    // Path to member photo
+  smsFacility         Boolean                    @default(true)  // SMS facility preference
+  isActive            Boolean                    @default(true)  // For soft delete
   memberType          MemberType                 @default(REGULAR)
   createdAt           DateTime                   @default(now())
   updatedAt           DateTime                   @updatedAt
@@ -137,6 +148,12 @@ model Member {
   gymId               String
   membershipStart     DateTime                   @default(now())
   membershipEnd       DateTime
+  coursePackageId     String?                    // Reference to course package
+  packageFees         Decimal?                   @db.Decimal(10, 2) // Original package fees
+  maxDiscount         Decimal?                   @db.Decimal(10, 2) // Maximum allowed discount
+  afterDiscount       Decimal?                   @db.Decimal(10, 2) // Amount after applying max discount
+  extraDiscount       Decimal?                   @db.Decimal(10, 2) // Additional extra discount
+  finalFees           Decimal?                   @db.Decimal(10, 2) // Final fees after all discounts
   membershipStatus    SubscriptionStatus         @default(ACTIVE)
   gym                 Gym                        @relation(fields: [gymId], references: [id], onDelete: Cascade)
   user                User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -145,10 +162,39 @@ model Member {
   trainerAssignments  MemberTrainerAssignment[]
   ptMember            PTMember?
   memberDietPlans     MemberDietPlan[]
+  balancePayments     MemberBalancePayment[]     // Balance payment records
 
   @@index([gymId])
   @@index([membershipStatus])
   @@index([memberType])
+  @@index([memberId])
+  @@index([isActive])
+}
+
+// Member Balance Payment - tracks partial payments toward final fees
+model MemberBalancePayment {
+  id              String    @id @default(uuid())
+  receiptNo       String    // Auto-generated receipt number (e.g., RCP-001)
+  memberId        String    // Reference to Member
+  paymentDate     DateTime  @default(now())
+  contactNo       String?   // Member contact (from member or override)
+  paidFees        Decimal   @db.Decimal(10, 2) // Amount paid in this transaction
+  payMode         String    // CASH, CARD, UPI, BANK_TRANSFER, CHEQUE, etc.
+  nextPaymentDate DateTime? // Optional next payment reminder date
+  notes           String?   // Optional notes/remarks
+  isActive        Boolean   @default(true)
+  gymId           String    // Reference to Gym for ownership
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  createdBy       String?
+  updatedBy       String?
+  member          Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId])
+  @@index([gymId])
+  @@index([receiptNo])
+  @@index([paymentDate])
+  @@map("memberbalancepayment")
 }
 
 model PTMember {

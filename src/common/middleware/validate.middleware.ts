@@ -8,6 +8,21 @@ export const paginationSchema = z.object({
   search: z.string().optional(),
   sortBy: z.string().optional(),
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+  // Member-specific filters
+  status: z.enum(['Active', 'InActive', 'Expired']).optional(),
+  isActive: z.string().optional().transform((val) => val === 'true' ? true : val === 'false' ? false : undefined),
+  memberType: z.enum(['REGULAR', 'PT']).optional(),
+  gender: z.string().optional(),
+  bloodGroup: z.string().optional(),
+  maritalStatus: z.string().optional(),
+  smsFacility: z.string().optional().transform((val) => val === 'true' ? true : val === 'false' ? false : undefined),
+  // Date range filters
+  membershipStartFrom: z.string().optional(),
+  membershipStartTo: z.string().optional(),
+  membershipEndFrom: z.string().optional(),
+  membershipEndTo: z.string().optional(),
+  // Course package filter
+  coursePackageId: z.string().uuid().optional(),
 });
 
 export const idParamSchema = z.object({
@@ -191,13 +206,34 @@ export const createMemberSchema = z.object({
   email: z.string().email('Invalid email format'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   phone: z.string().min(10, 'Phone must be at least 10 characters'),
+  altContactNo: z.string().min(10, 'Alternate contact must be at least 10 characters').optional(),
+  address: z.string().optional(),
+  gender: z.string().optional(),
+  occupation: z.string().optional(),
+  maritalStatus: z.string().optional(),
+  bloodGroup: z.string().optional(),
+  dateOfBirth: z.string().optional(),
+  anniversaryDate: z.string().optional(),
+  emergencyContact: z.string().optional(),
+  healthNotes: z.string().optional(),
+  idProofType: z.string().optional(),
+  smsFacility: z.union([z.boolean(), z.string().transform(val => val === 'true')]).optional(),
   trainerId: z.string().uuid('Invalid trainer ID').optional(),
   memberType: z.enum(['REGULAR', 'PT']).optional().default('REGULAR'),
-  membershipStartDate: z.string().datetime().optional(),
-  membershipEndDate: z.string().datetime().optional(),
+  membershipStartDate: z.string().optional(),
+  membershipEndDate: z.string().optional(),
+  // Fee-related fields
+  coursePackageId: z.string().uuid('Invalid course package ID').optional(),
+  packageFees: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
+  maxDiscount: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
+  afterDiscount: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
+  extraDiscount: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
+  finalFees: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
 });
 
-export const updateMemberSchema = createMemberSchema.partial().omit({ password: true });
+export const updateMemberSchema = createMemberSchema.partial().omit({ password: true }).extend({
+  isActive: z.union([z.boolean(), z.string().transform(val => val === 'true')]).optional(),
+});
 
 // PT Member validation schemas
 export const createPTMemberSchema = z.object({
@@ -363,6 +399,20 @@ export const createCoursePackageSchema = z.object({
 });
 
 export const updateCoursePackageSchema = createCoursePackageSchema.partial().extend({
+  isActive: z.boolean().optional(),
+});
+
+// Member Balance Payment validation schemas
+export const createMemberBalancePaymentSchema = z.object({
+  paymentDate: z.string().optional(),
+  contactNo: z.string().min(10, 'Contact number must be at least 10 characters').optional(),
+  paidFees: z.union([z.number().positive('Paid fees must be positive'), z.string().transform(val => parseFloat(val))]),
+  payMode: z.string().min(1, 'Payment mode is required'),
+  nextPaymentDate: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+export const updateMemberBalancePaymentSchema = createMemberBalancePaymentSchema.partial().extend({
   isActive: z.boolean().optional(),
 });
 

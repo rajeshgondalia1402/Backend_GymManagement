@@ -85,13 +85,44 @@ class GymOwnerController {
   async getMembers(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const gymId = this.getGymId(req);
-      const { page = 1, limit = 10, search, sortBy, sortOrder } = req.query as any;
+      const {
+        page = 1,
+        limit = 10,
+        search,
+        sortBy,
+        sortOrder,
+        status,
+        isActive,
+        memberType,
+        gender,
+        bloodGroup,
+        maritalStatus,
+        smsFacility,
+        membershipStartFrom,
+        membershipStartTo,
+        membershipEndFrom,
+        membershipEndTo,
+        coursePackageId,
+      } = req.query as any;
+
       const { members, total } = await gymOwnerService.getMembers(gymId, {
         page: Number(page),
         limit: Number(limit),
         search,
         sortBy,
         sortOrder,
+        status,
+        isActive,
+        memberType,
+        gender,
+        bloodGroup,
+        maritalStatus,
+        smsFacility,
+        membershipStartFrom,
+        membershipStartTo,
+        membershipEndFrom,
+        membershipEndTo,
+        coursePackageId,
       });
       paginatedResponse(res, members, Number(page), Number(limit), total, 'Members retrieved successfully');
     } catch (error) {
@@ -112,7 +143,20 @@ class GymOwnerController {
   async createMember(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const gymId = this.getGymId(req);
-      const member = await gymOwnerService.createMember(gymId, req.body);
+
+      // Handle file uploads
+      const files: { memberPhoto?: string; idProofDocument?: string } = {};
+      if (req.files && typeof req.files === 'object') {
+        const uploadedFiles = req.files as { [fieldname: string]: Express.Multer.File[] };
+        if (uploadedFiles.memberPhoto && uploadedFiles.memberPhoto[0]) {
+          files.memberPhoto = `/uploads/member-photos/${uploadedFiles.memberPhoto[0].filename}`;
+        }
+        if (uploadedFiles.idProofDocument && uploadedFiles.idProofDocument[0]) {
+          files.idProofDocument = `/uploads/member-documents/${uploadedFiles.idProofDocument[0].filename}`;
+        }
+      }
+
+      const member = await gymOwnerService.createMember(gymId, req.body, files);
       successResponse(res, member, 'Member created successfully', 201);
     } catch (error) {
       next(error);
@@ -122,7 +166,20 @@ class GymOwnerController {
   async updateMember(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const gymId = this.getGymId(req);
-      const member = await gymOwnerService.updateMember(gymId, req.params.id, req.body);
+
+      // Handle file uploads
+      const files: { memberPhoto?: string; idProofDocument?: string } = {};
+      if (req.files && typeof req.files === 'object') {
+        const uploadedFiles = req.files as { [fieldname: string]: Express.Multer.File[] };
+        if (uploadedFiles.memberPhoto && uploadedFiles.memberPhoto[0]) {
+          files.memberPhoto = `/uploads/member-photos/${uploadedFiles.memberPhoto[0].filename}`;
+        }
+        if (uploadedFiles.idProofDocument && uploadedFiles.idProofDocument[0]) {
+          files.idProofDocument = `/uploads/member-documents/${uploadedFiles.idProofDocument[0].filename}`;
+        }
+      }
+
+      const member = await gymOwnerService.updateMember(gymId, req.params.id, req.body, files);
       successResponse(res, member, 'Member updated successfully');
     } catch (error) {
       next(error);
@@ -133,7 +190,17 @@ class GymOwnerController {
     try {
       const gymId = this.getGymId(req);
       await gymOwnerService.deleteMember(gymId, req.params.id);
-      successResponse(res, null, 'Member deleted successfully');
+      successResponse(res, null, 'Member deactivated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async toggleMemberStatus(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const member = await gymOwnerService.toggleMemberStatus(gymId, req.params.id);
+      successResponse(res, member, `Member ${member.isActive ? 'activated' : 'deactivated'} successfully`);
     } catch (error) {
       next(error);
     }
@@ -293,16 +360,6 @@ class GymOwnerController {
       const gymId = this.getGymId(req);
       const result = await gymOwnerService.toggleTrainerStatus(gymId, req.params.id);
       successResponse(res, result, `Trainer ${result.isActive ? 'activated' : 'deactivated'} successfully`);
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  async toggleMemberStatus(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
-    try {
-      const gymId = this.getGymId(req);
-      const result = await gymOwnerService.toggleMemberStatus(gymId, req.params.id);
-      successResponse(res, result, `Member ${result.isActive ? 'activated' : 'deactivated'} successfully`);
     } catch (error) {
       next(error);
     }
@@ -825,6 +882,16 @@ class GymOwnerController {
   // Course Package Methods
   // =============================================
 
+  async getAllActiveCoursePackages(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const packages = await gymOwnerService.getAllActiveCoursePackages(gymId);
+      successResponse(res, packages, 'Active course packages retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getCoursePackages(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const gymId = this.getGymId(req);
@@ -890,6 +957,79 @@ class GymOwnerController {
       const gymId = this.getGymId(req);
       const coursePackage = await gymOwnerService.toggleCoursePackageStatus(gymId, req.params.id);
       successResponse(res, coursePackage, `Course package ${coursePackage.isActive ? 'activated' : 'deactivated'} successfully`);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getCoursePackageWithActiveMembers(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const result = await gymOwnerService.getCoursePackageWithActiveMembers(gymId, req.params.id);
+      successResponse(res, result, 'Course package with active members retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // =============================================
+  // Member Balance Payment Methods
+  // =============================================
+
+  async createMemberBalancePayment(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const userId = req.user!.id;
+      const payment = await gymOwnerService.createMemberBalancePayment(gymId, userId, req.params.memberId, req.body);
+      successResponse(res, payment, 'Balance payment created successfully', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateMemberBalancePayment(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const userId = req.user!.id;
+      const payment = await gymOwnerService.updateMemberBalancePayment(gymId, userId, req.params.id, req.body);
+      successResponse(res, payment, 'Balance payment updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getMemberBalancePaymentById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const payment = await gymOwnerService.getMemberBalancePaymentById(gymId, req.params.id);
+      successResponse(res, payment, 'Balance payment retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getMemberBalancePayments(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const result = await gymOwnerService.getMemberBalancePayments(gymId, req.params.memberId);
+      successResponse(res, result, 'Member balance payments retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getAllMemberBalancePayments(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { page = 1, limit = 10, search, sortBy, sortOrder } = req.query as any;
+      const { payments, total } = await gymOwnerService.getAllMemberBalancePayments(gymId, {
+        page: Number(page),
+        limit: Number(limit),
+        search,
+        sortBy,
+        sortOrder,
+      });
+      paginatedResponse(res, payments, Number(page), Number(limit), total, 'Balance payments retrieved successfully');
     } catch (error) {
       next(error);
     }

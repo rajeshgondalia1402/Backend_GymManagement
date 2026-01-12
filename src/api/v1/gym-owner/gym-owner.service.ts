@@ -51,6 +51,10 @@ import {
   CoursePackage,
   CreateCoursePackageRequest,
   UpdateCoursePackageRequest,
+  MemberBalancePayment,
+  CreateMemberBalancePaymentRequest,
+  UpdateMemberBalancePaymentRequest,
+  MemberBalancePaymentResponse,
 } from './gym-owner.types';
 
 class GymOwnerService {
@@ -281,25 +285,111 @@ class GymOwnerService {
 
   // Members
   async getMembers(gymId: string, params: PaginationParams): Promise<{ members: Member[]; total: number }> {
-    const { page, limit, search, sortBy = 'createdAt', sortOrder = 'desc' } = params;
+    const {
+      page,
+      limit,
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+      status,
+      isActive,
+      memberType,
+      gender,
+      bloodGroup,
+      maritalStatus,
+      smsFacility,
+      membershipStartFrom,
+      membershipStartTo,
+      membershipEndFrom,
+      membershipEndTo,
+      coursePackageId,
+    } = params;
     const skip = (page - 1) * limit;
+    const today = new Date();
 
-    const where = {
+    // Build status filter based on status parameter
+    // Active: Current date is between membershipStart and membershipEnd (membership is valid)
+    // InActive: Soft deleted records (isActive = false)
+    // Expired: Current date is past membershipEnd (membership has expired)
+    let statusFilter: any = {};
+    if (status === 'Active') {
+      statusFilter = {
+        isActive: true,
+        membershipStart: { lte: today },
+        membershipEnd: { gte: today },
+      };
+    } else if (status === 'InActive') {
+      statusFilter = { isActive: false };
+    } else if (status === 'Expired') {
+      statusFilter = {
+        isActive: true, // Only show expired active members, not soft deleted ones
+        membershipEnd: { lt: today },
+      };
+    }
+
+    // Build dynamic where clause
+    const where: any = {
       gymId,
+      // Status filter (Active, InActive, Expired)
+      ...statusFilter,
+      // Text search - searches across all text fields
       ...(search && {
         OR: [
           { user: { name: { contains: search, mode: 'insensitive' as const } } },
           { user: { email: { contains: search, mode: 'insensitive' as const } } },
+          { phone: { contains: search, mode: 'insensitive' as const } },
+          { memberId: { contains: search, mode: 'insensitive' as const } },
+          { address: { contains: search, mode: 'insensitive' as const } },
+          { altContactNo: { contains: search, mode: 'insensitive' as const } },
+          { emergencyContact: { contains: search, mode: 'insensitive' as const } },
+          { healthNotes: { contains: search, mode: 'insensitive' as const } },
+          { occupation: { contains: search, mode: 'insensitive' as const } },
         ],
       }),
+      // Boolean filters (only if status is not set)
+      ...(!status && isActive !== undefined && { isActive }),
+      ...(smsFacility !== undefined && { smsFacility }),
+      // Enum filter
+      ...(memberType && { memberType }),
+      // String exact match filters
+      ...(gender && { gender: { equals: gender, mode: 'insensitive' as const } }),
+      ...(bloodGroup && { bloodGroup: { equals: bloodGroup, mode: 'insensitive' as const } }),
+      ...(maritalStatus && { maritalStatus: { equals: maritalStatus, mode: 'insensitive' as const } }),
+      // Course package filter
+      ...(coursePackageId && { coursePackageId }),
+      // Date range filters - Membership Start
+      ...(membershipStartFrom || membershipStartTo ? {
+        membershipStart: {
+          ...(membershipStartFrom && { gte: new Date(membershipStartFrom) }),
+          ...(membershipStartTo && { lte: new Date(membershipStartTo) }),
+        },
+      } : {}),
+      // Date range filters - Membership End
+      ...(membershipEndFrom || membershipEndTo ? {
+        membershipEnd: {
+          ...(membershipEndFrom && { gte: new Date(membershipEndFrom) }),
+          ...(membershipEndTo && { lte: new Date(membershipEndTo) }),
+        },
+      } : {}),
     };
+
+    // Build dynamic orderBy - handle special cases for user fields
+    let orderBy: any;
+    if (sortBy === 'name' || sortBy === 'firstName' || sortBy === 'email') {
+      // Sort by user relation fields
+      const userField = sortBy === 'firstName' ? 'name' : sortBy;
+      orderBy = { user: { [userField]: sortOrder } };
+    } else {
+      // Sort by direct member fields
+      orderBy = { [sortBy]: sortOrder };
+    }
 
     const [memberRecords, total] = await Promise.all([
       prisma.member.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { [sortBy]: sortOrder },
+        orderBy,
         include: {
           user: { select: { id: true, name: true, email: true, isActive: true } },
           trainerAssignments: {
@@ -316,16 +406,37 @@ class GymOwnerService {
       const activeTrainer = m.trainerAssignments[0]?.trainer;
       return {
         id: m.id,
+        memberId: m.memberId || undefined,
         email: m.user.email,
         firstName: m.user.name.split(' ')[0] || m.user.name,
         lastName: m.user.name.split(' ').slice(1).join(' ') || '',
         phone: m.phone || undefined,
-        isActive: m.user.isActive,
+        altContactNo: m.altContactNo || undefined,
+        address: m.address || undefined,
+        gender: m.gender || undefined,
+        occupation: m.occupation || undefined,
+        maritalStatus: m.maritalStatus || undefined,
+        bloodGroup: m.bloodGroup || undefined,
+        dateOfBirth: m.dateOfBirth || undefined,
+        anniversaryDate: m.anniversaryDate || undefined,
+        emergencyContact: m.emergencyContact || undefined,
+        healthNotes: m.healthNotes || undefined,
+        idProofType: m.idProofType || undefined,
+        idProofDocument: m.idProofDocument || undefined,
+        memberPhoto: m.memberPhoto || undefined,
+        smsFacility: m.smsFacility,
+        isActive: m.isActive,
         gymId: m.gymId,
         trainerId: activeTrainer?.id,
         memberType: m.memberType as 'REGULAR' | 'PT',
         membershipStartDate: m.membershipStart,
         membershipEndDate: m.membershipEnd,
+        coursePackageId: m.coursePackageId || undefined,
+        packageFees: m.packageFees ? Number(m.packageFees) : undefined,
+        maxDiscount: m.maxDiscount ? Number(m.maxDiscount) : undefined,
+        afterDiscount: m.afterDiscount ? Number(m.afterDiscount) : undefined,
+        extraDiscount: m.extraDiscount ? Number(m.extraDiscount) : undefined,
+        finalFees: m.finalFees ? Number(m.finalFees) : undefined,
         createdAt: m.createdAt,
       };
     });
@@ -351,21 +462,42 @@ class GymOwnerService {
     const activeTrainer = member.trainerAssignments[0]?.trainer;
     return {
       id: member.id,
+      memberId: member.memberId || undefined,
       email: member.user.email,
       firstName: member.user.name.split(' ')[0] || member.user.name,
       lastName: member.user.name.split(' ').slice(1).join(' ') || '',
       phone: member.phone || undefined,
-      isActive: member.user.isActive,
+      altContactNo: member.altContactNo || undefined,
+      address: member.address || undefined,
+      gender: member.gender || undefined,
+      occupation: member.occupation || undefined,
+      maritalStatus: member.maritalStatus || undefined,
+      bloodGroup: member.bloodGroup || undefined,
+      dateOfBirth: member.dateOfBirth || undefined,
+      anniversaryDate: member.anniversaryDate || undefined,
+      emergencyContact: member.emergencyContact || undefined,
+      healthNotes: member.healthNotes || undefined,
+      idProofType: member.idProofType || undefined,
+      idProofDocument: member.idProofDocument || undefined,
+      memberPhoto: member.memberPhoto || undefined,
+      smsFacility: member.smsFacility,
+      isActive: member.isActive,
       gymId: member.gymId,
       trainerId: activeTrainer?.id,
       memberType: member.memberType as 'REGULAR' | 'PT',
       membershipStartDate: member.membershipStart,
       membershipEndDate: member.membershipEnd,
+      coursePackageId: member.coursePackageId || undefined,
+      packageFees: member.packageFees ? Number(member.packageFees) : undefined,
+      maxDiscount: member.maxDiscount ? Number(member.maxDiscount) : undefined,
+      afterDiscount: member.afterDiscount ? Number(member.afterDiscount) : undefined,
+      extraDiscount: member.extraDiscount ? Number(member.extraDiscount) : undefined,
+      finalFees: member.finalFees ? Number(member.finalFees) : undefined,
       createdAt: member.createdAt,
     };
   }
 
-  async createMember(gymId: string, data: CreateMemberRequest): Promise<Member> {
+  async createMember(gymId: string, data: CreateMemberRequest, files?: { memberPhoto?: string; idProofDocument?: string }): Promise<Member> {
     const existingUser = await prisma.user.findUnique({ where: { email: data.email } });
     if (existingUser) throw new ConflictException('User with this email already exists');
 
@@ -374,6 +506,16 @@ class GymOwnerService {
 
     const memberRole = await prisma.rolemaster.findFirst({ where: { rolename: 'MEMBER' } });
     if (!memberRole) throw new NotFoundException('MEMBER role not found');
+
+    // Generate auto-increment member ID
+    const lastMember = await prisma.member.findFirst({
+      where: { gymId },
+      orderBy: { createdAt: 'desc' },
+      select: { memberId: true }
+    });
+    const nextMemberId = lastMember?.memberId
+      ? String(parseInt(lastMember.memberId) + 1)
+      : '1001';
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
     const membershipEnd = data.membershipEndDate
@@ -394,9 +536,30 @@ class GymOwnerService {
         data: {
           userId: user.id,
           gymId,
+          memberId: nextMemberId,
           phone: data.phone,
+          altContactNo: data.altContactNo,
+          address: data.address,
+          gender: data.gender,
+          occupation: data.occupation,
+          maritalStatus: data.maritalStatus,
+          bloodGroup: data.bloodGroup,
+          dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
+          anniversaryDate: data.anniversaryDate ? new Date(data.anniversaryDate) : undefined,
+          emergencyContact: data.emergencyContact,
+          healthNotes: data.healthNotes,
+          idProofType: data.idProofType,
+          idProofDocument: files?.idProofDocument,
+          memberPhoto: files?.memberPhoto,
+          smsFacility: data.smsFacility ?? true,
           membershipStart: data.membershipStartDate ? new Date(data.membershipStartDate) : new Date(),
           membershipEnd,
+          coursePackageId: data.coursePackageId,
+          packageFees: data.packageFees,
+          maxDiscount: data.maxDiscount,
+          afterDiscount: data.afterDiscount,
+          extraDiscount: data.extraDiscount,
+          finalFees: data.finalFees,
         },
         include: {
           user: { select: { id: true, name: true, email: true, isActive: true } }
@@ -418,21 +581,42 @@ class GymOwnerService {
 
     return {
       id: result.id,
+      memberId: result.memberId || undefined,
       email: result.user.email,
       firstName: data.firstName,
       lastName: data.lastName,
       phone: data.phone,
-      isActive: result.user.isActive,
+      altContactNo: data.altContactNo,
+      address: data.address,
+      gender: data.gender,
+      occupation: data.occupation,
+      maritalStatus: data.maritalStatus,
+      bloodGroup: data.bloodGroup,
+      dateOfBirth: result.dateOfBirth || undefined,
+      anniversaryDate: result.anniversaryDate || undefined,
+      emergencyContact: data.emergencyContact,
+      healthNotes: data.healthNotes,
+      idProofType: data.idProofType,
+      idProofDocument: result.idProofDocument || undefined,
+      memberPhoto: result.memberPhoto || undefined,
+      smsFacility: result.smsFacility,
+      isActive: result.isActive,
       gymId: result.gymId,
       trainerId: data.trainerId,
       memberType: result.memberType as 'REGULAR' | 'PT',
       membershipStartDate: result.membershipStart,
       membershipEndDate: result.membershipEnd,
+      coursePackageId: result.coursePackageId || undefined,
+      packageFees: result.packageFees ? Number(result.packageFees) : undefined,
+      maxDiscount: result.maxDiscount ? Number(result.maxDiscount) : undefined,
+      afterDiscount: result.afterDiscount ? Number(result.afterDiscount) : undefined,
+      extraDiscount: result.extraDiscount ? Number(result.extraDiscount) : undefined,
+      finalFees: result.finalFees ? Number(result.finalFees) : undefined,
       createdAt: result.createdAt,
     };
   }
 
-  async updateMember(gymId: string, memberId: string, data: UpdateMemberRequest): Promise<Member> {
+  async updateMember(gymId: string, memberId: string, data: UpdateMemberRequest, files?: { memberPhoto?: string; idProofDocument?: string }): Promise<Member> {
     const existingMember = await prisma.member.findFirst({
       where: { id: memberId, gymId },
       include: { user: true }
@@ -452,9 +636,34 @@ class GymOwnerService {
       }
 
       const updateData: any = {};
-      if (data.phone) updateData.phone = data.phone;
+      if (data.phone !== undefined) updateData.phone = data.phone;
+      if (data.altContactNo !== undefined) updateData.altContactNo = data.altContactNo;
+      if (data.address !== undefined) updateData.address = data.address;
+      if (data.gender !== undefined) updateData.gender = data.gender;
+      if (data.occupation !== undefined) updateData.occupation = data.occupation;
+      if (data.maritalStatus !== undefined) updateData.maritalStatus = data.maritalStatus;
+      if (data.bloodGroup !== undefined) updateData.bloodGroup = data.bloodGroup;
+      if (data.dateOfBirth !== undefined) updateData.dateOfBirth = data.dateOfBirth ? new Date(data.dateOfBirth) : null;
+      if (data.anniversaryDate !== undefined) updateData.anniversaryDate = data.anniversaryDate ? new Date(data.anniversaryDate) : null;
+      if (data.emergencyContact !== undefined) updateData.emergencyContact = data.emergencyContact;
+      if (data.healthNotes !== undefined) updateData.healthNotes = data.healthNotes;
+      if (data.idProofType !== undefined) updateData.idProofType = data.idProofType;
+      if (data.smsFacility !== undefined) updateData.smsFacility = data.smsFacility;
+      if (data.isActive !== undefined) updateData.isActive = data.isActive;
       if (data.membershipStartDate) updateData.membershipStart = new Date(data.membershipStartDate);
       if (data.membershipEndDate) updateData.membershipEnd = new Date(data.membershipEndDate);
+
+      // Handle fee-related fields
+      if (data.coursePackageId !== undefined) updateData.coursePackageId = data.coursePackageId;
+      if (data.packageFees !== undefined) updateData.packageFees = data.packageFees;
+      if (data.maxDiscount !== undefined) updateData.maxDiscount = data.maxDiscount;
+      if (data.afterDiscount !== undefined) updateData.afterDiscount = data.afterDiscount;
+      if (data.extraDiscount !== undefined) updateData.extraDiscount = data.extraDiscount;
+      if (data.finalFees !== undefined) updateData.finalFees = data.finalFees;
+
+      // Handle file uploads
+      if (files?.memberPhoto) updateData.memberPhoto = files.memberPhoto;
+      if (files?.idProofDocument) updateData.idProofDocument = files.idProofDocument;
 
       const member = await tx.member.update({
         where: { id: memberId },
@@ -486,16 +695,37 @@ class GymOwnerService {
 
     return {
       id: result.id,
+      memberId: result.memberId || undefined,
       email: result.user.email,
       firstName: result.user.name.split(' ')[0] || result.user.name,
       lastName: result.user.name.split(' ').slice(1).join(' ') || '',
       phone: result.phone || undefined,
-      isActive: result.user.isActive,
+      altContactNo: result.altContactNo || undefined,
+      address: result.address || undefined,
+      gender: result.gender || undefined,
+      occupation: result.occupation || undefined,
+      maritalStatus: result.maritalStatus || undefined,
+      bloodGroup: result.bloodGroup || undefined,
+      dateOfBirth: result.dateOfBirth || undefined,
+      anniversaryDate: result.anniversaryDate || undefined,
+      emergencyContact: result.emergencyContact || undefined,
+      healthNotes: result.healthNotes || undefined,
+      idProofType: result.idProofType || undefined,
+      idProofDocument: result.idProofDocument || undefined,
+      memberPhoto: result.memberPhoto || undefined,
+      smsFacility: result.smsFacility,
+      isActive: result.isActive,
       gymId: result.gymId,
       trainerId: data.trainerId || result.trainerAssignments[0]?.trainerId,
       memberType: result.memberType as 'REGULAR' | 'PT',
       membershipStartDate: result.membershipStart,
       membershipEndDate: result.membershipEnd,
+      coursePackageId: result.coursePackageId || undefined,
+      packageFees: result.packageFees ? Number(result.packageFees) : undefined,
+      maxDiscount: result.maxDiscount ? Number(result.maxDiscount) : undefined,
+      afterDiscount: result.afterDiscount ? Number(result.afterDiscount) : undefined,
+      extraDiscount: result.extraDiscount ? Number(result.extraDiscount) : undefined,
+      finalFees: result.finalFees ? Number(result.finalFees) : undefined,
       createdAt: result.createdAt,
     };
   }
@@ -506,10 +736,76 @@ class GymOwnerService {
     });
     if (!member) throw new NotFoundException('Member not found');
 
-    await prisma.$transaction(async (tx) => {
-      await tx.member.delete({ where: { id: memberId } });
-      await tx.user.delete({ where: { id: member.userId } });
+    // Soft delete - set isActive to false
+    await prisma.member.update({
+      where: { id: memberId },
+      data: { isActive: false }
     });
+  }
+
+  async toggleMemberStatus(gymId: string, memberId: string): Promise<Member> {
+    const existingMember = await prisma.member.findFirst({
+      where: { id: memberId, gymId },
+      include: {
+        user: { select: { id: true, name: true, email: true, isActive: true } },
+        trainerAssignments: {
+          where: { isActive: true },
+          include: { trainer: { include: { user: true } } },
+          take: 1
+        }
+      }
+    });
+    if (!existingMember) throw new NotFoundException('Member not found');
+
+    const updatedMember = await prisma.member.update({
+      where: { id: memberId },
+      data: { isActive: !existingMember.isActive },
+      include: {
+        user: { select: { id: true, name: true, email: true, isActive: true } },
+        trainerAssignments: {
+          where: { isActive: true },
+          include: { trainer: { include: { user: true } } },
+          take: 1
+        }
+      }
+    });
+
+    const activeTrainer = updatedMember.trainerAssignments[0]?.trainer;
+    return {
+      id: updatedMember.id,
+      memberId: updatedMember.memberId || undefined,
+      email: updatedMember.user.email,
+      firstName: updatedMember.user.name.split(' ')[0] || updatedMember.user.name,
+      lastName: updatedMember.user.name.split(' ').slice(1).join(' ') || '',
+      phone: updatedMember.phone || undefined,
+      altContactNo: updatedMember.altContactNo || undefined,
+      address: updatedMember.address || undefined,
+      gender: updatedMember.gender || undefined,
+      occupation: updatedMember.occupation || undefined,
+      maritalStatus: updatedMember.maritalStatus || undefined,
+      bloodGroup: updatedMember.bloodGroup || undefined,
+      dateOfBirth: updatedMember.dateOfBirth || undefined,
+      anniversaryDate: updatedMember.anniversaryDate || undefined,
+      emergencyContact: updatedMember.emergencyContact || undefined,
+      healthNotes: updatedMember.healthNotes || undefined,
+      idProofType: updatedMember.idProofType || undefined,
+      idProofDocument: updatedMember.idProofDocument || undefined,
+      memberPhoto: updatedMember.memberPhoto || undefined,
+      smsFacility: updatedMember.smsFacility,
+      isActive: updatedMember.isActive,
+      gymId: updatedMember.gymId,
+      trainerId: activeTrainer?.id,
+      memberType: updatedMember.memberType as 'REGULAR' | 'PT',
+      membershipStartDate: updatedMember.membershipStart,
+      membershipEndDate: updatedMember.membershipEnd,
+      coursePackageId: updatedMember.coursePackageId || undefined,
+      packageFees: updatedMember.packageFees ? Number(updatedMember.packageFees) : undefined,
+      maxDiscount: updatedMember.maxDiscount ? Number(updatedMember.maxDiscount) : undefined,
+      afterDiscount: updatedMember.afterDiscount ? Number(updatedMember.afterDiscount) : undefined,
+      extraDiscount: updatedMember.extraDiscount ? Number(updatedMember.extraDiscount) : undefined,
+      finalFees: updatedMember.finalFees ? Number(updatedMember.finalFees) : undefined,
+      createdAt: updatedMember.createdAt,
+    };
   }
 
   // Diet Plans
@@ -789,24 +1085,6 @@ class GymOwnerService {
         where: { id: trainer.userId },
         data: { isActive: newStatus }
       });
-    });
-
-    return { isActive: newStatus };
-  }
-
-  async toggleMemberStatus(gymId: string, memberId: string): Promise<{ isActive: boolean }> {
-    const member = await prisma.member.findFirst({
-      where: { id: memberId, gymId },
-      include: { user: true }
-    });
-
-    if (!member) throw new NotFoundException('Member not found');
-
-    const newStatus = !member.user.isActive;
-
-    await prisma.user.update({
-      where: { id: member.userId },
-      data: { isActive: newStatus }
     });
 
     return { isActive: newStatus };
@@ -2306,10 +2584,13 @@ class GymOwnerService {
     const { page, limit, search, sortBy = 'createdAt', sortOrder = 'desc', isActive } = params;
     const skip = (page - 1) * limit;
 
+    // Default to only active packages if isActive is not explicitly set
+    const activeFilter = isActive !== undefined ? isActive : true;
+
     const where: any = {
       gymId,
+      isActive: activeFilter,
       ...(search && { packageName: { contains: search, mode: 'insensitive' as const } }),
-      ...(isActive !== undefined && { isActive }),
     };
 
     const [packageRecords, total] = await Promise.all([
@@ -2338,6 +2619,31 @@ class GymOwnerService {
     }));
 
     return { packages, total };
+  }
+
+  async getAllActiveCoursePackages(gymId: string): Promise<CoursePackage[]> {
+    const packageRecords = await prisma.coursePackage.findMany({
+      where: {
+        gymId,
+        isActive: true,
+      },
+      orderBy: { packageName: 'asc' },
+    });
+
+    return packageRecords.map((p) => ({
+      id: p.id,
+      packageName: p.packageName,
+      description: p.description || undefined,
+      fees: Number(p.fees),
+      maxDiscount: p.maxDiscount ? Number(p.maxDiscount) : undefined,
+      discountType: p.discountType as 'PERCENTAGE' | 'AMOUNT',
+      isActive: p.isActive,
+      gymId: p.gymId,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+      createdBy: p.createdBy || undefined,
+      updatedBy: p.updatedBy || undefined,
+    }));
   }
 
   async getCoursePackageById(gymId: string, id: string): Promise<CoursePackage> {
@@ -2488,6 +2794,381 @@ class GymOwnerService {
       createdBy: packageRecord.createdBy || undefined,
       updatedBy: packageRecord.updatedBy || undefined,
     };
+  }
+
+  async getCoursePackageWithActiveMembers(gymId: string, id: string): Promise<{
+    package: CoursePackage;
+    members: Member[];
+    totalActiveMembers: number;
+  }> {
+    const packageRecord = await prisma.coursePackage.findFirst({
+      where: { id, gymId },
+    });
+
+    if (!packageRecord) throw new NotFoundException('Course package not found');
+
+    const today = new Date();
+
+    // Get all active members who are subscribed to this course package
+    const memberRecords = await prisma.member.findMany({
+      where: {
+        gymId,
+        coursePackageId: id,
+        isActive: true,
+        // Only members with valid membership (end date in the future)
+        membershipEnd: {
+          gte: today,
+        },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        },
+        trainerAssignments: {
+          where: { isActive: true },
+          include: {
+            trainer: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    email: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+          take: 1,
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const members: Member[] = memberRecords.map((member) => {
+      const activeTrainerAssignment = member.trainerAssignments[0];
+      const trainer = activeTrainerAssignment?.trainer;
+
+      return {
+        id: member.id,
+        memberId: member.memberId || undefined,
+        email: member.user.email,
+        firstName: member.user.name?.split(' ')[0] || '',
+        lastName: member.user.name?.split(' ').slice(1).join(' ') || '',
+        phone: member.phone || undefined,
+        altContactNo: member.altContactNo || undefined,
+        address: member.address || undefined,
+        gender: member.gender || undefined,
+        occupation: member.occupation || undefined,
+        maritalStatus: member.maritalStatus || undefined,
+        bloodGroup: member.bloodGroup || undefined,
+        dateOfBirth: member.dateOfBirth || undefined,
+        anniversaryDate: member.anniversaryDate || undefined,
+        emergencyContact: member.emergencyContact || undefined,
+        healthNotes: member.healthNotes || undefined,
+        idProofType: member.idProofType || undefined,
+        idProofDocument: member.idProofDocument || undefined,
+        memberPhoto: member.memberPhoto || undefined,
+        smsFacility: member.smsFacility,
+        isActive: member.isActive,
+        gymId: member.gymId,
+        trainerId: trainer?.id || undefined,
+        trainer: trainer
+          ? {
+            id: trainer.id,
+            email: trainer.user.email,
+            firstName: trainer.user.name?.split(' ')[0] || '',
+            lastName: trainer.user.name?.split(' ').slice(1).join(' ') || '',
+            isActive: trainer.isActive,
+            gymId: trainer.gymId,
+            createdAt: trainer.createdAt,
+            specialization: trainer.specialization || undefined,
+            phone: trainer.phone || undefined,
+          }
+          : undefined,
+        memberType: (member.memberType as 'REGULAR' | 'PT') || 'REGULAR',
+        membershipStartDate: member.membershipStart || undefined,
+        membershipEndDate: member.membershipEnd || undefined,
+        coursePackageId: member.coursePackageId || undefined,
+        packageFees: member.packageFees ? Number(member.packageFees) : undefined,
+        maxDiscount: member.maxDiscount ? Number(member.maxDiscount) : undefined,
+        afterDiscount: member.afterDiscount ? Number(member.afterDiscount) : undefined,
+        extraDiscount: member.extraDiscount ? Number(member.extraDiscount) : undefined,
+        finalFees: member.finalFees ? Number(member.finalFees) : undefined,
+        createdAt: member.createdAt,
+        createdBy: member.createdBy || undefined,
+        updatedBy: member.updatedBy || undefined,
+      };
+    });
+
+    return {
+      package: {
+        id: packageRecord.id,
+        packageName: packageRecord.packageName,
+        description: packageRecord.description || undefined,
+        fees: Number(packageRecord.fees),
+        maxDiscount: packageRecord.maxDiscount ? Number(packageRecord.maxDiscount) : undefined,
+        discountType: packageRecord.discountType as 'PERCENTAGE' | 'AMOUNT',
+        isActive: packageRecord.isActive,
+        gymId: packageRecord.gymId,
+        createdAt: packageRecord.createdAt,
+        updatedAt: packageRecord.updatedAt,
+        createdBy: packageRecord.createdBy || undefined,
+        updatedBy: packageRecord.updatedBy || undefined,
+      },
+      members,
+      totalActiveMembers: members.length,
+    };
+  }
+
+  // =============================================
+  // Member Balance Payment Methods
+  // =============================================
+
+  // Generate next receipt number for gym
+  private async generateReceiptNo(gymId: string): Promise<string> {
+    const lastPayment = await prisma.memberBalancePayment.findFirst({
+      where: { gymId },
+      orderBy: { createdAt: 'desc' },
+      select: { receiptNo: true }
+    });
+
+    if (!lastPayment?.receiptNo) {
+      return 'RCP-001';
+    }
+
+    const lastNum = parseInt(lastPayment.receiptNo.replace('RCP-', '')) || 0;
+    return `RCP-${String(lastNum + 1).padStart(3, '0')}`;
+  }
+
+  async createMemberBalancePayment(
+    gymId: string,
+    userId: string,
+    memberId: string,
+    data: CreateMemberBalancePaymentRequest
+  ): Promise<MemberBalancePayment> {
+    // Validate member exists and belongs to gym
+    const member = await prisma.member.findFirst({
+      where: { id: memberId, gymId },
+      include: { user: { select: { name: true } } }
+    });
+    if (!member) throw new NotFoundException('Member not found');
+
+    const receiptNo = await this.generateReceiptNo(gymId);
+
+    const payment = await prisma.memberBalancePayment.create({
+      data: {
+        receiptNo,
+        memberId,
+        gymId,
+        paymentDate: data.paymentDate ? new Date(data.paymentDate) : new Date(),
+        contactNo: data.contactNo || member.phone,
+        paidFees: data.paidFees,
+        payMode: data.payMode,
+        nextPaymentDate: data.nextPaymentDate ? new Date(data.nextPaymentDate) : undefined,
+        notes: data.notes,
+        createdBy: userId,
+      },
+      include: { member: { include: { user: { select: { name: true } } } } }
+    });
+
+    return {
+      id: payment.id,
+      receiptNo: payment.receiptNo,
+      memberId: payment.memberId,
+      memberName: payment.member.user.name,
+      paymentDate: payment.paymentDate,
+      contactNo: payment.contactNo || undefined,
+      paidFees: Number(payment.paidFees),
+      payMode: payment.payMode,
+      nextPaymentDate: payment.nextPaymentDate || undefined,
+      notes: payment.notes || undefined,
+      isActive: payment.isActive,
+      gymId: payment.gymId,
+      createdAt: payment.createdAt,
+      updatedAt: payment.updatedAt,
+      createdBy: payment.createdBy || undefined,
+      updatedBy: payment.updatedBy || undefined,
+    };
+  }
+
+  async updateMemberBalancePayment(
+    gymId: string,
+    userId: string,
+    paymentId: string,
+    data: UpdateMemberBalancePaymentRequest
+  ): Promise<MemberBalancePayment> {
+    const existingPayment = await prisma.memberBalancePayment.findFirst({
+      where: { id: paymentId, gymId }
+    });
+    if (!existingPayment) throw new NotFoundException('Payment not found');
+
+    const payment = await prisma.memberBalancePayment.update({
+      where: { id: paymentId },
+      data: {
+        paymentDate: data.paymentDate ? new Date(data.paymentDate) : undefined,
+        contactNo: data.contactNo,
+        paidFees: data.paidFees,
+        payMode: data.payMode,
+        nextPaymentDate: data.nextPaymentDate ? new Date(data.nextPaymentDate) : undefined,
+        notes: data.notes,
+        isActive: data.isActive,
+        updatedBy: userId,
+      },
+      include: { member: { include: { user: { select: { name: true } } } } }
+    });
+
+    return {
+      id: payment.id,
+      receiptNo: payment.receiptNo,
+      memberId: payment.memberId,
+      memberName: payment.member.user.name,
+      paymentDate: payment.paymentDate,
+      contactNo: payment.contactNo || undefined,
+      paidFees: Number(payment.paidFees),
+      payMode: payment.payMode,
+      nextPaymentDate: payment.nextPaymentDate || undefined,
+      notes: payment.notes || undefined,
+      isActive: payment.isActive,
+      gymId: payment.gymId,
+      createdAt: payment.createdAt,
+      updatedAt: payment.updatedAt,
+      createdBy: payment.createdBy || undefined,
+      updatedBy: payment.updatedBy || undefined,
+    };
+  }
+
+  async getMemberBalancePaymentById(gymId: string, paymentId: string): Promise<MemberBalancePayment> {
+    const payment = await prisma.memberBalancePayment.findFirst({
+      where: { id: paymentId, gymId },
+      include: { member: { include: { user: { select: { name: true } } } } }
+    });
+    if (!payment) throw new NotFoundException('Payment not found');
+
+    return {
+      id: payment.id,
+      receiptNo: payment.receiptNo,
+      memberId: payment.memberId,
+      memberName: payment.member.user.name,
+      paymentDate: payment.paymentDate,
+      contactNo: payment.contactNo || undefined,
+      paidFees: Number(payment.paidFees),
+      payMode: payment.payMode,
+      nextPaymentDate: payment.nextPaymentDate || undefined,
+      notes: payment.notes || undefined,
+      isActive: payment.isActive,
+      gymId: payment.gymId,
+      createdAt: payment.createdAt,
+      updatedAt: payment.updatedAt,
+      createdBy: payment.createdBy || undefined,
+      updatedBy: payment.updatedBy || undefined,
+    };
+  }
+
+  async getMemberBalancePayments(gymId: string, memberId: string): Promise<MemberBalancePaymentResponse> {
+    // Get member with finalFees
+    const member = await prisma.member.findFirst({
+      where: { id: memberId, gymId },
+      include: { user: { select: { name: true } } }
+    });
+    if (!member) throw new NotFoundException('Member not found');
+
+    // Get all payments for this member
+    const payments = await prisma.memberBalancePayment.findMany({
+      where: { memberId, gymId, isActive: true },
+      orderBy: { paymentDate: 'desc' },
+      include: { member: { include: { user: { select: { name: true } } } } }
+    });
+
+    // Calculate totals
+    const finalFees = member.finalFees ? Number(member.finalFees) : 0;
+    const totalPaid = payments.reduce((sum, p) => sum + Number(p.paidFees), 0);
+    const pendingAmount = Math.max(0, finalFees - totalPaid);
+
+    return {
+      summary: {
+        memberId: member.id,
+        memberName: member.user.name,
+        finalFees,
+        totalPaid,
+        pendingAmount,
+        paymentCount: payments.length,
+      },
+      payments: payments.map(payment => ({
+        id: payment.id,
+        receiptNo: payment.receiptNo,
+        memberId: payment.memberId,
+        memberName: payment.member.user.name,
+        paymentDate: payment.paymentDate,
+        contactNo: payment.contactNo || undefined,
+        paidFees: Number(payment.paidFees),
+        payMode: payment.payMode,
+        nextPaymentDate: payment.nextPaymentDate || undefined,
+        notes: payment.notes || undefined,
+        isActive: payment.isActive,
+        gymId: payment.gymId,
+        createdAt: payment.createdAt,
+        updatedAt: payment.updatedAt,
+        createdBy: payment.createdBy || undefined,
+        updatedBy: payment.updatedBy || undefined,
+      })),
+    };
+  }
+
+  async getAllMemberBalancePayments(
+    gymId: string,
+    params: PaginationParams
+  ): Promise<{ payments: MemberBalancePayment[]; total: number }> {
+    const { page, limit, search, sortBy = 'paymentDate', sortOrder = 'desc' } = params;
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      gymId,
+      isActive: true,
+      ...(search && {
+        OR: [
+          { receiptNo: { contains: search, mode: 'insensitive' as const } },
+          { member: { user: { name: { contains: search, mode: 'insensitive' as const } } } },
+          { contactNo: { contains: search, mode: 'insensitive' as const } },
+        ],
+      }),
+    };
+
+    const [paymentRecords, total] = await Promise.all([
+      prisma.memberBalancePayment.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: { member: { include: { user: { select: { name: true } } } } }
+      }),
+      prisma.memberBalancePayment.count({ where }),
+    ]);
+
+    const payments: MemberBalancePayment[] = paymentRecords.map(payment => ({
+      id: payment.id,
+      receiptNo: payment.receiptNo,
+      memberId: payment.memberId,
+      memberName: payment.member.user.name,
+      paymentDate: payment.paymentDate,
+      contactNo: payment.contactNo || undefined,
+      paidFees: Number(payment.paidFees),
+      payMode: payment.payMode,
+      nextPaymentDate: payment.nextPaymentDate || undefined,
+      notes: payment.notes || undefined,
+      isActive: payment.isActive,
+      gymId: payment.gymId,
+      createdAt: payment.createdAt,
+      updatedAt: payment.updatedAt,
+      createdBy: payment.createdBy || undefined,
+      updatedBy: payment.updatedBy || undefined,
+    }));
+
+    return { payments, total };
   }
 }
 
