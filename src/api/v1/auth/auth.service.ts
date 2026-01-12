@@ -1,32 +1,36 @@
 import bcrypt from 'bcryptjs';
 import { prisma } from '../../../config/database';
-import { 
-  generateAccessToken, 
-  generateRefreshToken, 
+import {
+  generateAccessToken,
+  generateRefreshToken,
   verifyRefreshToken,
-  getRefreshTokenExpiry 
+  getRefreshTokenExpiry
 } from '../../../config/jwt';
-import { 
-  UnauthorizedException, 
+import {
+  UnauthorizedException,
   NotFoundException,
-  BadRequestException 
+  BadRequestException
 } from '../../../common/exceptions';
-import { 
-  LoginRequest, 
-  LoginResponse, 
+import {
+  LoginRequest,
+  LoginResponse,
   RefreshTokenRequest,
   RefreshTokenResponse,
   ChangePasswordRequest,
-  UserProfile 
+  UserProfile
 } from './auth.types';
 
 class AuthService {
   async login(data: LoginRequest): Promise<LoginResponse> {
     const user = await prisma.user.findUnique({
       where: { email: data.email },
-      include: { 
+      include: {
         role: true,
-        ownedGym: true 
+        ownedGym: {
+          include: {
+            subscriptionPlan: true
+          }
+        }
       },
     });
 
@@ -44,6 +48,40 @@ class AuthService {
     }
 
     const roleName = user.role?.rolename || 'MEMBER';
+
+    // Check subscription expiry for GYM_OWNER role only
+    if (roleName === 'GYM_OWNER' && user.ownedGym) {
+      const gym = user.ownedGym;
+
+      // Check if gym has a subscription plan assigned
+      if (gym.subscriptionPlan && gym.subscriptionStart) {
+        const subscriptionStartDate = new Date(gym.subscriptionStart);
+        const durationDays = gym.subscriptionPlan.durationDays;
+        const currentDate = new Date();
+
+        // Calculate subscription end date based on start date + duration days
+        const subscriptionEndDate = new Date(subscriptionStartDate);
+        subscriptionEndDate.setDate(subscriptionEndDate.getDate() + durationDays);
+
+        // If subscriptionEnd is explicitly set in the database, use that instead
+        const effectiveEndDate = gym.subscriptionEnd
+          ? new Date(gym.subscriptionEnd)
+          : subscriptionEndDate;
+
+        // Check if subscription has expired
+        if (currentDate > effectiveEndDate) {
+          throw new UnauthorizedException(
+            'Your subscription has expired. Please renew your plan or contact the administrator.'
+          );
+        }
+      } else if (!gym.subscriptionPlan) {
+        // No subscription plan assigned - block login
+        throw new UnauthorizedException(
+          'No subscription plan assigned to your gym. Please contact the administrator.'
+        );
+      }
+    }
+
     const payload = { userId: user.id, role: roleName };
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
@@ -57,10 +95,12 @@ class AuthService {
       },
     });
 
-    // Get gym ID based on role
+    // Get gym ID and subscription name based on role
     let gymId: string | undefined;
+    let subscriptionName: string | undefined;
     if (user.ownedGym) {
       gymId = user.ownedGym.id;
+      subscriptionName = user.ownedGym.subscriptionPlan?.name;
     } else {
       // Check if user is a member or trainer
       const member = await prisma.member.findUnique({ where: { userId: user.id } });
@@ -79,6 +119,7 @@ class AuthService {
         lastName: user.name.split(' ').slice(1).join(' ') || '',
         role: roleName,
         gymId,
+        subscriptionName,
       },
       accessToken,
       refreshToken,
@@ -91,6 +132,7 @@ class AuthService {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
+    // Find the refresh token in database
     const storedToken = await prisma.refreshToken.findFirst({
       where: {
         token: data.refreshToken,
@@ -100,7 +142,40 @@ class AuthService {
     });
 
     if (!storedToken) {
-      throw new UnauthorizedException('Refresh token not found or expired');
+      // Check if this is a recently used token (race condition handling)
+      // Look for any valid refresh tokens for this user
+      const existingValidToken = await prisma.refreshToken.findFirst({
+        where: {
+          userId: decoded.userId,
+          expiresAt: { gt: new Date() },
+          // Token created in the last 5 seconds (grace period for race conditions)
+          createdAt: { gt: new Date(Date.now() - 5000) },
+        },
+      });
+
+      if (existingValidToken) {
+        // A new token was just created - this is likely a race condition
+        // Return the existing tokens instead of creating new ones
+        const user = await prisma.user.findUnique({
+          where: { id: decoded.userId },
+          include: { role: true },
+        });
+
+        if (!user || !user.isActive) {
+          throw new UnauthorizedException('User not found or deactivated');
+        }
+
+        const roleName = user.role?.rolename || 'MEMBER';
+        const payload = { userId: user.id, role: roleName };
+        const accessToken = generateAccessToken(payload);
+
+        return {
+          accessToken,
+          refreshToken: existingValidToken.token,
+        };
+      }
+
+      throw new UnauthorizedException('Refresh token not found or expired. Please login again.');
     }
 
     const user = await prisma.user.findUnique({
@@ -175,7 +250,7 @@ class AuthService {
   async getProfile(userId: string): Promise<UserProfile> {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      include: { 
+      include: {
         role: true,
         ownedGym: { select: { id: true, name: true } }
       },
@@ -189,12 +264,12 @@ class AuthService {
     let gymId: string | undefined;
     let gym: { id: string; name: string } | undefined;
     let phone: string | undefined;
-    
+
     if (user.ownedGym) {
       gymId = user.ownedGym.id;
       gym = { id: user.ownedGym.id, name: user.ownedGym.name };
     } else {
-      const member = await prisma.member.findUnique({ 
+      const member = await prisma.member.findUnique({
         where: { userId: user.id },
         include: { gym: { select: { id: true, name: true } } }
       });
@@ -203,7 +278,7 @@ class AuthService {
         gym = { id: member.gym.id, name: member.gym.name };
         phone = member.phone || undefined;
       } else {
-        const trainer = await prisma.trainer.findUnique({ 
+        const trainer = await prisma.trainer.findUnique({
           where: { userId: user.id },
           include: { gym: { select: { id: true, name: true } } }
         });

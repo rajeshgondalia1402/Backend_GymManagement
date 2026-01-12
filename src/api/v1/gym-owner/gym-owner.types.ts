@@ -30,10 +30,25 @@ export interface UpdateTrainerRequest {
 
 export interface Member {
   id: string;
+  memberId?: string;
   email: string;
   firstName: string;
   lastName: string;
   phone?: string;
+  altContactNo?: string;
+  address?: string;
+  gender?: string;
+  occupation?: string;
+  maritalStatus?: string;
+  bloodGroup?: string;
+  dateOfBirth?: Date;
+  anniversaryDate?: Date;
+  emergencyContact?: string;
+  healthNotes?: string;
+  idProofType?: string;
+  idProofDocument?: string;
+  memberPhoto?: string;
+  smsFacility?: boolean;
   isActive: boolean;
   gymId: string;
   trainerId?: string;
@@ -41,6 +56,12 @@ export interface Member {
   memberType: 'REGULAR' | 'PT';
   membershipStartDate?: Date;
   membershipEndDate?: Date;
+  coursePackageId?: string;
+  packageFees?: number;
+  maxDiscount?: number;
+  afterDiscount?: number;
+  extraDiscount?: number;
+  finalFees?: number;
   createdAt: Date;
   createdBy?: string;
   updatedBy?: string;
@@ -52,20 +73,57 @@ export interface CreateMemberRequest {
   email: string;
   password: string;
   phone: string;
+  altContactNo?: string;
+  address?: string;
+  gender?: string;
+  occupation?: string;
+  maritalStatus?: string;
+  bloodGroup?: string;
+  dateOfBirth?: string;
+  anniversaryDate?: string;
+  emergencyContact?: string;
+  healthNotes?: string;
+  idProofType?: string;
+  smsFacility?: boolean;
   trainerId?: string;
   memberType?: 'REGULAR' | 'PT';
   membershipStartDate?: string;
   membershipEndDate?: string;
+  coursePackageId?: string;
+  packageFees?: number;
+  maxDiscount?: number;
+  afterDiscount?: number;
+  extraDiscount?: number;
+  finalFees?: number;
 }
 
 export interface UpdateMemberRequest {
   firstName?: string;
   lastName?: string;
   phone?: string;
+  altContactNo?: string;
+  address?: string;
+  gender?: string;
+  occupation?: string;
+  maritalStatus?: string;
+  bloodGroup?: string;
+  dateOfBirth?: string;
+  anniversaryDate?: string;
+  emergencyContact?: string;
+  healthNotes?: string;
+  idProofType?: string;
+  smsFacility?: boolean;
+  isActive?: boolean;
   trainerId?: string;
   memberType?: 'REGULAR' | 'PT';
   membershipStartDate?: string;
   membershipEndDate?: string;
+  coursePackageId?: string;
+  packageFees?: number;
+  maxDiscount?: number;
+  afterDiscount?: number;
+  extraDiscount?: number;
+  finalFees?: number;
 }
 
 // PT Member Types
@@ -249,7 +307,7 @@ export interface CreateDietPlanRequest {
   isActive?: boolean;
 }
 
-export interface UpdateDietPlanRequest extends Partial<CreateDietPlanRequest> {}
+export interface UpdateDietPlanRequest extends Partial<CreateDietPlanRequest> { }
 
 export interface ExercisePlan {
   id: string;
@@ -272,7 +330,7 @@ export interface CreateExercisePlanRequest {
   isActive?: boolean;
 }
 
-export interface UpdateExercisePlanRequest extends Partial<CreateExercisePlanRequest> {}
+export interface UpdateExercisePlanRequest extends Partial<CreateExercisePlanRequest> { }
 
 export interface AssignPlanRequest {
   memberId: string;
@@ -302,6 +360,18 @@ export interface PaginationParams {
   memberType?: 'REGULAR' | 'PT';
   status?: string;
   isActive?: boolean;
+  // Member-specific filters
+  gender?: string;
+  bloodGroup?: string;
+  maritalStatus?: string;
+  smsFacility?: boolean;
+  // Date range filters
+  membershipStartFrom?: string;
+  membershipStartTo?: string;
+  membershipEndFrom?: string;
+  membershipEndTo?: string;
+  // Course package filter
+  coursePackageId?: string;
 }
 
 // Report Types
@@ -520,3 +590,59 @@ export interface UpdateCoursePackageRequest {
   discountType?: 'PERCENTAGE' | 'AMOUNT';
   isActive?: boolean;
 }
+
+// Member Balance Payment Types
+export interface MemberBalancePayment {
+  id: string;
+  receiptNo: string;
+  memberId: string;
+  memberName?: string;
+  paymentDate: Date;
+  contactNo?: string;
+  paidFees: number;
+  payMode: string;
+  nextPaymentDate?: Date;
+  notes?: string;
+  isActive: boolean;
+  gymId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy?: string;
+  updatedBy?: string;
+}
+
+export interface CreateMemberBalancePaymentRequest {
+  paymentDate?: string;
+  contactNo?: string;
+  paidFees: number;
+  payMode: string;
+  nextPaymentDate?: string;
+  notes?: string;
+}
+
+export interface UpdateMemberBalancePaymentRequest {
+  paymentDate?: string;
+  contactNo?: string;
+  paidFees?: number;
+  payMode?: string;
+  nextPaymentDate?: string;
+  notes?: string;
+  isActive?: boolean;
+}
+
+// Summary of member payments - used for tracking paid vs pending
+export interface MemberBalancePaymentSummary {
+  memberId: string;
+  memberName: string;
+  finalFees: number;
+  totalPaid: number;
+  pendingAmount: number;
+  paymentCount: number;
+}
+
+// Response with summary and payments list
+export interface MemberBalancePaymentResponse {
+  summary: MemberBalancePaymentSummary;
+  payments: MemberBalancePayment[];
+}
+

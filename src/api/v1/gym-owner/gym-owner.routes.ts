@@ -38,6 +38,10 @@ import {
   userIdParamSchema,
   createCoursePackageSchema,
   updateCoursePackageSchema,
+  createMemberBalancePaymentSchema,
+  updateMemberBalancePaymentSchema,
+  uploadMemberFiles,
+  handleUploadError,
 } from '../../../common/middleware';
 
 const router = Router();
@@ -119,10 +123,109 @@ router.patch('/trainers/:id/toggle-status', validate(idParamSchema, 'params'), g
  * @swagger
  * /api/v1/gym-owner/members:
  *   get:
- *     summary: Get all members
- *     tags: [Gym Owner]
+ *     summary: Get all members with filters and sorting
+ *     tags: [Gym Owner - Members]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of items per page
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Universal search - searches in name, email, phone, memberId, address, occupation, emergency contact, health notes
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           enum: [createdAt, name, firstName, email, memberId, phone, membershipStart, membershipEnd]
+ *           default: createdAt
+ *         description: Field to sort by
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           default: desc
+ *         description: Sort order
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [Active, InActive, Expired]
+ *         description: Filter by member status - Active (membership currently valid, today between start/end dates), InActive (soft deleted records), Expired (membership end date has passed)
+ *       - in: query
+ *         name: isActive
+ *         schema:
+ *           type: boolean
+ *         description: Filter by active status (use status parameter instead for better control)
+ *       - in: query
+ *         name: memberType
+ *         schema:
+ *           type: string
+ *           enum: [REGULAR, PT]
+ *         description: Filter by member type
+ *       - in: query
+ *         name: gender
+ *         schema:
+ *           type: string
+ *         description: Filter by gender
+ *       - in: query
+ *         name: bloodGroup
+ *         schema:
+ *           type: string
+ *         description: Filter by blood group
+ *       - in: query
+ *         name: maritalStatus
+ *         schema:
+ *           type: string
+ *         description: Filter by marital status
+ *       - in: query
+ *         name: smsFacility
+ *         schema:
+ *           type: boolean
+ *         description: Filter by SMS facility enabled
+ *       - in: query
+ *         name: membershipStartFrom
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter membership start date from (YYYY-MM-DD)
+ *       - in: query
+ *         name: membershipStartTo
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter membership start date to (YYYY-MM-DD)
+ *       - in: query
+ *         name: membershipEndFrom
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter membership end date from (YYYY-MM-DD)
+ *       - in: query
+ *         name: membershipEndTo
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter membership end date to (YYYY-MM-DD)
+ *       - in: query
+ *         name: coursePackageId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filter by course package ID
  *     responses:
  *       200:
  *         description: Members retrieved successfully
@@ -136,16 +239,185 @@ router.get('/members/:id', validate(idParamSchema, 'params'), gymOwnerController
  * /api/v1/gym-owner/members:
  *   post:
  *     summary: Create a new member
- *     tags: [Gym Owner]
+ *     tags: [Gym Owner - Members]
  *     security:
  *       - bearerAuth: []
+ *     consumes:
+ *       - multipart/form-data
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - firstName
+ *               - lastName
+ *               - email
+ *               - password
+ *               - phone
+ *             properties:
+ *               firstName:
+ *                 type: string
+ *               lastName:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               altContactNo:
+ *                 type: string
+ *               address:
+ *                 type: string
+ *               gender:
+ *                 type: string
+ *               occupation:
+ *                 type: string
+ *               maritalStatus:
+ *                 type: string
+ *               bloodGroup:
+ *                 type: string
+ *               dateOfBirth:
+ *                 type: string
+ *               anniversaryDate:
+ *                 type: string
+ *               emergencyContact:
+ *                 type: string
+ *               healthNotes:
+ *                 type: string
+ *               idProofType:
+ *                 type: string
+ *               smsFacility:
+ *                 type: boolean
+ *               membershipStartDate:
+ *                 type: string
+ *                 description: Membership start date (ISO format)
+ *               membershipEndDate:
+ *                 type: string
+ *                 description: Membership end date (ISO format)
+ *               coursePackageId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Course package ID
+ *               packageFees:
+ *                 type: number
+ *                 description: Original package fees
+ *               maxDiscount:
+ *                 type: number
+ *                 description: Maximum allowed discount
+ *               afterDiscount:
+ *                 type: number
+ *                 description: Amount after applying max discount
+ *               extraDiscount:
+ *                 type: number
+ *                 description: Additional extra discount
+ *               finalFees:
+ *                 type: number
+ *                 description: Final fees after all discounts
+ *               memberPhoto:
+ *                 type: string
+ *                 format: binary
+ *               idProofDocument:
+ *                 type: string
+ *                 format: binary
  *     responses:
  *       201:
  *         description: Member created successfully
  */
-router.post('/members', validate(createMemberSchema), gymOwnerController.createMember.bind(gymOwnerController));
+router.post('/members', uploadMemberFiles, handleUploadError, validate(createMemberSchema), gymOwnerController.createMember.bind(gymOwnerController));
 
-router.put('/members/:id', validate(idParamSchema, 'params'), validate(updateMemberSchema), gymOwnerController.updateMember.bind(gymOwnerController));
+/**
+ * @swagger
+ * /api/v1/gym-owner/members/{id}:
+ *   put:
+ *     summary: Update a member
+ *     tags: [Gym Owner - Members]
+ *     security:
+ *       - bearerAuth: []
+ *     consumes:
+ *       - multipart/form-data
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               firstName:
+ *                 type: string
+ *               lastName:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               altContactNo:
+ *                 type: string
+ *               address:
+ *                 type: string
+ *               gender:
+ *                 type: string
+ *               occupation:
+ *                 type: string
+ *               maritalStatus:
+ *                 type: string
+ *               bloodGroup:
+ *                 type: string
+ *               dateOfBirth:
+ *                 type: string
+ *               anniversaryDate:
+ *                 type: string
+ *               emergencyContact:
+ *                 type: string
+ *               healthNotes:
+ *                 type: string
+ *               idProofType:
+ *                 type: string
+ *               smsFacility:
+ *                 type: boolean
+ *               isActive:
+ *                 type: boolean
+ *               membershipStartDate:
+ *                 type: string
+ *                 description: Membership start date (ISO format)
+ *               membershipEndDate:
+ *                 type: string
+ *                 description: Membership end date (ISO format)
+ *               coursePackageId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Course package ID
+ *               packageFees:
+ *                 type: number
+ *                 description: Original package fees
+ *               maxDiscount:
+ *                 type: number
+ *                 description: Maximum allowed discount
+ *               afterDiscount:
+ *                 type: number
+ *                 description: Amount after applying max discount
+ *               extraDiscount:
+ *                 type: number
+ *                 description: Additional extra discount
+ *               finalFees:
+ *                 type: number
+ *                 description: Final fees after all discounts
+ *               memberPhoto:
+ *                 type: string
+ *                 format: binary
+ *               idProofDocument:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Member updated successfully
+ */
+router.put('/members/:id', uploadMemberFiles, handleUploadError, validate(idParamSchema, 'params'), validate(updateMemberSchema), gymOwnerController.updateMember.bind(gymOwnerController));
 
 router.delete('/members/:id', validate(idParamSchema, 'params'), gymOwnerController.deleteMember.bind(gymOwnerController));
 
@@ -1578,6 +1850,34 @@ router.patch('/member-inquiries/:id/toggle-status', validate(idParamSchema, 'par
 
 /**
  * @swagger
+ * /api/v1/gym-owner/course-packages/active:
+ *   get:
+ *     summary: Get all active course packages (no pagination)
+ *     description: Returns all active course packages for the gym owner without pagination. Useful for dropdowns and selection lists.
+ *     tags: [Gym Owner - Course Packages]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Active course packages retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/CoursePackage'
+ */
+router.get('/course-packages/active', gymOwnerController.getAllActiveCoursePackages.bind(gymOwnerController));
+
+/**
+ * @swagger
  * /api/v1/gym-owner/course-packages:
  *   get:
  *     summary: Get all course packages for the gym
@@ -1817,5 +2117,284 @@ router.delete('/course-packages/:id', validate(idParamSchema, 'params'), gymOwne
  *         description: Course package not found
  */
 router.patch('/course-packages/:id/toggle-status', validate(idParamSchema, 'params'), gymOwnerController.toggleCoursePackageStatus.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/course-packages/{id}/members:
+ *   get:
+ *     summary: Get course package with all active members
+ *     description: Returns the course package details along with all active members who are subscribed to this package. Active members are those with isActive=true and membership end date in the future.
+ *     tags: [Gym Owner - Course Packages]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Course Package ID
+ *     responses:
+ *       200:
+ *         description: Course package with active members retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     package:
+ *                       $ref: '#/components/schemas/CoursePackage'
+ *                     members:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/Member'
+ *                     totalActiveMembers:
+ *                       type: integer
+ *                       description: Total count of active members in this package
+ *       404:
+ *         description: Course package not found
+ */
+router.get('/course-packages/:id/members', validate(idParamSchema, 'params'), gymOwnerController.getCoursePackageWithActiveMembers.bind(gymOwnerController));
+
+// =============================================
+// Member Balance Payment Routes
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/member-balance-payments:
+ *   get:
+ *     summary: Get all balance payments for gym
+ *     description: Returns paginated list of all balance payments for the gym owner's gym
+ *     tags: [Gym Owner - Member Balance Payments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of items per page
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search by receipt number, member name, or contact
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           enum: [paymentDate, receiptNo, paidFees, createdAt]
+ *           default: paymentDate
+ *         description: Field to sort by
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           default: desc
+ *         description: Sort order
+ *     responses:
+ *       200:
+ *         description: Balance payments retrieved successfully
+ */
+router.get('/member-balance-payments', validate(paginationSchema, 'query'), gymOwnerController.getAllMemberBalancePayments.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/member-balance-payments/{id}:
+ *   get:
+ *     summary: Get balance payment by ID
+ *     description: Returns a specific balance payment by its ID
+ *     tags: [Gym Owner - Member Balance Payments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Balance Payment ID
+ *     responses:
+ *       200:
+ *         description: Balance payment retrieved successfully
+ *       404:
+ *         description: Payment not found
+ */
+router.get('/member-balance-payments/:id', validate(idParamSchema, 'params'), gymOwnerController.getMemberBalancePaymentById.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/member-balance-payments/{id}:
+ *   put:
+ *     summary: Update balance payment
+ *     description: Update an existing balance payment
+ *     tags: [Gym Owner - Member Balance Payments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Balance Payment ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               paymentDate:
+ *                 type: string
+ *                 format: date-time
+ *               contactNo:
+ *                 type: string
+ *               paidFees:
+ *                 type: number
+ *               payMode:
+ *                 type: string
+ *                 description: Payment mode (CASH, CARD, UPI, BANK_TRANSFER, CHEQUE)
+ *               nextPaymentDate:
+ *                 type: string
+ *                 format: date-time
+ *               notes:
+ *                 type: string
+ *               isActive:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Balance payment updated successfully
+ *       404:
+ *         description: Payment not found
+ */
+router.put('/member-balance-payments/:id', validate(idParamSchema, 'params'), validate(updateMemberBalancePaymentSchema), gymOwnerController.updateMemberBalancePayment.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/members/{memberId}/balance-payments:
+ *   get:
+ *     summary: Get all balance payments for a member
+ *     description: Returns payment summary (final fees, total paid, pending amount) and list of all payments for a specific member
+ *     tags: [Gym Owner - Member Balance Payments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: memberId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Member ID
+ *     responses:
+ *       200:
+ *         description: Member balance payments retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 summary:
+ *                   type: object
+ *                   properties:
+ *                     memberId:
+ *                       type: string
+ *                     memberName:
+ *                       type: string
+ *                     finalFees:
+ *                       type: number
+ *                       description: Total fees to be paid (from member profile)
+ *                     totalPaid:
+ *                       type: number
+ *                       description: Sum of all payments made
+ *                     pendingAmount:
+ *                       type: number
+ *                       description: Remaining amount to be paid
+ *                     paymentCount:
+ *                       type: integer
+ *                       description: Number of payments made
+ *                 payments:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       404:
+ *         description: Member not found
+ */
+router.get('/members/:memberId/balance-payments', validate(memberIdParamSchema, 'params'), gymOwnerController.getMemberBalancePayments.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/members/{memberId}/balance-payments:
+ *   post:
+ *     summary: Create a new balance payment for a member
+ *     description: Creates a new balance payment with auto-generated receipt number. The paidFees amount is added to the member's total paid amount.
+ *     tags: [Gym Owner - Member Balance Payments]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: memberId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Member ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - paidFees
+ *               - payMode
+ *             properties:
+ *               paymentDate:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Date of payment (defaults to now)
+ *               contactNo:
+ *                 type: string
+ *                 description: Contact number (defaults to member's phone)
+ *               paidFees:
+ *                 type: number
+ *                 description: Amount paid in this transaction
+ *               payMode:
+ *                 type: string
+ *                 description: Payment mode (CASH, CARD, UPI, BANK_TRANSFER, CHEQUE)
+ *               nextPaymentDate:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Optional next payment reminder date
+ *               notes:
+ *                 type: string
+ *                 description: Optional payment notes
+ *     responses:
+ *       201:
+ *         description: Balance payment created successfully
+ *       404:
+ *         description: Member not found
+ */
+router.post('/members/:memberId/balance-payments', validate(memberIdParamSchema, 'params'), validate(createMemberBalancePaymentSchema), gymOwnerController.createMemberBalancePayment.bind(gymOwnerController));
 
 export default router;
