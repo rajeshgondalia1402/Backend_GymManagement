@@ -40,6 +40,9 @@ import {
   updateCoursePackageSchema,
   createMemberBalancePaymentSchema,
   updateMemberBalancePaymentSchema,
+  createMembershipRenewalSchema,
+  updateMembershipRenewalSchema,
+  renewalPaginationSchema,
   uploadMemberFiles,
   handleUploadError,
 } from '../../../common/middleware';
@@ -2396,5 +2399,382 @@ router.get('/members/:memberId/balance-payments', validate(memberIdParamSchema, 
  *         description: Member not found
  */
 router.post('/members/:memberId/balance-payments', validate(memberIdParamSchema, 'params'), validate(createMemberBalancePaymentSchema), gymOwnerController.createMemberBalancePayment.bind(gymOwnerController));
+
+// =============================================
+// Membership Renewal Routes
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/membership-renewals:
+ *   get:
+ *     summary: Get all membership renewals with filters and pagination
+ *     description: Retrieve all membership renewals for the gym with optional filters for search, renewal type, payment status, and date range
+ *     tags: [Gym Owner - Membership Renewals]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of items per page
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search by renewal number, member name, email, phone, or member ID
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           enum: [renewalDate, createdAt, renewalNumber, memberName]
+ *           default: renewalDate
+ *         description: Field to sort by
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           default: desc
+ *         description: Sort order
+ *       - in: query
+ *         name: renewalType
+ *         schema:
+ *           type: string
+ *           enum: [STANDARD, EARLY, LATE, UPGRADE, DOWNGRADE]
+ *         description: Filter by renewal type
+ *       - in: query
+ *         name: paymentStatus
+ *         schema:
+ *           type: string
+ *           enum: [PAID, PENDING, PARTIAL]
+ *         description: Filter by payment status
+ *       - in: query
+ *         name: renewalDateFrom
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter renewal date from (YYYY-MM-DD)
+ *       - in: query
+ *         name: renewalDateTo
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter renewal date to (YYYY-MM-DD)
+ *     responses:
+ *       200:
+ *         description: Membership renewals retrieved successfully
+ */
+router.get('/membership-renewals', validate(renewalPaginationSchema, 'query'), gymOwnerController.getMembershipRenewals.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/membership-renewals:
+ *   post:
+ *     summary: Create a new membership renewal for a member
+ *     description: |
+ *       Creates a new membership renewal record. This action:
+ *       - Only works for Active or Expired members (not soft-deleted/InActive)
+ *       - Creates a NEW ROW in the renewal history (historical tracking)
+ *       - Updates the member's current membership start and end dates
+ *       - Auto-generates a renewal number (REN-XXXXX)
+ *       - Auto-determines renewal type (STANDARD, EARLY, LATE) if not provided
+ *     tags: [Gym Owner - Membership Renewals]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - memberId
+ *               - newMembershipStart
+ *               - newMembershipEnd
+ *             properties:
+ *               memberId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: ID of the member to renew
+ *               newMembershipStart:
+ *                 type: string
+ *                 format: date
+ *                 description: New membership start date (ISO format)
+ *               newMembershipEnd:
+ *                 type: string
+ *                 format: date
+ *                 description: New membership end date (ISO format)
+ *               renewalType:
+ *                 type: string
+ *                 enum: [STANDARD, EARLY, LATE, UPGRADE, DOWNGRADE]
+ *                 description: Type of renewal (auto-detected if not provided)
+ *               coursePackageId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Course package ID for the renewal
+ *               packageFees:
+ *                 type: number
+ *                 description: Original package fees
+ *               maxDiscount:
+ *                 type: number
+ *                 description: Maximum allowed discount
+ *               afterDiscount:
+ *                 type: number
+ *                 description: Amount after applying max discount
+ *               extraDiscount:
+ *                 type: number
+ *                 description: Additional extra discount
+ *               finalFees:
+ *                 type: number
+ *                 description: Final fees after all discounts
+ *               paymentMode:
+ *                 type: string
+ *                 description: Payment mode (CASH, CARD, UPI, BANK_TRANSFER, etc.)
+ *               paidAmount:
+ *                 type: number
+ *                 description: Amount paid at renewal
+ *               notes:
+ *                 type: string
+ *                 description: Optional notes for the renewal
+ *     responses:
+ *       201:
+ *         description: Membership renewed successfully
+ *       400:
+ *         description: Cannot renew inactive member
+ *       404:
+ *         description: Member not found
+ */
+router.post('/membership-renewals', validate(createMembershipRenewalSchema), gymOwnerController.createMembershipRenewal.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/membership-renewals/{id}:
+ *   get:
+ *     summary: Get a membership renewal by ID
+ *     tags: [Gym Owner - Membership Renewals]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Renewal ID
+ *     responses:
+ *       200:
+ *         description: Membership renewal retrieved successfully
+ *       404:
+ *         description: Renewal not found
+ */
+router.get('/membership-renewals/:id', validate(idParamSchema, 'params'), gymOwnerController.getMembershipRenewalById.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/membership-renewals/{id}:
+ *   put:
+ *     summary: Update a membership renewal (mainly for payment updates)
+ *     tags: [Gym Owner - Membership Renewals]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Renewal ID
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               paymentStatus:
+ *                 type: string
+ *                 enum: [PAID, PENDING, PARTIAL]
+ *                 description: Update payment status
+ *               paymentMode:
+ *                 type: string
+ *                 description: Update payment mode
+ *               paidAmount:
+ *                 type: number
+ *                 description: Update paid amount (auto-recalculates pending amount and status)
+ *               notes:
+ *                 type: string
+ *                 description: Update notes
+ *               isActive:
+ *                 type: boolean
+ *                 description: Soft delete/restore the renewal record
+ *     responses:
+ *       200:
+ *         description: Membership renewal updated successfully
+ *       404:
+ *         description: Renewal not found
+ */
+router.put('/membership-renewals/:id', validate(idParamSchema, 'params'), validate(updateMembershipRenewalSchema), gymOwnerController.updateMembershipRenewal.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/members/{memberId}/renewal-history:
+ *   get:
+ *     summary: Get complete renewal history for a specific member
+ *     description: Returns member details, current status, and all historical renewal records
+ *     tags: [Gym Owner - Membership Renewals]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: memberId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Member ID
+ *     responses:
+ *       200:
+ *         description: Member renewal history retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 member:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                     memberId:
+ *                       type: string
+ *                     name:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     phone:
+ *                       type: string
+ *                     currentMembershipStart:
+ *                       type: string
+ *                       format: date-time
+ *                     currentMembershipEnd:
+ *                       type: string
+ *                       format: date-time
+ *                     memberStatus:
+ *                       type: string
+ *                       enum: [Active, Expired, InActive]
+ *                 totalRenewals:
+ *                   type: integer
+ *                   description: Total number of renewals
+ *                 renewals:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       404:
+ *         description: Member not found
+ */
+router.get('/members/:memberId/renewal-history', validate(memberIdParamSchema, 'params'), gymOwnerController.getMemberRenewalHistory.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/reports/renewal-rate:
+ *   get:
+ *     summary: Get comprehensive renewal rate report for the gym
+ *     description: |
+ *       Returns detailed analytics about membership renewals including:
+ *       - Total members, active, and expired counts
+ *       - Overall renewal rate percentage
+ *       - Breakdown by renewal type (STANDARD, EARLY, LATE, etc.)
+ *       - Breakdown by payment status (PAID, PENDING, PARTIAL)
+ *       - Monthly renewal trends for the last 12 months
+ *       - Total revenue from renewals
+ *       - Package popularity in renewals
+ *     tags: [Gym Owner - Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Renewal rate report retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalMembers:
+ *                   type: integer
+ *                 totalActiveMembers:
+ *                   type: integer
+ *                 totalExpiredMembers:
+ *                   type: integer
+ *                 totalRenewals:
+ *                   type: integer
+ *                 renewalRate:
+ *                   type: number
+ *                   description: Percentage of members who have renewed
+ *                 renewalsByType:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       type:
+ *                         type: string
+ *                       count:
+ *                         type: integer
+ *                       percentage:
+ *                         type: number
+ *                 renewalsByPaymentStatus:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       status:
+ *                         type: string
+ *                       count:
+ *                         type: integer
+ *                       totalAmount:
+ *                         type: number
+ *                 monthlyRenewals:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       month:
+ *                         type: string
+ *                       renewalCount:
+ *                         type: integer
+ *                       newMemberCount:
+ *                         type: integer
+ *                       expiredCount:
+ *                         type: integer
+ *                       renewalRate:
+ *                         type: number
+ *                 totalRenewalRevenue:
+ *                   type: number
+ *                 averageRenewalFees:
+ *                   type: number
+ *                 packageRenewalStats:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       packageId:
+ *                         type: string
+ *                       packageName:
+ *                         type: string
+ *                       renewalCount:
+ *                         type: integer
+ *                       totalRevenue:
+ *                         type: number
+ */
+router.get('/reports/renewal-rate', gymOwnerController.getRenewalRateReport.bind(gymOwnerController));
 
 export default router;

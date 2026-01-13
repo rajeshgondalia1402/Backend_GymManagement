@@ -163,6 +163,7 @@ model Member {
   ptMember            PTMember?
   memberDietPlans     MemberDietPlan[]
   balancePayments     MemberBalancePayment[]     // Balance payment records
+  membershipRenewals  MembershipRenewal[]        // Membership renewal history
 
   @@index([gymId])
   @@index([membershipStatus])
@@ -571,4 +572,68 @@ model CoursePackage {
   @@index([gymId])
   @@index([packageName])
   @@index([isActive])
+}
+
+// Membership Renewal - Every renewal creates a NEW ROW for historical tracking
+model MembershipRenewal {
+  id                      String    @id @default(uuid())
+  renewalNumber           String    // Auto-generated renewal number (e.g., REN-001)
+  memberId                String    // Reference to Member
+  gymId                   String    // Reference to Gym for ownership
+  
+  // Previous membership dates (before renewal)
+  previousMembershipStart DateTime
+  previousMembershipEnd   DateTime
+  
+  // New membership dates (after renewal)  
+  newMembershipStart      DateTime
+  newMembershipEnd        DateTime
+  
+  // Renewal details
+  renewalDate             DateTime  @default(now()) // When the renewal was processed
+  renewalType             RenewalType @default(STANDARD) // Type of renewal
+  
+  // Package and fees
+  coursePackageId         String?   // Course package used for renewal
+  packageFees             Decimal?  @db.Decimal(10, 2)
+  maxDiscount             Decimal?  @db.Decimal(10, 2)
+  afterDiscount           Decimal?  @db.Decimal(10, 2)
+  extraDiscount           Decimal?  @db.Decimal(10, 2)
+  finalFees               Decimal?  @db.Decimal(10, 2)
+  
+  // Payment info
+  paymentStatus           PaymentStatus @default(PENDING)
+  paymentMode             String?   // CASH, CARD, UPI, BANK_TRANSFER, etc.
+  paidAmount              Decimal?  @db.Decimal(10, 2)
+  pendingAmount           Decimal?  @db.Decimal(10, 2)
+  
+  notes                   String?
+  isActive                Boolean   @default(true)
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  createdBy               String?
+  updatedBy               String?
+  
+  member                  Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@map("membershiprenewal")
+  @@index([memberId])
+  @@index([gymId])
+  @@index([renewalNumber])
+  @@index([renewalDate])
+  @@index([paymentStatus])
+}
+
+enum RenewalType {
+  STANDARD      // Regular renewal
+  EARLY         // Renewed before expiry
+  LATE          // Renewed after expiry (lapsed member returning)
+  UPGRADE       // Upgraded to a different package
+  DOWNGRADE     // Downgraded to a different package
+}
+
+enum PaymentStatus {
+  PAID
+  PENDING
+  PARTIAL
 }

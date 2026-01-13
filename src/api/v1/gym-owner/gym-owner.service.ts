@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { prisma } from '../../../config/database';
-import { NotFoundException, ConflictException, ForbiddenException } from '../../../common/exceptions';
+import { NotFoundException, ConflictException, ForbiddenException, BadRequestException } from '../../../common/exceptions';
 import {
   Trainer,
   CreateTrainerRequest,
@@ -55,6 +55,13 @@ import {
   CreateMemberBalancePaymentRequest,
   UpdateMemberBalancePaymentRequest,
   MemberBalancePaymentResponse,
+  MembershipRenewal,
+  CreateMembershipRenewalRequest,
+  UpdateMembershipRenewalRequest,
+  MemberRenewalHistory,
+  RenewalRateReport,
+  RenewalType,
+  PaymentStatus,
 } from './gym-owner.types';
 
 class GymOwnerService {
@@ -2958,6 +2965,25 @@ class GymOwnerService {
     });
     if (!member) throw new NotFoundException('Member not found');
 
+    // Validate payment doesn't exceed final fees
+    const finalFees = member.finalFees ? Number(member.finalFees) : 0;
+
+    // Get total already paid
+    const existingPayments = await prisma.memberBalancePayment.findMany({
+      where: { memberId, gymId, isActive: true },
+      select: { paidFees: true }
+    });
+    const totalAlreadyPaid = existingPayments.reduce((sum, p) => sum + Number(p.paidFees), 0);
+
+    // Check if new payment would exceed final fees
+    const newTotalPaid = totalAlreadyPaid + Number(data.paidFees);
+    if (finalFees > 0 && newTotalPaid > finalFees) {
+      const remainingAmount = finalFees - totalAlreadyPaid;
+      throw new ForbiddenException(
+        `Payment amount exceeds remaining balance. Final Fees: ₹${finalFees}, Already Paid: ₹${totalAlreadyPaid}, Remaining: ₹${remainingAmount}. Maximum payment allowed: ₹${remainingAmount}`
+      );
+    }
+
     const receiptNo = await this.generateReceiptNo(gymId);
 
     const payment = await prisma.memberBalancePayment.create({
@@ -3169,6 +3195,668 @@ class GymOwnerService {
     }));
 
     return { payments, total };
+  }
+
+  // =============================================
+  // Membership Renewal Methods
+  // =============================================
+
+  /**
+   * Create a new membership renewal
+   * - Only Active or Expired members can renew (not InActive/soft-deleted)
+   * - Creates a NEW row in MembershipRenewal table (historical tracking)
+   * - Updates the member's current membership dates
+   */
+  async createMembershipRenewal(
+    gymId: string,
+    userId: string,
+    data: CreateMembershipRenewalRequest
+  ): Promise<MembershipRenewal> {
+    // Get member and validate ownership
+    const member = await prisma.member.findFirst({
+      where: { id: data.memberId, gymId },
+      include: { user: { select: { name: true, email: true } } }
+    });
+
+    if (!member) {
+      throw new NotFoundException('Member not found');
+    }
+
+    // Check if member is Active or Expired (not InActive/soft-deleted)
+    if (!member.isActive) {
+      throw new BadRequestException('Cannot renew membership for inactive (soft-deleted) members. Please reactivate the member first.');
+    }
+
+    // Determine renewal type based on dates
+    const today = new Date();
+    let renewalType: RenewalType = data.renewalType || 'STANDARD';
+
+    if (!data.renewalType) {
+      if (member.membershipEnd < today) {
+        renewalType = 'LATE'; // Expired member returning
+      } else if (member.membershipEnd > new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)) {
+        renewalType = 'EARLY'; // More than 7 days left
+      }
+    }
+
+    // Generate auto-increment renewal number
+    const lastRenewal = await prisma.membershipRenewal.findFirst({
+      where: { gymId },
+      orderBy: { createdAt: 'desc' },
+      select: { renewalNumber: true }
+    });
+
+    let nextNumber = 1;
+    if (lastRenewal?.renewalNumber) {
+      const match = lastRenewal.renewalNumber.match(/REN-(\d+)/);
+      if (match) {
+        nextNumber = parseInt(match[1]) + 1;
+      }
+    }
+    const renewalNumber = `REN-${String(nextNumber).padStart(5, '0')}`;
+
+    const newMembershipStart = new Date(data.newMembershipStart);
+    const newMembershipEnd = new Date(data.newMembershipEnd);
+
+    // Calculate payment status and amounts
+    const finalFees = data.finalFees || 0;
+    const paidAmount = data.paidAmount || 0;
+    const pendingAmount = Math.max(0, finalFees - paidAmount);
+
+    let paymentStatus: PaymentStatus = 'PENDING';
+    if (paidAmount >= finalFees && finalFees > 0) {
+      paymentStatus = 'PAID';
+    } else if (paidAmount > 0) {
+      paymentStatus = 'PARTIAL';
+    }
+
+    // Create renewal record and update member in transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // Create the renewal record (NEW ROW - historical tracking)
+      const renewal = await tx.membershipRenewal.create({
+        data: {
+          renewalNumber,
+          memberId: data.memberId,
+          gymId,
+
+          // Previous dates (current member dates before renewal)
+          previousMembershipStart: member.membershipStart,
+          previousMembershipEnd: member.membershipEnd,
+
+          // New dates
+          newMembershipStart,
+          newMembershipEnd,
+
+          // Renewal details
+          renewalType,
+
+          // Package and fees
+          coursePackageId: data.coursePackageId,
+          packageFees: data.packageFees,
+          maxDiscount: data.maxDiscount,
+          afterDiscount: data.afterDiscount,
+          extraDiscount: data.extraDiscount,
+          finalFees: data.finalFees,
+
+          // Payment
+          paymentStatus,
+          paymentMode: data.paymentMode,
+          paidAmount,
+          pendingAmount,
+
+          notes: data.notes,
+          createdBy: userId,
+        },
+        include: {
+          member: {
+            include: {
+              user: { select: { name: true, email: true } }
+            }
+          }
+        }
+      });
+
+      // Update member's current membership dates
+      await tx.member.update({
+        where: { id: data.memberId },
+        data: {
+          membershipStart: newMembershipStart,
+          membershipEnd: newMembershipEnd,
+          coursePackageId: data.coursePackageId || member.coursePackageId,
+          packageFees: data.packageFees,
+          maxDiscount: data.maxDiscount,
+          afterDiscount: data.afterDiscount,
+          extraDiscount: data.extraDiscount,
+          finalFees: data.finalFees,
+          updatedBy: userId,
+        }
+      });
+
+      return renewal;
+    });
+
+    // Map to response type
+    return {
+      id: result.id,
+      renewalNumber: result.renewalNumber,
+      memberId: result.memberId,
+      memberName: result.member.user.name,
+      memberEmail: result.member.user.email,
+      memberPhone: result.member.phone || undefined,
+      gymId: result.gymId,
+      previousMembershipStart: result.previousMembershipStart,
+      previousMembershipEnd: result.previousMembershipEnd,
+      newMembershipStart: result.newMembershipStart,
+      newMembershipEnd: result.newMembershipEnd,
+      renewalDate: result.renewalDate,
+      renewalType: result.renewalType as RenewalType,
+      coursePackageId: result.coursePackageId || undefined,
+      packageFees: result.packageFees ? Number(result.packageFees) : undefined,
+      maxDiscount: result.maxDiscount ? Number(result.maxDiscount) : undefined,
+      afterDiscount: result.afterDiscount ? Number(result.afterDiscount) : undefined,
+      extraDiscount: result.extraDiscount ? Number(result.extraDiscount) : undefined,
+      finalFees: result.finalFees ? Number(result.finalFees) : undefined,
+      paymentStatus: result.paymentStatus as PaymentStatus,
+      paymentMode: result.paymentMode || undefined,
+      paidAmount: result.paidAmount ? Number(result.paidAmount) : undefined,
+      pendingAmount: result.pendingAmount ? Number(result.pendingAmount) : undefined,
+      notes: result.notes || undefined,
+      isActive: result.isActive,
+      createdAt: result.createdAt,
+      updatedAt: result.updatedAt,
+      createdBy: result.createdBy || undefined,
+      updatedBy: result.updatedBy || undefined,
+    };
+  }
+
+  /**
+   * Get all membership renewals with filters and pagination
+   */
+  async getMembershipRenewals(
+    gymId: string,
+    params: PaginationParams & {
+      renewalType?: RenewalType;
+      paymentStatus?: PaymentStatus;
+      renewalDateFrom?: string;
+      renewalDateTo?: string;
+    }
+  ): Promise<{ renewals: MembershipRenewal[]; total: number }> {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      sortBy = 'renewalDate',
+      sortOrder = 'desc',
+      renewalType,
+      paymentStatus,
+      renewalDateFrom,
+      renewalDateTo,
+    } = params;
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      gymId,
+      isActive: true,
+      ...(renewalType && { renewalType }),
+      ...(paymentStatus && { paymentStatus }),
+      ...(search && {
+        OR: [
+          { renewalNumber: { contains: search, mode: 'insensitive' as const } },
+          { member: { user: { name: { contains: search, mode: 'insensitive' as const } } } },
+          { member: { user: { email: { contains: search, mode: 'insensitive' as const } } } },
+          { member: { phone: { contains: search, mode: 'insensitive' as const } } },
+          { member: { memberId: { contains: search, mode: 'insensitive' as const } } },
+        ],
+      }),
+      ...(renewalDateFrom || renewalDateTo ? {
+        renewalDate: {
+          ...(renewalDateFrom && { gte: new Date(renewalDateFrom) }),
+          ...(renewalDateTo && { lte: new Date(renewalDateTo) }),
+        },
+      } : {}),
+    };
+
+    const [renewalRecords, total] = await Promise.all([
+      prisma.membershipRenewal.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          member: {
+            include: {
+              user: { select: { name: true, email: true } }
+            }
+          }
+        }
+      }),
+      prisma.membershipRenewal.count({ where }),
+    ]);
+
+    const renewals: MembershipRenewal[] = renewalRecords.map(r => ({
+      id: r.id,
+      renewalNumber: r.renewalNumber,
+      memberId: r.memberId,
+      memberName: r.member.user.name,
+      memberEmail: r.member.user.email,
+      memberPhone: r.member.phone || undefined,
+      gymId: r.gymId,
+      previousMembershipStart: r.previousMembershipStart,
+      previousMembershipEnd: r.previousMembershipEnd,
+      newMembershipStart: r.newMembershipStart,
+      newMembershipEnd: r.newMembershipEnd,
+      renewalDate: r.renewalDate,
+      renewalType: r.renewalType as RenewalType,
+      coursePackageId: r.coursePackageId || undefined,
+      packageFees: r.packageFees ? Number(r.packageFees) : undefined,
+      maxDiscount: r.maxDiscount ? Number(r.maxDiscount) : undefined,
+      afterDiscount: r.afterDiscount ? Number(r.afterDiscount) : undefined,
+      extraDiscount: r.extraDiscount ? Number(r.extraDiscount) : undefined,
+      finalFees: r.finalFees ? Number(r.finalFees) : undefined,
+      paymentStatus: r.paymentStatus as PaymentStatus,
+      paymentMode: r.paymentMode || undefined,
+      paidAmount: r.paidAmount ? Number(r.paidAmount) : undefined,
+      pendingAmount: r.pendingAmount ? Number(r.pendingAmount) : undefined,
+      notes: r.notes || undefined,
+      isActive: r.isActive,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+      createdBy: r.createdBy || undefined,
+      updatedBy: r.updatedBy || undefined,
+    }));
+
+    return { renewals, total };
+  }
+
+  /**
+   * Get membership renewal by ID
+   */
+  async getMembershipRenewalById(gymId: string, renewalId: string): Promise<MembershipRenewal> {
+    const renewal = await prisma.membershipRenewal.findFirst({
+      where: { id: renewalId, gymId },
+      include: {
+        member: {
+          include: {
+            user: { select: { name: true, email: true } }
+          }
+        }
+      }
+    });
+
+    if (!renewal) {
+      throw new NotFoundException('Membership renewal not found');
+    }
+
+    return {
+      id: renewal.id,
+      renewalNumber: renewal.renewalNumber,
+      memberId: renewal.memberId,
+      memberName: renewal.member.user.name,
+      memberEmail: renewal.member.user.email,
+      memberPhone: renewal.member.phone || undefined,
+      gymId: renewal.gymId,
+      previousMembershipStart: renewal.previousMembershipStart,
+      previousMembershipEnd: renewal.previousMembershipEnd,
+      newMembershipStart: renewal.newMembershipStart,
+      newMembershipEnd: renewal.newMembershipEnd,
+      renewalDate: renewal.renewalDate,
+      renewalType: renewal.renewalType as RenewalType,
+      coursePackageId: renewal.coursePackageId || undefined,
+      packageFees: renewal.packageFees ? Number(renewal.packageFees) : undefined,
+      maxDiscount: renewal.maxDiscount ? Number(renewal.maxDiscount) : undefined,
+      afterDiscount: renewal.afterDiscount ? Number(renewal.afterDiscount) : undefined,
+      extraDiscount: renewal.extraDiscount ? Number(renewal.extraDiscount) : undefined,
+      finalFees: renewal.finalFees ? Number(renewal.finalFees) : undefined,
+      paymentStatus: renewal.paymentStatus as PaymentStatus,
+      paymentMode: renewal.paymentMode || undefined,
+      paidAmount: renewal.paidAmount ? Number(renewal.paidAmount) : undefined,
+      pendingAmount: renewal.pendingAmount ? Number(renewal.pendingAmount) : undefined,
+      notes: renewal.notes || undefined,
+      isActive: renewal.isActive,
+      createdAt: renewal.createdAt,
+      updatedAt: renewal.updatedAt,
+      createdBy: renewal.createdBy || undefined,
+      updatedBy: renewal.updatedBy || undefined,
+    };
+  }
+
+  /**
+   * Get member renewal history - all renewals for a specific member
+   */
+  async getMemberRenewalHistory(gymId: string, memberId: string): Promise<MemberRenewalHistory> {
+    const member = await prisma.member.findFirst({
+      where: { id: memberId, gymId },
+      include: { user: { select: { name: true, email: true } } }
+    });
+
+    if (!member) {
+      throw new NotFoundException('Member not found');
+    }
+
+    const renewals = await prisma.membershipRenewal.findMany({
+      where: { memberId, gymId, isActive: true },
+      orderBy: { renewalDate: 'desc' },
+      include: {
+        member: {
+          include: {
+            user: { select: { name: true, email: true } }
+          }
+        }
+      }
+    });
+
+    // Determine member status
+    const today = new Date();
+    let memberStatus: 'Active' | 'Expired' | 'InActive' = 'Active';
+    if (!member.isActive) {
+      memberStatus = 'InActive';
+    } else if (member.membershipEnd < today) {
+      memberStatus = 'Expired';
+    }
+
+    return {
+      member: {
+        id: member.id,
+        memberId: member.memberId || undefined,
+        name: member.user.name,
+        email: member.user.email,
+        phone: member.phone || undefined,
+        currentMembershipStart: member.membershipStart,
+        currentMembershipEnd: member.membershipEnd,
+        memberStatus,
+      },
+      totalRenewals: renewals.length,
+      renewals: renewals.map(r => ({
+        id: r.id,
+        renewalNumber: r.renewalNumber,
+        memberId: r.memberId,
+        memberName: r.member.user.name,
+        memberEmail: r.member.user.email,
+        memberPhone: r.member.phone || undefined,
+        gymId: r.gymId,
+        previousMembershipStart: r.previousMembershipStart,
+        previousMembershipEnd: r.previousMembershipEnd,
+        newMembershipStart: r.newMembershipStart,
+        newMembershipEnd: r.newMembershipEnd,
+        renewalDate: r.renewalDate,
+        renewalType: r.renewalType as RenewalType,
+        coursePackageId: r.coursePackageId || undefined,
+        packageFees: r.packageFees ? Number(r.packageFees) : undefined,
+        maxDiscount: r.maxDiscount ? Number(r.maxDiscount) : undefined,
+        afterDiscount: r.afterDiscount ? Number(r.afterDiscount) : undefined,
+        extraDiscount: r.extraDiscount ? Number(r.extraDiscount) : undefined,
+        finalFees: r.finalFees ? Number(r.finalFees) : undefined,
+        paymentStatus: r.paymentStatus as PaymentStatus,
+        paymentMode: r.paymentMode || undefined,
+        paidAmount: r.paidAmount ? Number(r.paidAmount) : undefined,
+        pendingAmount: r.pendingAmount ? Number(r.pendingAmount) : undefined,
+        notes: r.notes || undefined,
+        isActive: r.isActive,
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+        createdBy: r.createdBy || undefined,
+        updatedBy: r.updatedBy || undefined,
+      })),
+    };
+  }
+
+  /**
+   * Update membership renewal (mainly for payment updates)
+   */
+  async updateMembershipRenewal(
+    gymId: string,
+    userId: string,
+    renewalId: string,
+    data: UpdateMembershipRenewalRequest
+  ): Promise<MembershipRenewal> {
+    const existing = await prisma.membershipRenewal.findFirst({
+      where: { id: renewalId, gymId }
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Membership renewal not found');
+    }
+
+    // Recalculate payment amounts if paidAmount updated
+    let updateData: any = { ...data, updatedBy: userId };
+
+    if (data.paidAmount !== undefined) {
+      const finalFees = Number(existing.finalFees) || 0;
+      const paidAmount = data.paidAmount;
+      const pendingAmount = Math.max(0, finalFees - paidAmount);
+
+      let paymentStatus = data.paymentStatus || existing.paymentStatus;
+      if (paidAmount >= finalFees && finalFees > 0) {
+        paymentStatus = 'PAID';
+      } else if (paidAmount > 0) {
+        paymentStatus = 'PARTIAL';
+      } else {
+        paymentStatus = 'PENDING';
+      }
+
+      updateData = {
+        ...updateData,
+        paidAmount,
+        pendingAmount,
+        paymentStatus,
+      };
+    }
+
+    const updated = await prisma.membershipRenewal.update({
+      where: { id: renewalId },
+      data: updateData,
+      include: {
+        member: {
+          include: {
+            user: { select: { name: true, email: true } }
+          }
+        }
+      }
+    });
+
+    return {
+      id: updated.id,
+      renewalNumber: updated.renewalNumber,
+      memberId: updated.memberId,
+      memberName: updated.member.user.name,
+      memberEmail: updated.member.user.email,
+      memberPhone: updated.member.phone || undefined,
+      gymId: updated.gymId,
+      previousMembershipStart: updated.previousMembershipStart,
+      previousMembershipEnd: updated.previousMembershipEnd,
+      newMembershipStart: updated.newMembershipStart,
+      newMembershipEnd: updated.newMembershipEnd,
+      renewalDate: updated.renewalDate,
+      renewalType: updated.renewalType as RenewalType,
+      coursePackageId: updated.coursePackageId || undefined,
+      packageFees: updated.packageFees ? Number(updated.packageFees) : undefined,
+      maxDiscount: updated.maxDiscount ? Number(updated.maxDiscount) : undefined,
+      afterDiscount: updated.afterDiscount ? Number(updated.afterDiscount) : undefined,
+      extraDiscount: updated.extraDiscount ? Number(updated.extraDiscount) : undefined,
+      finalFees: updated.finalFees ? Number(updated.finalFees) : undefined,
+      paymentStatus: updated.paymentStatus as PaymentStatus,
+      paymentMode: updated.paymentMode || undefined,
+      paidAmount: updated.paidAmount ? Number(updated.paidAmount) : undefined,
+      pendingAmount: updated.pendingAmount ? Number(updated.pendingAmount) : undefined,
+      notes: updated.notes || undefined,
+      isActive: updated.isActive,
+      createdAt: updated.createdAt,
+      updatedAt: updated.updatedAt,
+      createdBy: updated.createdBy || undefined,
+      updatedBy: updated.updatedBy || undefined,
+    };
+  }
+
+  /**
+   * Get Renewal Rate Report - comprehensive analytics for gym owner
+   */
+  async getRenewalRateReport(gymId: string): Promise<RenewalRateReport> {
+    const today = new Date();
+    const twelveMonthsAgo = new Date(today);
+    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+
+    // Get member counts
+    const [totalMembers, totalActiveMembers, totalExpiredMembers] = await Promise.all([
+      prisma.member.count({ where: { gymId, isActive: true } }),
+      prisma.member.count({
+        where: {
+          gymId,
+          isActive: true,
+          membershipStart: { lte: today },
+          membershipEnd: { gte: today },
+        }
+      }),
+      prisma.member.count({
+        where: {
+          gymId,
+          isActive: true,
+          membershipEnd: { lt: today },
+        }
+      }),
+    ]);
+
+    // Get all renewals
+    const allRenewals = await prisma.membershipRenewal.findMany({
+      where: { gymId, isActive: true }
+    });
+
+    const totalRenewals = allRenewals.length;
+
+    // Calculate renewal rate (members who have renewed at least once / total members)
+    const membersWithRenewals = new Set(allRenewals.map(r => r.memberId)).size;
+    const renewalRate = totalMembers > 0 ? (membersWithRenewals / totalMembers) * 100 : 0;
+
+    // Renewals by type
+    const renewalTypeCount: Record<RenewalType, number> = {
+      'STANDARD': 0,
+      'EARLY': 0,
+      'LATE': 0,
+      'UPGRADE': 0,
+      'DOWNGRADE': 0,
+    };
+    allRenewals.forEach(r => {
+      renewalTypeCount[r.renewalType as RenewalType]++;
+    });
+    const renewalsByType = Object.entries(renewalTypeCount).map(([type, count]) => ({
+      type: type as RenewalType,
+      count,
+      percentage: totalRenewals > 0 ? (count / totalRenewals) * 100 : 0,
+    }));
+
+    // Renewals by payment status
+    const paymentStatusCount: Record<PaymentStatus, { count: number; amount: number }> = {
+      'PAID': { count: 0, amount: 0 },
+      'PENDING': { count: 0, amount: 0 },
+      'PARTIAL': { count: 0, amount: 0 },
+    };
+    allRenewals.forEach(r => {
+      paymentStatusCount[r.paymentStatus as PaymentStatus].count++;
+      paymentStatusCount[r.paymentStatus as PaymentStatus].amount += Number(r.finalFees) || 0;
+    });
+    const renewalsByPaymentStatus = Object.entries(paymentStatusCount).map(([status, data]) => ({
+      status: status as PaymentStatus,
+      count: data.count,
+      totalAmount: data.amount,
+    }));
+
+    // Monthly renewal trends (last 12 months)
+    const monthlyData: Map<string, { renewalCount: number; newMemberCount: number; expiredCount: number }> = new Map();
+
+    for (let i = 0; i < 12; i++) {
+      const monthDate = new Date(today);
+      monthDate.setMonth(monthDate.getMonth() - i);
+      const monthKey = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
+      monthlyData.set(monthKey, { renewalCount: 0, newMemberCount: 0, expiredCount: 0 });
+    }
+
+    // Count renewals per month
+    allRenewals.forEach(r => {
+      const monthKey = `${r.renewalDate.getFullYear()}-${String(r.renewalDate.getMonth() + 1).padStart(2, '0')}`;
+      if (monthlyData.has(monthKey)) {
+        monthlyData.get(monthKey)!.renewalCount++;
+      }
+    });
+
+    // Get new members per month
+    const newMembers = await prisma.member.findMany({
+      where: { gymId, createdAt: { gte: twelveMonthsAgo } },
+      select: { createdAt: true }
+    });
+    newMembers.forEach(m => {
+      const monthKey = `${m.createdAt.getFullYear()}-${String(m.createdAt.getMonth() + 1).padStart(2, '0')}`;
+      if (monthlyData.has(monthKey)) {
+        monthlyData.get(monthKey)!.newMemberCount++;
+      }
+    });
+
+    // Get expired memberships per month
+    const expiredMembers = await prisma.member.findMany({
+      where: { gymId, membershipEnd: { gte: twelveMonthsAgo, lt: today } },
+      select: { membershipEnd: true }
+    });
+    expiredMembers.forEach(m => {
+      const monthKey = `${m.membershipEnd.getFullYear()}-${String(m.membershipEnd.getMonth() + 1).padStart(2, '0')}`;
+      if (monthlyData.has(monthKey)) {
+        monthlyData.get(monthKey)!.expiredCount++;
+      }
+    });
+
+    const monthlyRenewals = Array.from(monthlyData.entries())
+      .map(([month, data]) => ({
+        month,
+        renewalCount: data.renewalCount,
+        newMemberCount: data.newMemberCount,
+        expiredCount: data.expiredCount,
+        renewalRate: data.expiredCount > 0 ? (data.renewalCount / data.expiredCount) * 100 : 0,
+      }))
+      .sort((a, b) => a.month.localeCompare(b.month));
+
+    // Revenue calculations
+    const totalRenewalRevenue = allRenewals.reduce((sum, r) => sum + (Number(r.paidAmount) || 0), 0);
+    const averageRenewalFees = totalRenewals > 0 ? totalRenewalRevenue / totalRenewals : 0;
+
+    // Package popularity in renewals
+    const packageStats: Map<string, { packageId: string; packageName: string; count: number; revenue: number }> = new Map();
+
+    const coursePackages = await prisma.coursePackage.findMany({
+      where: { gymId },
+      select: { id: true, packageName: true }
+    });
+    const packageNameMap = new Map(coursePackages.map(p => [p.id, p.packageName]));
+
+    allRenewals.forEach(r => {
+      if (r.coursePackageId) {
+        const existing = packageStats.get(r.coursePackageId);
+        if (existing) {
+          existing.count++;
+          existing.revenue += Number(r.finalFees) || 0;
+        } else {
+          packageStats.set(r.coursePackageId, {
+            packageId: r.coursePackageId,
+            packageName: packageNameMap.get(r.coursePackageId) || 'Unknown Package',
+            count: 1,
+            revenue: Number(r.finalFees) || 0,
+          });
+        }
+      }
+    });
+
+    const packageRenewalStats = Array.from(packageStats.values())
+      .sort((a, b) => b.count - a.count);
+
+    return {
+      totalMembers,
+      totalActiveMembers,
+      totalExpiredMembers,
+      totalRenewals,
+      renewalRate: Math.round(renewalRate * 100) / 100,
+      renewalsByType,
+      renewalsByPaymentStatus,
+      monthlyRenewals,
+      totalRenewalRevenue,
+      averageRenewalFees: Math.round(averageRenewalFees * 100) / 100,
+      packageRenewalStats,
+    };
   }
 }
 
