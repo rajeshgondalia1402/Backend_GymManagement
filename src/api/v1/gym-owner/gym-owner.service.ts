@@ -3816,7 +3816,7 @@ class GymOwnerService {
     const averageRenewalFees = totalRenewals > 0 ? totalRenewalRevenue / totalRenewals : 0;
 
     // Package popularity in renewals
-    const packageStats: Map<string, { packageId: string; packageName: string; count: number; revenue: number }> = new Map();
+    const packageStats: Map<string, { packageId: string; packageName: string; renewalCount: number; totalRevenue: number }> = new Map();
 
     const coursePackages = await prisma.coursePackage.findMany({
       where: { gymId },
@@ -3828,21 +3828,21 @@ class GymOwnerService {
       if (r.coursePackageId) {
         const existing = packageStats.get(r.coursePackageId);
         if (existing) {
-          existing.count++;
-          existing.revenue += Number(r.finalFees) || 0;
+          existing.renewalCount++;
+          existing.totalRevenue += Number(r.finalFees) || 0;
         } else {
           packageStats.set(r.coursePackageId, {
             packageId: r.coursePackageId,
             packageName: packageNameMap.get(r.coursePackageId) || 'Unknown Package',
-            count: 1,
-            revenue: Number(r.finalFees) || 0,
+            renewalCount: 1,
+            totalRevenue: Number(r.finalFees) || 0,
           });
         }
       }
     });
 
     const packageRenewalStats = Array.from(packageStats.values())
-      .sort((a, b) => b.count - a.count);
+      .sort((a, b) => b.renewalCount - a.renewalCount);
 
     return {
       totalMembers,
