@@ -1034,6 +1034,94 @@ class GymOwnerController {
       next(error);
     }
   }
+
+  // =============================================
+  // Membership Renewal Methods
+  // =============================================
+
+  async createMembershipRenewal(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const userId = req.user!.id;
+      const renewal = await gymOwnerService.createMembershipRenewal(gymId, userId, req.body);
+      successResponse(res, renewal, 'Membership renewed successfully', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getMembershipRenewals(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const {
+        page = 1,
+        limit = 10,
+        search,
+        sortBy,
+        sortOrder,
+        renewalType,
+        paymentStatus,
+        renewalDateFrom,
+        renewalDateTo,
+      } = req.query as any;
+
+      const { renewals, total } = await gymOwnerService.getMembershipRenewals(gymId, {
+        page: Number(page),
+        limit: Number(limit),
+        search,
+        sortBy,
+        sortOrder,
+        renewalType,
+        paymentStatus,
+        renewalDateFrom,
+        renewalDateTo,
+      });
+      paginatedResponse(res, renewals, Number(page), Number(limit), total, 'Membership renewals retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getMembershipRenewalById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const renewal = await gymOwnerService.getMembershipRenewalById(gymId, req.params.id);
+      successResponse(res, renewal, 'Membership renewal retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getMemberRenewalHistory(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const history = await gymOwnerService.getMemberRenewalHistory(gymId, req.params.memberId);
+      successResponse(res, history, 'Member renewal history retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateMembershipRenewal(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const userId = req.user!.id;
+      const renewal = await gymOwnerService.updateMembershipRenewal(gymId, userId, req.params.id, req.body);
+      successResponse(res, renewal, 'Membership renewal updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getRenewalRateReport(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const report = await gymOwnerService.getRenewalRateReport(gymId);
+      successResponse(res, report, 'Renewal rate report retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new GymOwnerController();

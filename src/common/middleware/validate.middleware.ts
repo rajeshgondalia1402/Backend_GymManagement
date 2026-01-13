@@ -416,6 +416,58 @@ export const updateMemberBalancePaymentSchema = createMemberBalancePaymentSchema
   isActive: z.boolean().optional(),
 });
 
+// Membership Renewal validation schemas
+export const createMembershipRenewalSchema = z.object({
+  memberId: z.string().uuid('Invalid member ID'),
+
+  // New membership dates (required)
+  newMembershipStart: z.string().min(1, 'New membership start date is required'),
+  newMembershipEnd: z.string().min(1, 'New membership end date is required'),
+
+  // Renewal type
+  renewalType: z.enum(['STANDARD', 'EARLY', 'LATE', 'UPGRADE', 'DOWNGRADE']).optional(),
+
+  // Package and fees
+  coursePackageId: z.string().uuid('Invalid course package ID').optional(),
+  packageFees: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
+  maxDiscount: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
+  afterDiscount: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
+  extraDiscount: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
+  finalFees: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
+
+  // Payment info
+  paymentMode: z.string().optional(),
+  paidAmount: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
+
+  notes: z.string().optional(),
+});
+
+export const updateMembershipRenewalSchema = z.object({
+  // Payment info (most common update)
+  paymentStatus: z.enum(['PAID', 'PENDING', 'PARTIAL']).optional(),
+  paymentMode: z.string().optional(),
+  paidAmount: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
+
+  // Can also update notes
+  notes: z.string().optional(),
+  isActive: z.boolean().optional(),
+});
+
+// Renewal pagination with additional filters
+export const renewalPaginationSchema = z.object({
+  page: z.string().optional().transform((val) => parseInt(val || '1', 10)),
+  limit: z.string().optional().transform((val) => parseInt(val || '10', 10)),
+  search: z.string().optional(),
+  sortBy: z.string().optional().default('renewalDate'),
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+  // Renewal-specific filters
+  renewalType: z.enum(['STANDARD', 'EARLY', 'LATE', 'UPGRADE', 'DOWNGRADE']).optional(),
+  paymentStatus: z.enum(['PAID', 'PENDING', 'PARTIAL']).optional(),
+  // Date range filters
+  renewalDateFrom: z.string().optional(),
+  renewalDateTo: z.string().optional(),
+});
+
 // Validation middleware factory
 export const validate = (schema: ZodSchema, source: 'body' | 'query' | 'params' = 'body') => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {

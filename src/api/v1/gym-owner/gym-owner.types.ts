@@ -646,3 +646,152 @@ export interface MemberBalancePaymentResponse {
   payments: MemberBalancePayment[];
 }
 
+// =============================================
+// Membership Renewal Types
+// =============================================
+
+export type RenewalType = 'STANDARD' | 'EARLY' | 'LATE' | 'UPGRADE' | 'DOWNGRADE';
+export type PaymentStatus = 'PAID' | 'PENDING' | 'PARTIAL';
+
+export interface MembershipRenewal {
+  id: string;
+  renewalNumber: string;
+  memberId: string;
+  memberName?: string;
+  memberEmail?: string;
+  memberPhone?: string;
+  gymId: string;
+
+  // Previous membership dates
+  previousMembershipStart: Date;
+  previousMembershipEnd: Date;
+
+  // New membership dates
+  newMembershipStart: Date;
+  newMembershipEnd: Date;
+
+  // Renewal details
+  renewalDate: Date;
+  renewalType: RenewalType;
+
+  // Package and fees
+  coursePackageId?: string;
+  coursePackageName?: string;
+  packageFees?: number;
+  maxDiscount?: number;
+  afterDiscount?: number;
+  extraDiscount?: number;
+  finalFees?: number;
+
+  // Payment info
+  paymentStatus: PaymentStatus;
+  paymentMode?: string;
+  paidAmount?: number;
+  pendingAmount?: number;
+
+  notes?: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt?: Date;
+  createdBy?: string;
+  updatedBy?: string;
+}
+
+export interface CreateMembershipRenewalRequest {
+  memberId: string;
+
+  // New membership dates (required)
+  newMembershipStart: string; // ISO date string
+  newMembershipEnd: string;   // ISO date string
+
+  // Renewal type
+  renewalType?: RenewalType;
+
+  // Package and fees
+  coursePackageId?: string;
+  packageFees?: number;
+  maxDiscount?: number;
+  afterDiscount?: number;
+  extraDiscount?: number;
+  finalFees?: number;
+
+  // Payment info
+  paymentMode?: string;
+  paidAmount?: number;
+
+  notes?: string;
+}
+
+export interface UpdateMembershipRenewalRequest {
+  // Payment info (most common update)
+  paymentStatus?: PaymentStatus;
+  paymentMode?: string;
+  paidAmount?: number;
+
+  // Can also update notes
+  notes?: string;
+  isActive?: boolean;
+}
+
+// Response for member renewals with summary
+export interface MemberRenewalHistory {
+  member: {
+    id: string;
+    memberId?: string;
+    name: string;
+    email: string;
+    phone?: string;
+    currentMembershipStart?: Date;
+    currentMembershipEnd?: Date;
+    memberStatus: 'Active' | 'Expired' | 'InActive';
+  };
+  totalRenewals: number;
+  renewals: MembershipRenewal[];
+}
+
+// Renewal Rate Report Types
+export interface RenewalRateReport {
+  // Summary stats
+  totalMembers: number;
+  totalActiveMembers: number;
+  totalExpiredMembers: number;
+  totalRenewals: number;
+  renewalRate: number; // Percentage of members who renewed
+
+  // Renewal breakdown
+  renewalsByType: {
+    type: RenewalType;
+    count: number;
+    percentage: number;
+  }[];
+
+  // Payment status breakdown
+  renewalsByPaymentStatus: {
+    status: PaymentStatus;
+    count: number;
+    totalAmount: number;
+  }[];
+
+  // Monthly renewal trends (last 12 months)
+  monthlyRenewals: {
+    month: string; // YYYY-MM format
+    renewalCount: number;
+    newMemberCount: number;
+    expiredCount: number;
+    renewalRate: number;
+  }[];
+
+  // Revenue from renewals
+  totalRenewalRevenue: number;
+  averageRenewalFees: number;
+
+  // Package popularity in renewals
+  packageRenewalStats: {
+    packageId: string;
+    packageName: string;
+    renewalCount: number;
+    totalRevenue: number;
+  }[];
+}
+
+
