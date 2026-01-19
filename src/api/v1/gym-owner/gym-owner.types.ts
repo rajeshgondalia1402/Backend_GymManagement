@@ -30,10 +30,25 @@ export interface UpdateTrainerRequest {
 
 export interface Member {
   id: string;
+  memberId?: string;
   email: string;
   firstName: string;
   lastName: string;
   phone?: string;
+  altContactNo?: string;
+  address?: string;
+  gender?: string;
+  occupation?: string;
+  maritalStatus?: string;
+  bloodGroup?: string;
+  dateOfBirth?: Date;
+  anniversaryDate?: Date;
+  emergencyContact?: string;
+  healthNotes?: string;
+  idProofType?: string;
+  idProofDocument?: string;
+  memberPhoto?: string;
+  smsFacility?: boolean;
   isActive: boolean;
   gymId: string;
   trainerId?: string;
@@ -41,6 +56,12 @@ export interface Member {
   memberType: 'REGULAR' | 'PT';
   membershipStartDate?: Date;
   membershipEndDate?: Date;
+  coursePackageId?: string;
+  packageFees?: number;
+  maxDiscount?: number;
+  afterDiscount?: number;
+  extraDiscount?: number;
+  finalFees?: number;
   createdAt: Date;
   createdBy?: string;
   updatedBy?: string;
@@ -52,20 +73,57 @@ export interface CreateMemberRequest {
   email: string;
   password: string;
   phone: string;
+  altContactNo?: string;
+  address?: string;
+  gender?: string;
+  occupation?: string;
+  maritalStatus?: string;
+  bloodGroup?: string;
+  dateOfBirth?: string;
+  anniversaryDate?: string;
+  emergencyContact?: string;
+  healthNotes?: string;
+  idProofType?: string;
+  smsFacility?: boolean;
   trainerId?: string;
   memberType?: 'REGULAR' | 'PT';
   membershipStartDate?: string;
   membershipEndDate?: string;
+  coursePackageId?: string;
+  packageFees?: number;
+  maxDiscount?: number;
+  afterDiscount?: number;
+  extraDiscount?: number;
+  finalFees?: number;
 }
 
 export interface UpdateMemberRequest {
   firstName?: string;
   lastName?: string;
   phone?: string;
+  altContactNo?: string;
+  address?: string;
+  gender?: string;
+  occupation?: string;
+  maritalStatus?: string;
+  bloodGroup?: string;
+  dateOfBirth?: string;
+  anniversaryDate?: string;
+  emergencyContact?: string;
+  healthNotes?: string;
+  idProofType?: string;
+  smsFacility?: boolean;
+  isActive?: boolean;
   trainerId?: string;
   memberType?: 'REGULAR' | 'PT';
   membershipStartDate?: string;
   membershipEndDate?: string;
+  coursePackageId?: string;
+  packageFees?: number;
+  maxDiscount?: number;
+  afterDiscount?: number;
+  extraDiscount?: number;
+  finalFees?: number;
 }
 
 // PT Member Types
@@ -249,7 +307,7 @@ export interface CreateDietPlanRequest {
   isActive?: boolean;
 }
 
-export interface UpdateDietPlanRequest extends Partial<CreateDietPlanRequest> {}
+export interface UpdateDietPlanRequest extends Partial<CreateDietPlanRequest> { }
 
 export interface ExercisePlan {
   id: string;
@@ -272,7 +330,7 @@ export interface CreateExercisePlanRequest {
   isActive?: boolean;
 }
 
-export interface UpdateExercisePlanRequest extends Partial<CreateExercisePlanRequest> {}
+export interface UpdateExercisePlanRequest extends Partial<CreateExercisePlanRequest> { }
 
 export interface AssignPlanRequest {
   memberId: string;
@@ -302,6 +360,18 @@ export interface PaginationParams {
   memberType?: 'REGULAR' | 'PT';
   status?: string;
   isActive?: boolean;
+  // Member-specific filters
+  gender?: string;
+  bloodGroup?: string;
+  maritalStatus?: string;
+  smsFacility?: boolean;
+  // Date range filters
+  membershipStartFrom?: string;
+  membershipStartTo?: string;
+  membershipEndFrom?: string;
+  membershipEndTo?: string;
+  // Course package filter
+  coursePackageId?: string;
 }
 
 // Report Types
@@ -425,3 +495,303 @@ export interface UpdateWorkoutExerciseRequest {
   description?: string;
   isActive?: boolean;
 }
+
+// Member Inquiry Types
+export interface MemberInquiry {
+  id: string;
+  fullName: string;
+  contactNo: string;
+  inquiryDate: Date;
+  dob?: Date;
+  followUp: boolean;
+  followUpDate?: Date;
+  gender?: string;
+  address?: string;
+  heardAbout?: string;
+  userId: string;
+  userName?: string;
+  comments?: string;
+  memberPhoto?: string;
+  height?: number;
+  weight?: number;
+  referenceName?: string;
+  gymId: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy?: string;
+  updatedBy?: string;
+}
+
+export interface CreateMemberInquiryRequest {
+  fullName: string;
+  contactNo: string;
+  inquiryDate?: string;
+  dob?: string;
+  followUp?: boolean;
+  followUpDate?: string;
+  gender?: 'Male' | 'Female' | 'Other';
+  address?: string;
+  heardAbout?: string;
+  comments?: string;
+  memberPhoto?: string;
+  height?: number;
+  weight?: number;
+  referenceName?: string;
+}
+
+export interface UpdateMemberInquiryRequest {
+  fullName?: string;
+  contactNo?: string;
+  inquiryDate?: string;
+  dob?: string;
+  followUp?: boolean;
+  followUpDate?: string;
+  gender?: 'Male' | 'Female' | 'Other';
+  address?: string;
+  heardAbout?: string;
+  comments?: string;
+  memberPhoto?: string;
+  height?: number;
+  weight?: number;
+  referenceName?: string;
+  isActive?: boolean;
+}
+
+// Course Package Types
+export interface CoursePackage {
+  id: string;
+  packageName: string;
+  description?: string;
+  fees: number;
+  maxDiscount?: number;
+  discountType: 'PERCENTAGE' | 'AMOUNT';
+  isActive: boolean;
+  gymId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy?: string;
+  updatedBy?: string;
+}
+
+export interface CreateCoursePackageRequest {
+  packageName: string;
+  description?: string;
+  fees: number;
+  maxDiscount?: number;
+  discountType?: 'PERCENTAGE' | 'AMOUNT';
+}
+
+export interface UpdateCoursePackageRequest {
+  packageName?: string;
+  description?: string;
+  fees?: number;
+  maxDiscount?: number;
+  discountType?: 'PERCENTAGE' | 'AMOUNT';
+  isActive?: boolean;
+}
+
+// Member Balance Payment Types
+export interface MemberBalancePayment {
+  id: string;
+  receiptNo: string;
+  memberId: string;
+  memberName?: string;
+  paymentDate: Date;
+  contactNo?: string;
+  paidFees: number;
+  payMode: string;
+  nextPaymentDate?: Date;
+  notes?: string;
+  isActive: boolean;
+  gymId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy?: string;
+  updatedBy?: string;
+}
+
+export interface CreateMemberBalancePaymentRequest {
+  paymentDate?: string;
+  contactNo?: string;
+  paidFees: number;
+  payMode: string;
+  nextPaymentDate?: string;
+  notes?: string;
+}
+
+export interface UpdateMemberBalancePaymentRequest {
+  paymentDate?: string;
+  contactNo?: string;
+  paidFees?: number;
+  payMode?: string;
+  nextPaymentDate?: string;
+  notes?: string;
+  isActive?: boolean;
+}
+
+// Summary of member payments - used for tracking paid vs pending
+export interface MemberBalancePaymentSummary {
+  memberId: string;
+  memberName: string;
+  finalFees: number;
+  totalPaid: number;
+  pendingAmount: number;
+  paymentCount: number;
+}
+
+// Response with summary and payments list
+export interface MemberBalancePaymentResponse {
+  summary: MemberBalancePaymentSummary;
+  payments: MemberBalancePayment[];
+}
+
+// =============================================
+// Membership Renewal Types
+// =============================================
+
+export type RenewalType = 'STANDARD' | 'EARLY' | 'LATE' | 'UPGRADE' | 'DOWNGRADE';
+export type PaymentStatus = 'PAID' | 'PENDING' | 'PARTIAL';
+
+export interface MembershipRenewal {
+  id: string;
+  renewalNumber: string;
+  memberId: string;
+  memberName?: string;
+  memberEmail?: string;
+  memberPhone?: string;
+  gymId: string;
+
+  // Previous membership dates
+  previousMembershipStart: Date;
+  previousMembershipEnd: Date;
+
+  // New membership dates
+  newMembershipStart: Date;
+  newMembershipEnd: Date;
+
+  // Renewal details
+  renewalDate: Date;
+  renewalType: RenewalType;
+
+  // Package and fees
+  coursePackageId?: string;
+  coursePackageName?: string;
+  packageFees?: number;
+  maxDiscount?: number;
+  afterDiscount?: number;
+  extraDiscount?: number;
+  finalFees?: number;
+
+  // Payment info
+  paymentStatus: PaymentStatus;
+  paymentMode?: string;
+  paidAmount?: number;
+  pendingAmount?: number;
+
+  notes?: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt?: Date;
+  createdBy?: string;
+  updatedBy?: string;
+}
+
+export interface CreateMembershipRenewalRequest {
+  memberId: string;
+
+  // New membership dates (required)
+  newMembershipStart: string; // ISO date string
+  newMembershipEnd: string;   // ISO date string
+
+  // Renewal type
+  renewalType?: RenewalType;
+
+  // Package and fees
+  coursePackageId?: string;
+  packageFees?: number;
+  maxDiscount?: number;
+  afterDiscount?: number;
+  extraDiscount?: number;
+  finalFees?: number;
+
+  // Payment info
+  paymentMode?: string;
+  paidAmount?: number;
+
+  notes?: string;
+}
+
+export interface UpdateMembershipRenewalRequest {
+  // Payment info (most common update)
+  paymentStatus?: PaymentStatus;
+  paymentMode?: string;
+  paidAmount?: number;
+
+  // Can also update notes
+  notes?: string;
+  isActive?: boolean;
+}
+
+// Response for member renewals with summary
+export interface MemberRenewalHistory {
+  member: {
+    id: string;
+    memberId?: string;
+    name: string;
+    email: string;
+    phone?: string;
+    currentMembershipStart?: Date;
+    currentMembershipEnd?: Date;
+    memberStatus: 'Active' | 'Expired' | 'InActive';
+  };
+  totalRenewals: number;
+  renewals: MembershipRenewal[];
+}
+
+// Renewal Rate Report Types
+export interface RenewalRateReport {
+  // Summary stats
+  totalMembers: number;
+  totalActiveMembers: number;
+  totalExpiredMembers: number;
+  totalRenewals: number;
+  renewalRate: number; // Percentage of members who renewed
+
+  // Renewal breakdown
+  renewalsByType: {
+    type: RenewalType;
+    count: number;
+    percentage: number;
+  }[];
+
+  // Payment status breakdown
+  renewalsByPaymentStatus: {
+    status: PaymentStatus;
+    count: number;
+    totalAmount: number;
+  }[];
+
+  // Monthly renewal trends (last 12 months)
+  monthlyRenewals: {
+    month: string; // YYYY-MM format
+    renewalCount: number;
+    newMemberCount: number;
+    expiredCount: number;
+    renewalRate: number;
+  }[];
+
+  // Revenue from renewals
+  totalRenewalRevenue: number;
+  averageRenewalFees: number;
+
+  // Package popularity in renewals
+  packageRenewalStats: {
+    packageId: string;
+    packageName: string;
+    renewalCount: number;
+    totalRevenue: number;
+  }[];
+}
+
+

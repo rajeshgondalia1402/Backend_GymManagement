@@ -11,6 +11,7 @@ export interface LoginResponse {
     lastName: string;
     role: string;
     gymId?: string;
+    subscriptionName?: string;
   };
   accessToken: string;
   refreshToken: string;

@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { prisma } from '../../../config/database';
-import { NotFoundException, ConflictException, ForbiddenException } from '../../../common/exceptions';
+import { NotFoundException, ConflictException, ForbiddenException, BadRequestException } from '../../../common/exceptions';
 import {
   Trainer,
   CreateTrainerRequest,
@@ -45,6 +45,23 @@ import {
   WorkoutExercise,
   CreateWorkoutExerciseRequest,
   UpdateWorkoutExerciseRequest,
+  MemberInquiry,
+  CreateMemberInquiryRequest,
+  UpdateMemberInquiryRequest,
+  CoursePackage,
+  CreateCoursePackageRequest,
+  UpdateCoursePackageRequest,
+  MemberBalancePayment,
+  CreateMemberBalancePaymentRequest,
+  UpdateMemberBalancePaymentRequest,
+  MemberBalancePaymentResponse,
+  MembershipRenewal,
+  CreateMembershipRenewalRequest,
+  UpdateMembershipRenewalRequest,
+  MemberRenewalHistory,
+  RenewalRateReport,
+  RenewalType,
+  PaymentStatus,
 } from './gym-owner.types';
 
 class GymOwnerService {
@@ -63,8 +80,8 @@ class GymOwnerService {
 
     // Get active members
     const activeMembers = await prisma.member.count({
-      where: { 
-        gymId, 
+      where: {
+        gymId,
         membershipStatus: 'ACTIVE',
         user: { isActive: true }
       }
@@ -149,7 +166,7 @@ class GymOwnerService {
     });
 
     if (!trainer) throw new NotFoundException('Trainer not found');
-    
+
     return {
       id: trainer.id,
       email: trainer.user.email,
@@ -174,7 +191,7 @@ class GymOwnerService {
     if (!trainerRole) throw new NotFoundException('TRAINER role not found');
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
-    
+
     // Create user and trainer in transaction
     const result = await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
@@ -275,25 +292,111 @@ class GymOwnerService {
 
   // Members
   async getMembers(gymId: string, params: PaginationParams): Promise<{ members: Member[]; total: number }> {
-    const { page, limit, search, sortBy = 'createdAt', sortOrder = 'desc' } = params;
+    const {
+      page,
+      limit,
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+      status,
+      isActive,
+      memberType,
+      gender,
+      bloodGroup,
+      maritalStatus,
+      smsFacility,
+      membershipStartFrom,
+      membershipStartTo,
+      membershipEndFrom,
+      membershipEndTo,
+      coursePackageId,
+    } = params;
     const skip = (page - 1) * limit;
+    const today = new Date();
 
-    const where = {
+    // Build status filter based on status parameter
+    // Active: Current date is between membershipStart and membershipEnd (membership is valid)
+    // InActive: Soft deleted records (isActive = false)
+    // Expired: Current date is past membershipEnd (membership has expired)
+    let statusFilter: any = {};
+    if (status === 'Active') {
+      statusFilter = {
+        isActive: true,
+        membershipStart: { lte: today },
+        membershipEnd: { gte: today },
+      };
+    } else if (status === 'InActive') {
+      statusFilter = { isActive: false };
+    } else if (status === 'Expired') {
+      statusFilter = {
+        isActive: true, // Only show expired active members, not soft deleted ones
+        membershipEnd: { lt: today },
+      };
+    }
+
+    // Build dynamic where clause
+    const where: any = {
       gymId,
+      // Status filter (Active, InActive, Expired)
+      ...statusFilter,
+      // Text search - searches across all text fields
       ...(search && {
         OR: [
           { user: { name: { contains: search, mode: 'insensitive' as const } } },
           { user: { email: { contains: search, mode: 'insensitive' as const } } },
+          { phone: { contains: search, mode: 'insensitive' as const } },
+          { memberId: { contains: search, mode: 'insensitive' as const } },
+          { address: { contains: search, mode: 'insensitive' as const } },
+          { altContactNo: { contains: search, mode: 'insensitive' as const } },
+          { emergencyContact: { contains: search, mode: 'insensitive' as const } },
+          { healthNotes: { contains: search, mode: 'insensitive' as const } },
+          { occupation: { contains: search, mode: 'insensitive' as const } },
         ],
       }),
+      // Boolean filters (only if status is not set)
+      ...(!status && isActive !== undefined && { isActive }),
+      ...(smsFacility !== undefined && { smsFacility }),
+      // Enum filter
+      ...(memberType && { memberType }),
+      // String exact match filters
+      ...(gender && { gender: { equals: gender, mode: 'insensitive' as const } }),
+      ...(bloodGroup && { bloodGroup: { equals: bloodGroup, mode: 'insensitive' as const } }),
+      ...(maritalStatus && { maritalStatus: { equals: maritalStatus, mode: 'insensitive' as const } }),
+      // Course package filter
+      ...(coursePackageId && { coursePackageId }),
+      // Date range filters - Membership Start
+      ...(membershipStartFrom || membershipStartTo ? {
+        membershipStart: {
+          ...(membershipStartFrom && { gte: new Date(membershipStartFrom) }),
+          ...(membershipStartTo && { lte: new Date(membershipStartTo) }),
+        },
+      } : {}),
+      // Date range filters - Membership End
+      ...(membershipEndFrom || membershipEndTo ? {
+        membershipEnd: {
+          ...(membershipEndFrom && { gte: new Date(membershipEndFrom) }),
+          ...(membershipEndTo && { lte: new Date(membershipEndTo) }),
+        },
+      } : {}),
     };
+
+    // Build dynamic orderBy - handle special cases for user fields
+    let orderBy: any;
+    if (sortBy === 'name' || sortBy === 'firstName' || sortBy === 'email') {
+      // Sort by user relation fields
+      const userField = sortBy === 'firstName' ? 'name' : sortBy;
+      orderBy = { user: { [userField]: sortOrder } };
+    } else {
+      // Sort by direct member fields
+      orderBy = { [sortBy]: sortOrder };
+    }
 
     const [memberRecords, total] = await Promise.all([
       prisma.member.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { [sortBy]: sortOrder },
+        orderBy,
         include: {
           user: { select: { id: true, name: true, email: true, isActive: true } },
           trainerAssignments: {
@@ -310,16 +413,37 @@ class GymOwnerService {
       const activeTrainer = m.trainerAssignments[0]?.trainer;
       return {
         id: m.id,
+        memberId: m.memberId || undefined,
         email: m.user.email,
         firstName: m.user.name.split(' ')[0] || m.user.name,
         lastName: m.user.name.split(' ').slice(1).join(' ') || '',
         phone: m.phone || undefined,
-        isActive: m.user.isActive,
+        altContactNo: m.altContactNo || undefined,
+        address: m.address || undefined,
+        gender: m.gender || undefined,
+        occupation: m.occupation || undefined,
+        maritalStatus: m.maritalStatus || undefined,
+        bloodGroup: m.bloodGroup || undefined,
+        dateOfBirth: m.dateOfBirth || undefined,
+        anniversaryDate: m.anniversaryDate || undefined,
+        emergencyContact: m.emergencyContact || undefined,
+        healthNotes: m.healthNotes || undefined,
+        idProofType: m.idProofType || undefined,
+        idProofDocument: m.idProofDocument || undefined,
+        memberPhoto: m.memberPhoto || undefined,
+        smsFacility: m.smsFacility,
+        isActive: m.isActive,
         gymId: m.gymId,
         trainerId: activeTrainer?.id,
         memberType: m.memberType as 'REGULAR' | 'PT',
         membershipStartDate: m.membershipStart,
         membershipEndDate: m.membershipEnd,
+        coursePackageId: m.coursePackageId || undefined,
+        packageFees: m.packageFees ? Number(m.packageFees) : undefined,
+        maxDiscount: m.maxDiscount ? Number(m.maxDiscount) : undefined,
+        afterDiscount: m.afterDiscount ? Number(m.afterDiscount) : undefined,
+        extraDiscount: m.extraDiscount ? Number(m.extraDiscount) : undefined,
+        finalFees: m.finalFees ? Number(m.finalFees) : undefined,
         createdAt: m.createdAt,
       };
     });
@@ -341,25 +465,46 @@ class GymOwnerService {
     });
 
     if (!member) throw new NotFoundException('Member not found');
-    
+
     const activeTrainer = member.trainerAssignments[0]?.trainer;
     return {
       id: member.id,
+      memberId: member.memberId || undefined,
       email: member.user.email,
       firstName: member.user.name.split(' ')[0] || member.user.name,
       lastName: member.user.name.split(' ').slice(1).join(' ') || '',
       phone: member.phone || undefined,
-      isActive: member.user.isActive,
+      altContactNo: member.altContactNo || undefined,
+      address: member.address || undefined,
+      gender: member.gender || undefined,
+      occupation: member.occupation || undefined,
+      maritalStatus: member.maritalStatus || undefined,
+      bloodGroup: member.bloodGroup || undefined,
+      dateOfBirth: member.dateOfBirth || undefined,
+      anniversaryDate: member.anniversaryDate || undefined,
+      emergencyContact: member.emergencyContact || undefined,
+      healthNotes: member.healthNotes || undefined,
+      idProofType: member.idProofType || undefined,
+      idProofDocument: member.idProofDocument || undefined,
+      memberPhoto: member.memberPhoto || undefined,
+      smsFacility: member.smsFacility,
+      isActive: member.isActive,
       gymId: member.gymId,
       trainerId: activeTrainer?.id,
       memberType: member.memberType as 'REGULAR' | 'PT',
       membershipStartDate: member.membershipStart,
       membershipEndDate: member.membershipEnd,
+      coursePackageId: member.coursePackageId || undefined,
+      packageFees: member.packageFees ? Number(member.packageFees) : undefined,
+      maxDiscount: member.maxDiscount ? Number(member.maxDiscount) : undefined,
+      afterDiscount: member.afterDiscount ? Number(member.afterDiscount) : undefined,
+      extraDiscount: member.extraDiscount ? Number(member.extraDiscount) : undefined,
+      finalFees: member.finalFees ? Number(member.finalFees) : undefined,
       createdAt: member.createdAt,
     };
   }
 
-  async createMember(gymId: string, data: CreateMemberRequest): Promise<Member> {
+  async createMember(gymId: string, data: CreateMemberRequest, files?: { memberPhoto?: string; idProofDocument?: string }): Promise<Member> {
     const existingUser = await prisma.user.findUnique({ where: { email: data.email } });
     if (existingUser) throw new ConflictException('User with this email already exists');
 
@@ -369,9 +514,27 @@ class GymOwnerService {
     const memberRole = await prisma.rolemaster.findFirst({ where: { rolename: 'MEMBER' } });
     if (!memberRole) throw new NotFoundException('MEMBER role not found');
 
+    // Generate unique auto-increment member ID by finding maximum existing ID
+    const allMembers = await prisma.member.findMany({
+      where: { gymId, memberId: { not: null } },
+      select: { memberId: true }
+    });
+
+    // Extract numeric values and find the maximum
+    let maxId = 1000; // Default starting point (first ID will be 1001)
+    for (const m of allMembers) {
+      if (m.memberId) {
+        const numericId = parseInt(m.memberId, 10);
+        if (!isNaN(numericId) && numericId > maxId) {
+          maxId = numericId;
+        }
+      }
+    }
+    const nextMemberId = String(maxId + 1);
+
     const hashedPassword = await bcrypt.hash(data.password, 10);
-    const membershipEnd = data.membershipEndDate 
-      ? new Date(data.membershipEndDate) 
+    const membershipEnd = data.membershipEndDate
+      ? new Date(data.membershipEndDate)
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // Default 30 days
 
     const result = await prisma.$transaction(async (tx) => {
@@ -388,9 +551,30 @@ class GymOwnerService {
         data: {
           userId: user.id,
           gymId,
+          memberId: nextMemberId,
           phone: data.phone,
+          altContactNo: data.altContactNo,
+          address: data.address,
+          gender: data.gender,
+          occupation: data.occupation,
+          maritalStatus: data.maritalStatus,
+          bloodGroup: data.bloodGroup,
+          dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
+          anniversaryDate: data.anniversaryDate ? new Date(data.anniversaryDate) : undefined,
+          emergencyContact: data.emergencyContact,
+          healthNotes: data.healthNotes,
+          idProofType: data.idProofType,
+          idProofDocument: files?.idProofDocument,
+          memberPhoto: files?.memberPhoto,
+          smsFacility: data.smsFacility ?? true,
           membershipStart: data.membershipStartDate ? new Date(data.membershipStartDate) : new Date(),
           membershipEnd,
+          coursePackageId: data.coursePackageId,
+          packageFees: data.packageFees,
+          maxDiscount: data.maxDiscount,
+          afterDiscount: data.afterDiscount,
+          extraDiscount: data.extraDiscount,
+          finalFees: data.finalFees,
         },
         include: {
           user: { select: { id: true, name: true, email: true, isActive: true } }
@@ -412,21 +596,42 @@ class GymOwnerService {
 
     return {
       id: result.id,
+      memberId: result.memberId || undefined,
       email: result.user.email,
       firstName: data.firstName,
       lastName: data.lastName,
       phone: data.phone,
-      isActive: result.user.isActive,
+      altContactNo: data.altContactNo,
+      address: data.address,
+      gender: data.gender,
+      occupation: data.occupation,
+      maritalStatus: data.maritalStatus,
+      bloodGroup: data.bloodGroup,
+      dateOfBirth: result.dateOfBirth || undefined,
+      anniversaryDate: result.anniversaryDate || undefined,
+      emergencyContact: data.emergencyContact,
+      healthNotes: data.healthNotes,
+      idProofType: data.idProofType,
+      idProofDocument: result.idProofDocument || undefined,
+      memberPhoto: result.memberPhoto || undefined,
+      smsFacility: result.smsFacility,
+      isActive: result.isActive,
       gymId: result.gymId,
       trainerId: data.trainerId,
       memberType: result.memberType as 'REGULAR' | 'PT',
       membershipStartDate: result.membershipStart,
       membershipEndDate: result.membershipEnd,
+      coursePackageId: result.coursePackageId || undefined,
+      packageFees: result.packageFees ? Number(result.packageFees) : undefined,
+      maxDiscount: result.maxDiscount ? Number(result.maxDiscount) : undefined,
+      afterDiscount: result.afterDiscount ? Number(result.afterDiscount) : undefined,
+      extraDiscount: result.extraDiscount ? Number(result.extraDiscount) : undefined,
+      finalFees: result.finalFees ? Number(result.finalFees) : undefined,
       createdAt: result.createdAt,
     };
   }
 
-  async updateMember(gymId: string, memberId: string, data: UpdateMemberRequest): Promise<Member> {
+  async updateMember(gymId: string, memberId: string, data: UpdateMemberRequest, files?: { memberPhoto?: string; idProofDocument?: string }): Promise<Member> {
     const existingMember = await prisma.member.findFirst({
       where: { id: memberId, gymId },
       include: { user: true }
@@ -446,9 +651,59 @@ class GymOwnerService {
       }
 
       const updateData: any = {};
-      if (data.phone) updateData.phone = data.phone;
+      if (data.phone !== undefined) updateData.phone = data.phone;
+      if (data.altContactNo !== undefined) updateData.altContactNo = data.altContactNo;
+      if (data.address !== undefined) updateData.address = data.address;
+      if (data.gender !== undefined) updateData.gender = data.gender;
+      if (data.occupation !== undefined) updateData.occupation = data.occupation;
+      if (data.maritalStatus !== undefined) updateData.maritalStatus = data.maritalStatus;
+      if (data.bloodGroup !== undefined) updateData.bloodGroup = data.bloodGroup;
+      if (data.dateOfBirth !== undefined) updateData.dateOfBirth = data.dateOfBirth ? new Date(data.dateOfBirth) : null;
+      if (data.anniversaryDate !== undefined) updateData.anniversaryDate = data.anniversaryDate ? new Date(data.anniversaryDate) : null;
+      if (data.emergencyContact !== undefined) updateData.emergencyContact = data.emergencyContact;
+      if (data.healthNotes !== undefined) updateData.healthNotes = data.healthNotes;
+      if (data.idProofType !== undefined) updateData.idProofType = data.idProofType;
+      if (data.smsFacility !== undefined) updateData.smsFacility = data.smsFacility;
+      if (data.isActive !== undefined) updateData.isActive = data.isActive;
+      if (data.memberType !== undefined) updateData.memberType = data.memberType;
       if (data.membershipStartDate) updateData.membershipStart = new Date(data.membershipStartDate);
       if (data.membershipEndDate) updateData.membershipEnd = new Date(data.membershipEndDate);
+
+      // Handle fee-related fields
+      if (data.coursePackageId !== undefined) updateData.coursePackageId = data.coursePackageId;
+      if (data.packageFees !== undefined) updateData.packageFees = data.packageFees;
+      if (data.maxDiscount !== undefined) updateData.maxDiscount = data.maxDiscount;
+      if (data.afterDiscount !== undefined) updateData.afterDiscount = data.afterDiscount;
+      if (data.extraDiscount !== undefined) updateData.extraDiscount = data.extraDiscount;
+      if (data.finalFees !== undefined) updateData.finalFees = data.finalFees;
+
+      // Handle file uploads
+      if (files?.memberPhoto) updateData.memberPhoto = files.memberPhoto;
+      if (files?.idProofDocument) updateData.idProofDocument = files.idProofDocument;
+
+      // Generate unique memberId if it doesn't exist
+      if (!existingMember.memberId) {
+        // Find all existing member IDs for this gym and get the maximum numeric value
+        const allMembers = await tx.member.findMany({
+          where: { gymId, memberId: { not: null } },
+          select: { memberId: true }
+        });
+
+        // Extract numeric values and find the maximum
+        let maxId = 1000; // Default starting point
+        for (const m of allMembers) {
+          if (m.memberId) {
+            const numericId = parseInt(m.memberId, 10);
+            if (!isNaN(numericId) && numericId > maxId) {
+              maxId = numericId;
+            }
+          }
+        }
+
+        // Generate next unique ID
+        const nextMemberId = String(maxId + 1);
+        updateData.memberId = nextMemberId;
+      }
 
       const member = await tx.member.update({
         where: { id: memberId },
@@ -480,16 +735,37 @@ class GymOwnerService {
 
     return {
       id: result.id,
+      memberId: result.memberId || undefined,
       email: result.user.email,
       firstName: result.user.name.split(' ')[0] || result.user.name,
       lastName: result.user.name.split(' ').slice(1).join(' ') || '',
       phone: result.phone || undefined,
-      isActive: result.user.isActive,
+      altContactNo: result.altContactNo || undefined,
+      address: result.address || undefined,
+      gender: result.gender || undefined,
+      occupation: result.occupation || undefined,
+      maritalStatus: result.maritalStatus || undefined,
+      bloodGroup: result.bloodGroup || undefined,
+      dateOfBirth: result.dateOfBirth || undefined,
+      anniversaryDate: result.anniversaryDate || undefined,
+      emergencyContact: result.emergencyContact || undefined,
+      healthNotes: result.healthNotes || undefined,
+      idProofType: result.idProofType || undefined,
+      idProofDocument: result.idProofDocument || undefined,
+      memberPhoto: result.memberPhoto || undefined,
+      smsFacility: result.smsFacility,
+      isActive: result.isActive,
       gymId: result.gymId,
       trainerId: data.trainerId || result.trainerAssignments[0]?.trainerId,
       memberType: result.memberType as 'REGULAR' | 'PT',
       membershipStartDate: result.membershipStart,
       membershipEndDate: result.membershipEnd,
+      coursePackageId: result.coursePackageId || undefined,
+      packageFees: result.packageFees ? Number(result.packageFees) : undefined,
+      maxDiscount: result.maxDiscount ? Number(result.maxDiscount) : undefined,
+      afterDiscount: result.afterDiscount ? Number(result.afterDiscount) : undefined,
+      extraDiscount: result.extraDiscount ? Number(result.extraDiscount) : undefined,
+      finalFees: result.finalFees ? Number(result.finalFees) : undefined,
       createdAt: result.createdAt,
     };
   }
@@ -500,10 +776,76 @@ class GymOwnerService {
     });
     if (!member) throw new NotFoundException('Member not found');
 
-    await prisma.$transaction(async (tx) => {
-      await tx.member.delete({ where: { id: memberId } });
-      await tx.user.delete({ where: { id: member.userId } });
+    // Soft delete - set isActive to false
+    await prisma.member.update({
+      where: { id: memberId },
+      data: { isActive: false }
     });
+  }
+
+  async toggleMemberStatus(gymId: string, memberId: string): Promise<Member> {
+    const existingMember = await prisma.member.findFirst({
+      where: { id: memberId, gymId },
+      include: {
+        user: { select: { id: true, name: true, email: true, isActive: true } },
+        trainerAssignments: {
+          where: { isActive: true },
+          include: { trainer: { include: { user: true } } },
+          take: 1
+        }
+      }
+    });
+    if (!existingMember) throw new NotFoundException('Member not found');
+
+    const updatedMember = await prisma.member.update({
+      where: { id: memberId },
+      data: { isActive: !existingMember.isActive },
+      include: {
+        user: { select: { id: true, name: true, email: true, isActive: true } },
+        trainerAssignments: {
+          where: { isActive: true },
+          include: { trainer: { include: { user: true } } },
+          take: 1
+        }
+      }
+    });
+
+    const activeTrainer = updatedMember.trainerAssignments[0]?.trainer;
+    return {
+      id: updatedMember.id,
+      memberId: updatedMember.memberId || undefined,
+      email: updatedMember.user.email,
+      firstName: updatedMember.user.name.split(' ')[0] || updatedMember.user.name,
+      lastName: updatedMember.user.name.split(' ').slice(1).join(' ') || '',
+      phone: updatedMember.phone || undefined,
+      altContactNo: updatedMember.altContactNo || undefined,
+      address: updatedMember.address || undefined,
+      gender: updatedMember.gender || undefined,
+      occupation: updatedMember.occupation || undefined,
+      maritalStatus: updatedMember.maritalStatus || undefined,
+      bloodGroup: updatedMember.bloodGroup || undefined,
+      dateOfBirth: updatedMember.dateOfBirth || undefined,
+      anniversaryDate: updatedMember.anniversaryDate || undefined,
+      emergencyContact: updatedMember.emergencyContact || undefined,
+      healthNotes: updatedMember.healthNotes || undefined,
+      idProofType: updatedMember.idProofType || undefined,
+      idProofDocument: updatedMember.idProofDocument || undefined,
+      memberPhoto: updatedMember.memberPhoto || undefined,
+      smsFacility: updatedMember.smsFacility,
+      isActive: updatedMember.isActive,
+      gymId: updatedMember.gymId,
+      trainerId: activeTrainer?.id,
+      memberType: updatedMember.memberType as 'REGULAR' | 'PT',
+      membershipStartDate: updatedMember.membershipStart,
+      membershipEndDate: updatedMember.membershipEnd,
+      coursePackageId: updatedMember.coursePackageId || undefined,
+      packageFees: updatedMember.packageFees ? Number(updatedMember.packageFees) : undefined,
+      maxDiscount: updatedMember.maxDiscount ? Number(updatedMember.maxDiscount) : undefined,
+      afterDiscount: updatedMember.afterDiscount ? Number(updatedMember.afterDiscount) : undefined,
+      extraDiscount: updatedMember.extraDiscount ? Number(updatedMember.extraDiscount) : undefined,
+      finalFees: updatedMember.finalFees ? Number(updatedMember.finalFees) : undefined,
+      createdAt: updatedMember.createdAt,
+    };
   }
 
   // Diet Plans
@@ -580,7 +922,7 @@ class GymOwnerService {
 
   async updateDietPlan(gymId: string, planId: string, data: UpdateDietPlanRequest): Promise<DietPlan> {
     await this.getDietPlanById(gymId, planId);
-    
+
     const updateData: any = {};
     if (data.name) updateData.name = data.name;
     if (data.description) updateData.description = data.description;
@@ -686,7 +1028,7 @@ class GymOwnerService {
 
   async updateExercisePlan(gymId: string, planId: string, data: UpdateExercisePlanRequest): Promise<ExercisePlan> {
     await this.getExercisePlanById(gymId, planId);
-    
+
     const updateData: any = {};
     if (data.name) updateData.name = data.name;
     if (data.description) updateData.description = data.description;
@@ -769,7 +1111,7 @@ class GymOwnerService {
       where: { id: trainerId, gymId },
       include: { user: true }
     });
-    
+
     if (!trainer) throw new NotFoundException('Trainer not found');
 
     const newStatus = !trainer.user.isActive;
@@ -783,24 +1125,6 @@ class GymOwnerService {
         where: { id: trainer.userId },
         data: { isActive: newStatus }
       });
-    });
-
-    return { isActive: newStatus };
-  }
-
-  async toggleMemberStatus(gymId: string, memberId: string): Promise<{ isActive: boolean }> {
-    const member = await prisma.member.findFirst({
-      where: { id: memberId, gymId },
-      include: { user: true }
-    });
-    
-    if (!member) throw new NotFoundException('Member not found');
-
-    const newStatus = !member.user.isActive;
-
-    await prisma.user.update({
-      where: { id: member.userId },
-      data: { isActive: newStatus }
     });
 
     return { isActive: newStatus };
@@ -1977,6 +2301,1594 @@ class GymOwnerService {
       bodyPartName: updatedExercise.bodyPart?.bodyPartName || null,
       createdAt: updatedExercise.createdAt,
       updatedAt: updatedExercise.updatedAt,
+    };
+  }
+
+  // Member Inquiry Methods
+  async getMemberInquiries(gymId: string, params: PaginationParams): Promise<{ inquiries: MemberInquiry[]; total: number }> {
+    const { page, limit, search, sortBy = 'createdAt', sortOrder = 'desc' } = params;
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      gymId,
+      ...(search && {
+        OR: [
+          { fullName: { contains: search, mode: 'insensitive' as const } },
+          { contactNo: { contains: search, mode: 'insensitive' as const } },
+          { address: { contains: search, mode: 'insensitive' as const } },
+        ],
+      }),
+    };
+
+    const [inquiryRecords, total] = await Promise.all([
+      prisma.memberInquiry.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+        },
+      }),
+      prisma.memberInquiry.count({ where }),
+    ]);
+
+    const inquiries: MemberInquiry[] = inquiryRecords.map((inquiry) => ({
+      id: inquiry.id,
+      fullName: inquiry.fullName,
+      contactNo: inquiry.contactNo,
+      inquiryDate: inquiry.inquiryDate,
+      dob: inquiry.dob || undefined,
+      followUp: inquiry.followUp,
+      followUpDate: inquiry.followUpDate || undefined,
+      gender: inquiry.gender || undefined,
+      address: inquiry.address || undefined,
+      heardAbout: inquiry.heardAbout || undefined,
+      userId: inquiry.userId,
+      userName: inquiry.user.name,
+      comments: inquiry.comments || undefined,
+      memberPhoto: inquiry.memberPhoto || undefined,
+      height: inquiry.height ? Number(inquiry.height) : undefined,
+      weight: inquiry.weight ? Number(inquiry.weight) : undefined,
+      referenceName: inquiry.referenceName || undefined,
+      gymId: inquiry.gymId,
+      isActive: inquiry.isActive,
+      createdAt: inquiry.createdAt,
+      updatedAt: inquiry.updatedAt,
+      createdBy: inquiry.createdBy || undefined,
+      updatedBy: inquiry.updatedBy || undefined,
+    }));
+
+    return { inquiries, total };
+  }
+
+  async getMemberInquiriesByUserId(gymId: string, userId: string, params: PaginationParams): Promise<{ inquiries: MemberInquiry[]; total: number }> {
+    const { page, limit, search, sortBy = 'createdAt', sortOrder = 'desc' } = params;
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      gymId,
+      userId,
+      ...(search && {
+        OR: [
+          { fullName: { contains: search, mode: 'insensitive' as const } },
+          { contactNo: { contains: search, mode: 'insensitive' as const } },
+        ],
+      }),
+    };
+
+    const [inquiryRecords, total] = await Promise.all([
+      prisma.memberInquiry.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+        },
+      }),
+      prisma.memberInquiry.count({ where }),
+    ]);
+
+    const inquiries: MemberInquiry[] = inquiryRecords.map((inquiry) => ({
+      id: inquiry.id,
+      fullName: inquiry.fullName,
+      contactNo: inquiry.contactNo,
+      inquiryDate: inquiry.inquiryDate,
+      dob: inquiry.dob || undefined,
+      followUp: inquiry.followUp,
+      followUpDate: inquiry.followUpDate || undefined,
+      gender: inquiry.gender || undefined,
+      address: inquiry.address || undefined,
+      heardAbout: inquiry.heardAbout || undefined,
+      userId: inquiry.userId,
+      userName: inquiry.user.name,
+      comments: inquiry.comments || undefined,
+      memberPhoto: inquiry.memberPhoto || undefined,
+      height: inquiry.height ? Number(inquiry.height) : undefined,
+      weight: inquiry.weight ? Number(inquiry.weight) : undefined,
+      referenceName: inquiry.referenceName || undefined,
+      gymId: inquiry.gymId,
+      isActive: inquiry.isActive,
+      createdAt: inquiry.createdAt,
+      updatedAt: inquiry.updatedAt,
+      createdBy: inquiry.createdBy || undefined,
+      updatedBy: inquiry.updatedBy || undefined,
+    }));
+
+    return { inquiries, total };
+  }
+
+  async getMemberInquiryById(gymId: string, id: string): Promise<MemberInquiry> {
+    const inquiry = await prisma.memberInquiry.findFirst({
+      where: { id, gymId },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    if (!inquiry) {
+      throw new NotFoundException('Member inquiry not found');
+    }
+
+    return {
+      id: inquiry.id,
+      fullName: inquiry.fullName,
+      contactNo: inquiry.contactNo,
+      inquiryDate: inquiry.inquiryDate,
+      dob: inquiry.dob || undefined,
+      followUp: inquiry.followUp,
+      followUpDate: inquiry.followUpDate || undefined,
+      gender: inquiry.gender || undefined,
+      address: inquiry.address || undefined,
+      heardAbout: inquiry.heardAbout || undefined,
+      userId: inquiry.userId,
+      userName: inquiry.user.name,
+      comments: inquiry.comments || undefined,
+      memberPhoto: inquiry.memberPhoto || undefined,
+      height: inquiry.height ? Number(inquiry.height) : undefined,
+      weight: inquiry.weight ? Number(inquiry.weight) : undefined,
+      referenceName: inquiry.referenceName || undefined,
+      gymId: inquiry.gymId,
+      isActive: inquiry.isActive,
+      createdAt: inquiry.createdAt,
+      updatedAt: inquiry.updatedAt,
+      createdBy: inquiry.createdBy || undefined,
+      updatedBy: inquiry.updatedBy || undefined,
+    };
+  }
+
+  async createMemberInquiry(gymId: string, userId: string, data: CreateMemberInquiryRequest): Promise<MemberInquiry> {
+    const inquiry = await prisma.memberInquiry.create({
+      data: {
+        fullName: data.fullName,
+        contactNo: data.contactNo,
+        inquiryDate: data.inquiryDate ? new Date(data.inquiryDate) : new Date(),
+        dob: data.dob ? new Date(data.dob) : null,
+        followUp: data.followUp || false,
+        followUpDate: data.followUpDate ? new Date(data.followUpDate) : null,
+        gender: data.gender,
+        address: data.address,
+        heardAbout: data.heardAbout,
+        userId: userId,
+        comments: data.comments,
+        memberPhoto: data.memberPhoto || null,
+        height: data.height,
+        weight: data.weight,
+        referenceName: data.referenceName || null,
+        gymId: gymId,
+        createdBy: userId,
+      },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    return {
+      id: inquiry.id,
+      fullName: inquiry.fullName,
+      contactNo: inquiry.contactNo,
+      inquiryDate: inquiry.inquiryDate,
+      dob: inquiry.dob || undefined,
+      followUp: inquiry.followUp,
+      followUpDate: inquiry.followUpDate || undefined,
+      gender: inquiry.gender || undefined,
+      address: inquiry.address || undefined,
+      heardAbout: inquiry.heardAbout || undefined,
+      userId: inquiry.userId,
+      userName: inquiry.user.name,
+      comments: inquiry.comments || undefined,
+      memberPhoto: inquiry.memberPhoto || undefined,
+      height: inquiry.height ? Number(inquiry.height) : undefined,
+      weight: inquiry.weight ? Number(inquiry.weight) : undefined,
+      referenceName: inquiry.referenceName || undefined,
+      gymId: inquiry.gymId,
+      isActive: inquiry.isActive,
+      createdAt: inquiry.createdAt,
+      updatedAt: inquiry.updatedAt,
+      createdBy: inquiry.createdBy || undefined,
+      updatedBy: inquiry.updatedBy || undefined,
+    };
+  }
+
+  async updateMemberInquiry(gymId: string, id: string, userId: string, data: UpdateMemberInquiryRequest): Promise<MemberInquiry> {
+    await this.getMemberInquiryById(gymId, id);
+
+    const updateData: any = {
+      updatedBy: userId,
+    };
+
+    if (data.fullName !== undefined) updateData.fullName = data.fullName;
+    if (data.contactNo !== undefined) updateData.contactNo = data.contactNo;
+    if (data.inquiryDate !== undefined) updateData.inquiryDate = new Date(data.inquiryDate);
+    if (data.dob !== undefined) updateData.dob = data.dob ? new Date(data.dob) : null;
+    if (data.followUp !== undefined) updateData.followUp = data.followUp;
+    if (data.followUpDate !== undefined) updateData.followUpDate = data.followUpDate ? new Date(data.followUpDate) : null;
+    if (data.gender !== undefined) updateData.gender = data.gender;
+    if (data.address !== undefined) updateData.address = data.address;
+    if (data.heardAbout !== undefined) updateData.heardAbout = data.heardAbout;
+    if (data.comments !== undefined) updateData.comments = data.comments;
+    if (data.memberPhoto !== undefined) updateData.memberPhoto = data.memberPhoto;
+    if (data.height !== undefined) updateData.height = data.height;
+    if (data.weight !== undefined) updateData.weight = data.weight;
+    if (data.referenceName !== undefined) updateData.referenceName = data.referenceName;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+
+    const inquiry = await prisma.memberInquiry.update({
+      where: { id },
+      data: updateData,
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    return {
+      id: inquiry.id,
+      fullName: inquiry.fullName,
+      contactNo: inquiry.contactNo,
+      inquiryDate: inquiry.inquiryDate,
+      dob: inquiry.dob || undefined,
+      followUp: inquiry.followUp,
+      followUpDate: inquiry.followUpDate || undefined,
+      gender: inquiry.gender || undefined,
+      address: inquiry.address || undefined,
+      heardAbout: inquiry.heardAbout || undefined,
+      userId: inquiry.userId,
+      userName: inquiry.user.name,
+      comments: inquiry.comments || undefined,
+      memberPhoto: inquiry.memberPhoto || undefined,
+      height: inquiry.height ? Number(inquiry.height) : undefined,
+      weight: inquiry.weight ? Number(inquiry.weight) : undefined,
+      referenceName: inquiry.referenceName || undefined,
+      gymId: inquiry.gymId,
+      isActive: inquiry.isActive,
+      createdAt: inquiry.createdAt,
+      updatedAt: inquiry.updatedAt,
+      createdBy: inquiry.createdBy || undefined,
+      updatedBy: inquiry.updatedBy || undefined,
+    };
+  }
+
+  async deleteMemberInquiry(gymId: string, id: string): Promise<void> {
+    await this.getMemberInquiryById(gymId, id);
+    await prisma.memberInquiry.delete({
+      where: { id },
+    });
+  }
+
+  async toggleMemberInquiryStatus(gymId: string, id: string): Promise<MemberInquiry> {
+    const inquiry = await prisma.memberInquiry.findFirst({
+      where: { id, gymId },
+      include: { user: { select: { id: true, name: true, email: true } } },
+    });
+    if (!inquiry) throw new NotFoundException('Member inquiry not found');
+
+    const updatedInquiry = await prisma.memberInquiry.update({
+      where: { id },
+      data: { isActive: !inquiry.isActive },
+      include: { user: { select: { id: true, name: true, email: true } } },
+    });
+
+    return {
+      id: updatedInquiry.id,
+      fullName: updatedInquiry.fullName,
+      contactNo: updatedInquiry.contactNo,
+      inquiryDate: updatedInquiry.inquiryDate,
+      dob: updatedInquiry.dob || undefined,
+      followUp: updatedInquiry.followUp,
+      followUpDate: updatedInquiry.followUpDate || undefined,
+      gender: updatedInquiry.gender || undefined,
+      address: updatedInquiry.address || undefined,
+      heardAbout: updatedInquiry.heardAbout || undefined,
+      userId: updatedInquiry.userId,
+      userName: updatedInquiry.user.name,
+      comments: updatedInquiry.comments || undefined,
+      memberPhoto: updatedInquiry.memberPhoto || undefined,
+      height: updatedInquiry.height ? Number(updatedInquiry.height) : undefined,
+      weight: updatedInquiry.weight ? Number(updatedInquiry.weight) : undefined,
+      referenceName: updatedInquiry.referenceName || undefined,
+      gymId: updatedInquiry.gymId,
+      isActive: updatedInquiry.isActive,
+      createdAt: updatedInquiry.createdAt,
+      updatedAt: updatedInquiry.updatedAt,
+      createdBy: updatedInquiry.createdBy || undefined,
+      updatedBy: updatedInquiry.updatedBy || undefined,
+    };
+  }
+
+  // =============================================
+  // Course Package Methods
+  // =============================================
+
+  async getCoursePackages(gymId: string, params: PaginationParams): Promise<{ packages: CoursePackage[]; total: number }> {
+    const { page, limit, search, sortBy = 'createdAt', sortOrder = 'desc', isActive } = params;
+    const skip = (page - 1) * limit;
+
+    // Default to only active packages if isActive is not explicitly set
+    const activeFilter = isActive !== undefined ? isActive : true;
+
+    const where: any = {
+      gymId,
+      isActive: activeFilter,
+      ...(search && { packageName: { contains: search, mode: 'insensitive' as const } }),
+    };
+
+    const [packageRecords, total] = await Promise.all([
+      prisma.coursePackage.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+      }),
+      prisma.coursePackage.count({ where }),
+    ]);
+
+    const packages: CoursePackage[] = packageRecords.map((p) => ({
+      id: p.id,
+      packageName: p.packageName,
+      description: p.description || undefined,
+      fees: Number(p.fees),
+      maxDiscount: p.maxDiscount ? Number(p.maxDiscount) : undefined,
+      discountType: p.discountType as 'PERCENTAGE' | 'AMOUNT',
+      isActive: p.isActive,
+      gymId: p.gymId,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+      createdBy: p.createdBy || undefined,
+      updatedBy: p.updatedBy || undefined,
+    }));
+
+    return { packages, total };
+  }
+
+  async getAllActiveCoursePackages(gymId: string): Promise<CoursePackage[]> {
+    const packageRecords = await prisma.coursePackage.findMany({
+      where: {
+        gymId,
+        isActive: true,
+      },
+      orderBy: { packageName: 'asc' },
+    });
+
+    return packageRecords.map((p) => ({
+      id: p.id,
+      packageName: p.packageName,
+      description: p.description || undefined,
+      fees: Number(p.fees),
+      maxDiscount: p.maxDiscount ? Number(p.maxDiscount) : undefined,
+      discountType: p.discountType as 'PERCENTAGE' | 'AMOUNT',
+      isActive: p.isActive,
+      gymId: p.gymId,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+      createdBy: p.createdBy || undefined,
+      updatedBy: p.updatedBy || undefined,
+    }));
+  }
+
+  async getCoursePackageById(gymId: string, id: string): Promise<CoursePackage> {
+    const packageRecord = await prisma.coursePackage.findFirst({
+      where: { id, gymId },
+    });
+
+    if (!packageRecord) throw new NotFoundException('Course package not found');
+
+    return {
+      id: packageRecord.id,
+      packageName: packageRecord.packageName,
+      description: packageRecord.description || undefined,
+      fees: Number(packageRecord.fees),
+      maxDiscount: packageRecord.maxDiscount ? Number(packageRecord.maxDiscount) : undefined,
+      discountType: packageRecord.discountType as 'PERCENTAGE' | 'AMOUNT',
+      isActive: packageRecord.isActive,
+      gymId: packageRecord.gymId,
+      createdAt: packageRecord.createdAt,
+      updatedAt: packageRecord.updatedAt,
+      createdBy: packageRecord.createdBy || undefined,
+      updatedBy: packageRecord.updatedBy || undefined,
+    };
+  }
+
+  async createCoursePackage(gymId: string, userId: string, data: CreateCoursePackageRequest): Promise<CoursePackage> {
+    // Check for duplicate package name in the same gym
+    const existingPackage = await prisma.coursePackage.findFirst({
+      where: { packageName: data.packageName, gymId },
+    });
+
+    if (existingPackage) {
+      throw new ConflictException('A course package with this name already exists');
+    }
+
+    const packageRecord = await prisma.coursePackage.create({
+      data: {
+        packageName: data.packageName,
+        description: data.description,
+        fees: data.fees,
+        maxDiscount: data.maxDiscount,
+        discountType: data.discountType || 'PERCENTAGE',
+        gymId,
+        createdBy: userId,
+      },
+    });
+
+    return {
+      id: packageRecord.id,
+      packageName: packageRecord.packageName,
+      description: packageRecord.description || undefined,
+      fees: Number(packageRecord.fees),
+      maxDiscount: packageRecord.maxDiscount ? Number(packageRecord.maxDiscount) : undefined,
+      discountType: packageRecord.discountType as 'PERCENTAGE' | 'AMOUNT',
+      isActive: packageRecord.isActive,
+      gymId: packageRecord.gymId,
+      createdAt: packageRecord.createdAt,
+      updatedAt: packageRecord.updatedAt,
+      createdBy: packageRecord.createdBy || undefined,
+      updatedBy: packageRecord.updatedBy || undefined,
+    };
+  }
+
+  async updateCoursePackage(gymId: string, userId: string, id: string, data: UpdateCoursePackageRequest): Promise<CoursePackage> {
+    const existingPackage = await prisma.coursePackage.findFirst({
+      where: { id, gymId },
+    });
+
+    if (!existingPackage) throw new NotFoundException('Course package not found');
+
+    // Check for duplicate package name if updating the name
+    if (data.packageName && data.packageName !== existingPackage.packageName) {
+      const duplicatePackage = await prisma.coursePackage.findFirst({
+        where: { packageName: data.packageName, gymId, id: { not: id } },
+      });
+
+      if (duplicatePackage) {
+        throw new ConflictException('A course package with this name already exists');
+      }
+    }
+
+    const updateData: any = { updatedBy: userId };
+    if (data.packageName !== undefined) updateData.packageName = data.packageName;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.fees !== undefined) updateData.fees = data.fees;
+    if (data.maxDiscount !== undefined) updateData.maxDiscount = data.maxDiscount;
+    if (data.discountType !== undefined) updateData.discountType = data.discountType;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+
+    const packageRecord = await prisma.coursePackage.update({
+      where: { id },
+      data: updateData,
+    });
+
+    return {
+      id: packageRecord.id,
+      packageName: packageRecord.packageName,
+      description: packageRecord.description || undefined,
+      fees: Number(packageRecord.fees),
+      maxDiscount: packageRecord.maxDiscount ? Number(packageRecord.maxDiscount) : undefined,
+      discountType: packageRecord.discountType as 'PERCENTAGE' | 'AMOUNT',
+      isActive: packageRecord.isActive,
+      gymId: packageRecord.gymId,
+      createdAt: packageRecord.createdAt,
+      updatedAt: packageRecord.updatedAt,
+      createdBy: packageRecord.createdBy || undefined,
+      updatedBy: packageRecord.updatedBy || undefined,
+    };
+  }
+
+  async deleteCoursePackage(gymId: string, id: string): Promise<void> {
+    const existingPackage = await prisma.coursePackage.findFirst({
+      where: { id, gymId },
+    });
+
+    if (!existingPackage) throw new NotFoundException('Course package not found');
+
+    // Soft delete by setting isActive to false
+    await prisma.coursePackage.update({
+      where: { id },
+      data: { isActive: false },
+    });
+  }
+
+  async toggleCoursePackageStatus(gymId: string, id: string): Promise<CoursePackage> {
+    const existingPackage = await prisma.coursePackage.findFirst({
+      where: { id, gymId },
+    });
+
+    if (!existingPackage) throw new NotFoundException('Course package not found');
+
+    const packageRecord = await prisma.coursePackage.update({
+      where: { id },
+      data: { isActive: !existingPackage.isActive },
+    });
+
+    return {
+      id: packageRecord.id,
+      packageName: packageRecord.packageName,
+      description: packageRecord.description || undefined,
+      fees: Number(packageRecord.fees),
+      maxDiscount: packageRecord.maxDiscount ? Number(packageRecord.maxDiscount) : undefined,
+      discountType: packageRecord.discountType as 'PERCENTAGE' | 'AMOUNT',
+      isActive: packageRecord.isActive,
+      gymId: packageRecord.gymId,
+      createdAt: packageRecord.createdAt,
+      updatedAt: packageRecord.updatedAt,
+      createdBy: packageRecord.createdBy || undefined,
+      updatedBy: packageRecord.updatedBy || undefined,
+    };
+  }
+
+  async getCoursePackageWithActiveMembers(gymId: string, id: string): Promise<{
+    package: CoursePackage;
+    members: Member[];
+    totalActiveMembers: number;
+  }> {
+    const packageRecord = await prisma.coursePackage.findFirst({
+      where: { id, gymId },
+    });
+
+    if (!packageRecord) throw new NotFoundException('Course package not found');
+
+    const today = new Date();
+
+    // Get all active members who are subscribed to this course package
+    const memberRecords = await prisma.member.findMany({
+      where: {
+        gymId,
+        coursePackageId: id,
+        isActive: true,
+        // Only members with valid membership (end date in the future)
+        membershipEnd: {
+          gte: today,
+        },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        },
+        trainerAssignments: {
+          where: { isActive: true },
+          include: {
+            trainer: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    email: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+          take: 1,
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const members: Member[] = memberRecords.map((member) => {
+      const activeTrainerAssignment = member.trainerAssignments[0];
+      const trainer = activeTrainerAssignment?.trainer;
+
+      return {
+        id: member.id,
+        memberId: member.memberId || undefined,
+        email: member.user.email,
+        firstName: member.user.name?.split(' ')[0] || '',
+        lastName: member.user.name?.split(' ').slice(1).join(' ') || '',
+        phone: member.phone || undefined,
+        altContactNo: member.altContactNo || undefined,
+        address: member.address || undefined,
+        gender: member.gender || undefined,
+        occupation: member.occupation || undefined,
+        maritalStatus: member.maritalStatus || undefined,
+        bloodGroup: member.bloodGroup || undefined,
+        dateOfBirth: member.dateOfBirth || undefined,
+        anniversaryDate: member.anniversaryDate || undefined,
+        emergencyContact: member.emergencyContact || undefined,
+        healthNotes: member.healthNotes || undefined,
+        idProofType: member.idProofType || undefined,
+        idProofDocument: member.idProofDocument || undefined,
+        memberPhoto: member.memberPhoto || undefined,
+        smsFacility: member.smsFacility,
+        isActive: member.isActive,
+        gymId: member.gymId,
+        trainerId: trainer?.id || undefined,
+        trainer: trainer
+          ? {
+            id: trainer.id,
+            email: trainer.user.email,
+            firstName: trainer.user.name?.split(' ')[0] || '',
+            lastName: trainer.user.name?.split(' ').slice(1).join(' ') || '',
+            isActive: trainer.isActive,
+            gymId: trainer.gymId,
+            createdAt: trainer.createdAt,
+            specialization: trainer.specialization || undefined,
+            phone: trainer.phone || undefined,
+          }
+          : undefined,
+        memberType: (member.memberType as 'REGULAR' | 'PT') || 'REGULAR',
+        membershipStartDate: member.membershipStart || undefined,
+        membershipEndDate: member.membershipEnd || undefined,
+        coursePackageId: member.coursePackageId || undefined,
+        packageFees: member.packageFees ? Number(member.packageFees) : undefined,
+        maxDiscount: member.maxDiscount ? Number(member.maxDiscount) : undefined,
+        afterDiscount: member.afterDiscount ? Number(member.afterDiscount) : undefined,
+        extraDiscount: member.extraDiscount ? Number(member.extraDiscount) : undefined,
+        finalFees: member.finalFees ? Number(member.finalFees) : undefined,
+        createdAt: member.createdAt,
+        createdBy: member.createdBy || undefined,
+        updatedBy: member.updatedBy || undefined,
+      };
+    });
+
+    return {
+      package: {
+        id: packageRecord.id,
+        packageName: packageRecord.packageName,
+        description: packageRecord.description || undefined,
+        fees: Number(packageRecord.fees),
+        maxDiscount: packageRecord.maxDiscount ? Number(packageRecord.maxDiscount) : undefined,
+        discountType: packageRecord.discountType as 'PERCENTAGE' | 'AMOUNT',
+        isActive: packageRecord.isActive,
+        gymId: packageRecord.gymId,
+        createdAt: packageRecord.createdAt,
+        updatedAt: packageRecord.updatedAt,
+        createdBy: packageRecord.createdBy || undefined,
+        updatedBy: packageRecord.updatedBy || undefined,
+      },
+      members,
+      totalActiveMembers: members.length,
+    };
+  }
+
+  // =============================================
+  // Member Balance Payment Methods
+  // =============================================
+
+  // Generate next receipt number for gym
+  private async generateReceiptNo(gymId: string): Promise<string> {
+    const lastPayment = await prisma.memberBalancePayment.findFirst({
+      where: { gymId },
+      orderBy: { createdAt: 'desc' },
+      select: { receiptNo: true }
+    });
+
+    if (!lastPayment?.receiptNo) {
+      return 'RCP-001';
+    }
+
+    const lastNum = parseInt(lastPayment.receiptNo.replace('RCP-', '')) || 0;
+    return `RCP-${String(lastNum + 1).padStart(3, '0')}`;
+  }
+
+  async createMemberBalancePayment(
+    gymId: string,
+    userId: string,
+    memberId: string,
+    data: CreateMemberBalancePaymentRequest
+  ): Promise<MemberBalancePayment> {
+    // Validate member exists and belongs to gym
+    const member = await prisma.member.findFirst({
+      where: { id: memberId, gymId },
+      include: { user: { select: { name: true } } }
+    });
+    if (!member) throw new NotFoundException('Member not found');
+
+    // Validate payment doesn't exceed final fees
+    const finalFees = member.finalFees ? Number(member.finalFees) : 0;
+
+    // Get total already paid
+    const existingPayments = await prisma.memberBalancePayment.findMany({
+      where: { memberId, gymId, isActive: true },
+      select: { paidFees: true }
+    });
+    const totalAlreadyPaid = existingPayments.reduce((sum, p) => sum + Number(p.paidFees), 0);
+
+    // Check if new payment would exceed final fees
+    const newTotalPaid = totalAlreadyPaid + Number(data.paidFees);
+    if (finalFees > 0 && newTotalPaid > finalFees) {
+      const remainingAmount = finalFees - totalAlreadyPaid;
+      throw new ForbiddenException(
+        `Payment amount exceeds remaining balance. Final Fees: ₹${finalFees}, Already Paid: ₹${totalAlreadyPaid}, Remaining: ₹${remainingAmount}. Maximum payment allowed: ₹${remainingAmount}`
+      );
+    }
+
+    const receiptNo = await this.generateReceiptNo(gymId);
+
+    const payment = await prisma.memberBalancePayment.create({
+      data: {
+        receiptNo,
+        memberId,
+        gymId,
+        paymentDate: data.paymentDate ? new Date(data.paymentDate) : new Date(),
+        contactNo: data.contactNo || member.phone,
+        paidFees: data.paidFees,
+        payMode: data.payMode,
+        nextPaymentDate: data.nextPaymentDate ? new Date(data.nextPaymentDate) : undefined,
+        notes: data.notes,
+        createdBy: userId,
+      },
+      include: { member: { include: { user: { select: { name: true } } } } }
+    });
+
+    return {
+      id: payment.id,
+      receiptNo: payment.receiptNo,
+      memberId: payment.memberId,
+      memberName: payment.member.user.name,
+      paymentDate: payment.paymentDate,
+      contactNo: payment.contactNo || undefined,
+      paidFees: Number(payment.paidFees),
+      payMode: payment.payMode,
+      nextPaymentDate: payment.nextPaymentDate || undefined,
+      notes: payment.notes || undefined,
+      isActive: payment.isActive,
+      gymId: payment.gymId,
+      createdAt: payment.createdAt,
+      updatedAt: payment.updatedAt,
+      createdBy: payment.createdBy || undefined,
+      updatedBy: payment.updatedBy || undefined,
+    };
+  }
+
+  async updateMemberBalancePayment(
+    gymId: string,
+    userId: string,
+    paymentId: string,
+    data: UpdateMemberBalancePaymentRequest
+  ): Promise<MemberBalancePayment> {
+    const existingPayment = await prisma.memberBalancePayment.findFirst({
+      where: { id: paymentId, gymId }
+    });
+    if (!existingPayment) throw new NotFoundException('Payment not found');
+
+    const payment = await prisma.memberBalancePayment.update({
+      where: { id: paymentId },
+      data: {
+        paymentDate: data.paymentDate ? new Date(data.paymentDate) : undefined,
+        contactNo: data.contactNo,
+        paidFees: data.paidFees,
+        payMode: data.payMode,
+        nextPaymentDate: data.nextPaymentDate ? new Date(data.nextPaymentDate) : undefined,
+        notes: data.notes,
+        isActive: data.isActive,
+        updatedBy: userId,
+      },
+      include: { member: { include: { user: { select: { name: true } } } } }
+    });
+
+    return {
+      id: payment.id,
+      receiptNo: payment.receiptNo,
+      memberId: payment.memberId,
+      memberName: payment.member.user.name,
+      paymentDate: payment.paymentDate,
+      contactNo: payment.contactNo || undefined,
+      paidFees: Number(payment.paidFees),
+      payMode: payment.payMode,
+      nextPaymentDate: payment.nextPaymentDate || undefined,
+      notes: payment.notes || undefined,
+      isActive: payment.isActive,
+      gymId: payment.gymId,
+      createdAt: payment.createdAt,
+      updatedAt: payment.updatedAt,
+      createdBy: payment.createdBy || undefined,
+      updatedBy: payment.updatedBy || undefined,
+    };
+  }
+
+  async getMemberBalancePaymentById(gymId: string, paymentId: string): Promise<MemberBalancePayment> {
+    const payment = await prisma.memberBalancePayment.findFirst({
+      where: { id: paymentId, gymId },
+      include: { member: { include: { user: { select: { name: true } } } } }
+    });
+    if (!payment) throw new NotFoundException('Payment not found');
+
+    return {
+      id: payment.id,
+      receiptNo: payment.receiptNo,
+      memberId: payment.memberId,
+      memberName: payment.member.user.name,
+      paymentDate: payment.paymentDate,
+      contactNo: payment.contactNo || undefined,
+      paidFees: Number(payment.paidFees),
+      payMode: payment.payMode,
+      nextPaymentDate: payment.nextPaymentDate || undefined,
+      notes: payment.notes || undefined,
+      isActive: payment.isActive,
+      gymId: payment.gymId,
+      createdAt: payment.createdAt,
+      updatedAt: payment.updatedAt,
+      createdBy: payment.createdBy || undefined,
+      updatedBy: payment.updatedBy || undefined,
+    };
+  }
+
+  async getMemberBalancePayments(gymId: string, memberId: string): Promise<MemberBalancePaymentResponse> {
+    // Get member with finalFees
+    const member = await prisma.member.findFirst({
+      where: { id: memberId, gymId },
+      include: { user: { select: { name: true } } }
+    });
+    if (!member) throw new NotFoundException('Member not found');
+
+    // Get all payments for this member
+    const payments = await prisma.memberBalancePayment.findMany({
+      where: { memberId, gymId, isActive: true },
+      orderBy: { paymentDate: 'desc' },
+      include: { member: { include: { user: { select: { name: true } } } } }
+    });
+
+    // Calculate totals
+    const finalFees = member.finalFees ? Number(member.finalFees) : 0;
+    const totalPaid = payments.reduce((sum, p) => sum + Number(p.paidFees), 0);
+    const pendingAmount = Math.max(0, finalFees - totalPaid);
+
+    return {
+      summary: {
+        memberId: member.id,
+        memberName: member.user.name,
+        finalFees,
+        totalPaid,
+        pendingAmount,
+        paymentCount: payments.length,
+      },
+      payments: payments.map(payment => ({
+        id: payment.id,
+        receiptNo: payment.receiptNo,
+        memberId: payment.memberId,
+        memberName: payment.member.user.name,
+        paymentDate: payment.paymentDate,
+        contactNo: payment.contactNo || undefined,
+        paidFees: Number(payment.paidFees),
+        payMode: payment.payMode,
+        nextPaymentDate: payment.nextPaymentDate || undefined,
+        notes: payment.notes || undefined,
+        isActive: payment.isActive,
+        gymId: payment.gymId,
+        createdAt: payment.createdAt,
+        updatedAt: payment.updatedAt,
+        createdBy: payment.createdBy || undefined,
+        updatedBy: payment.updatedBy || undefined,
+      })),
+    };
+  }
+
+  async getAllMemberBalancePayments(
+    gymId: string,
+    params: PaginationParams
+  ): Promise<{ payments: MemberBalancePayment[]; total: number }> {
+    const { page, limit, search, sortBy = 'paymentDate', sortOrder = 'desc' } = params;
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      gymId,
+      isActive: true,
+      ...(search && {
+        OR: [
+          { receiptNo: { contains: search, mode: 'insensitive' as const } },
+          { member: { user: { name: { contains: search, mode: 'insensitive' as const } } } },
+          { contactNo: { contains: search, mode: 'insensitive' as const } },
+        ],
+      }),
+    };
+
+    const [paymentRecords, total] = await Promise.all([
+      prisma.memberBalancePayment.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: { member: { include: { user: { select: { name: true } } } } }
+      }),
+      prisma.memberBalancePayment.count({ where }),
+    ]);
+
+    const payments: MemberBalancePayment[] = paymentRecords.map(payment => ({
+      id: payment.id,
+      receiptNo: payment.receiptNo,
+      memberId: payment.memberId,
+      memberName: payment.member.user.name,
+      paymentDate: payment.paymentDate,
+      contactNo: payment.contactNo || undefined,
+      paidFees: Number(payment.paidFees),
+      payMode: payment.payMode,
+      nextPaymentDate: payment.nextPaymentDate || undefined,
+      notes: payment.notes || undefined,
+      isActive: payment.isActive,
+      gymId: payment.gymId,
+      createdAt: payment.createdAt,
+      updatedAt: payment.updatedAt,
+      createdBy: payment.createdBy || undefined,
+      updatedBy: payment.updatedBy || undefined,
+    }));
+
+    return { payments, total };
+  }
+
+  // =============================================
+  // Membership Renewal Methods
+  // =============================================
+
+  /**
+   * Create a new membership renewal
+   * - Only Active or Expired members can renew (not InActive/soft-deleted)
+   * - Creates a NEW row in MembershipRenewal table (historical tracking)
+   * - Updates the member's current membership dates
+   */
+  async createMembershipRenewal(
+    gymId: string,
+    userId: string,
+    data: CreateMembershipRenewalRequest
+  ): Promise<MembershipRenewal> {
+    // Get member and validate ownership
+    const member = await prisma.member.findFirst({
+      where: { id: data.memberId, gymId },
+      include: { user: { select: { name: true, email: true } } }
+    });
+
+    if (!member) {
+      throw new NotFoundException('Member not found');
+    }
+
+    // Check if member is Active or Expired (not InActive/soft-deleted)
+    if (!member.isActive) {
+      throw new BadRequestException('Cannot renew membership for inactive (soft-deleted) members. Please reactivate the member first.');
+    }
+
+    // Determine renewal type based on dates
+    const today = new Date();
+    let renewalType: RenewalType = data.renewalType || 'STANDARD';
+
+    if (!data.renewalType) {
+      if (member.membershipEnd < today) {
+        renewalType = 'LATE'; // Expired member returning
+      } else if (member.membershipEnd > new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)) {
+        renewalType = 'EARLY'; // More than 7 days left
+      }
+    }
+
+    // Generate auto-increment renewal number
+    const lastRenewal = await prisma.membershipRenewal.findFirst({
+      where: { gymId },
+      orderBy: { createdAt: 'desc' },
+      select: { renewalNumber: true }
+    });
+
+    let nextNumber = 1;
+    if (lastRenewal?.renewalNumber) {
+      const match = lastRenewal.renewalNumber.match(/REN-(\d+)/);
+      if (match) {
+        nextNumber = parseInt(match[1]) + 1;
+      }
+    }
+    const renewalNumber = `REN-${String(nextNumber).padStart(5, '0')}`;
+
+    const newMembershipStart = new Date(data.newMembershipStart);
+    const newMembershipEnd = new Date(data.newMembershipEnd);
+
+    // Calculate payment status and amounts
+    const finalFees = data.finalFees || 0;
+    const paidAmount = data.paidAmount || 0;
+    const pendingAmount = Math.max(0, finalFees - paidAmount);
+
+    let paymentStatus: PaymentStatus = 'PENDING';
+    if (paidAmount >= finalFees && finalFees > 0) {
+      paymentStatus = 'PAID';
+    } else if (paidAmount > 0) {
+      paymentStatus = 'PARTIAL';
+    }
+
+    // Create renewal record and update member in transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // Create the renewal record (NEW ROW - historical tracking)
+      const renewal = await tx.membershipRenewal.create({
+        data: {
+          renewalNumber,
+          memberId: data.memberId,
+          gymId,
+
+          // Previous dates (current member dates before renewal)
+          previousMembershipStart: member.membershipStart,
+          previousMembershipEnd: member.membershipEnd,
+
+          // New dates
+          newMembershipStart,
+          newMembershipEnd,
+
+          // Renewal details
+          renewalType,
+
+          // Package and fees
+          coursePackageId: data.coursePackageId,
+          packageFees: data.packageFees,
+          maxDiscount: data.maxDiscount,
+          afterDiscount: data.afterDiscount,
+          extraDiscount: data.extraDiscount,
+          finalFees: data.finalFees,
+
+          // Payment
+          paymentStatus,
+          paymentMode: data.paymentMode,
+          paidAmount,
+          pendingAmount,
+
+          notes: data.notes,
+          createdBy: userId,
+        },
+        include: {
+          member: {
+            include: {
+              user: { select: { name: true, email: true } }
+            }
+          }
+        }
+      });
+
+      // Update member's current membership dates
+      await tx.member.update({
+        where: { id: data.memberId },
+        data: {
+          membershipStart: newMembershipStart,
+          membershipEnd: newMembershipEnd,
+          coursePackageId: data.coursePackageId || member.coursePackageId,
+          packageFees: data.packageFees,
+          maxDiscount: data.maxDiscount,
+          afterDiscount: data.afterDiscount,
+          extraDiscount: data.extraDiscount,
+          finalFees: data.finalFees,
+          updatedBy: userId,
+        }
+      });
+
+      return renewal;
+    });
+
+    // Map to response type
+    return {
+      id: result.id,
+      renewalNumber: result.renewalNumber,
+      memberId: result.memberId,
+      memberName: result.member.user.name,
+      memberEmail: result.member.user.email,
+      memberPhone: result.member.phone || undefined,
+      gymId: result.gymId,
+      previousMembershipStart: result.previousMembershipStart,
+      previousMembershipEnd: result.previousMembershipEnd,
+      newMembershipStart: result.newMembershipStart,
+      newMembershipEnd: result.newMembershipEnd,
+      renewalDate: result.renewalDate,
+      renewalType: result.renewalType as RenewalType,
+      coursePackageId: result.coursePackageId || undefined,
+      packageFees: result.packageFees ? Number(result.packageFees) : undefined,
+      maxDiscount: result.maxDiscount ? Number(result.maxDiscount) : undefined,
+      afterDiscount: result.afterDiscount ? Number(result.afterDiscount) : undefined,
+      extraDiscount: result.extraDiscount ? Number(result.extraDiscount) : undefined,
+      finalFees: result.finalFees ? Number(result.finalFees) : undefined,
+      paymentStatus: result.paymentStatus as PaymentStatus,
+      paymentMode: result.paymentMode || undefined,
+      paidAmount: result.paidAmount ? Number(result.paidAmount) : undefined,
+      pendingAmount: result.pendingAmount ? Number(result.pendingAmount) : undefined,
+      notes: result.notes || undefined,
+      isActive: result.isActive,
+      createdAt: result.createdAt,
+      updatedAt: result.updatedAt,
+      createdBy: result.createdBy || undefined,
+      updatedBy: result.updatedBy || undefined,
+    };
+  }
+
+  /**
+   * Get all membership renewals with filters and pagination
+   */
+  async getMembershipRenewals(
+    gymId: string,
+    params: PaginationParams & {
+      renewalType?: RenewalType;
+      paymentStatus?: PaymentStatus;
+      renewalDateFrom?: string;
+      renewalDateTo?: string;
+    }
+  ): Promise<{ renewals: MembershipRenewal[]; total: number }> {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      sortBy = 'renewalDate',
+      sortOrder = 'desc',
+      renewalType,
+      paymentStatus,
+      renewalDateFrom,
+      renewalDateTo,
+    } = params;
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      gymId,
+      isActive: true,
+      ...(renewalType && { renewalType }),
+      ...(paymentStatus && { paymentStatus }),
+      ...(search && {
+        OR: [
+          { renewalNumber: { contains: search, mode: 'insensitive' as const } },
+          { member: { user: { name: { contains: search, mode: 'insensitive' as const } } } },
+          { member: { user: { email: { contains: search, mode: 'insensitive' as const } } } },
+          { member: { phone: { contains: search, mode: 'insensitive' as const } } },
+          { member: { memberId: { contains: search, mode: 'insensitive' as const } } },
+        ],
+      }),
+      ...(renewalDateFrom || renewalDateTo ? {
+        renewalDate: {
+          ...(renewalDateFrom && { gte: new Date(renewalDateFrom) }),
+          ...(renewalDateTo && { lte: new Date(renewalDateTo) }),
+        },
+      } : {}),
+    };
+
+    const [renewalRecords, total] = await Promise.all([
+      prisma.membershipRenewal.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          member: {
+            include: {
+              user: { select: { name: true, email: true } }
+            }
+          }
+        }
+      }),
+      prisma.membershipRenewal.count({ where }),
+    ]);
+
+    const renewals: MembershipRenewal[] = renewalRecords.map(r => ({
+      id: r.id,
+      renewalNumber: r.renewalNumber,
+      memberId: r.memberId,
+      memberName: r.member.user.name,
+      memberEmail: r.member.user.email,
+      memberPhone: r.member.phone || undefined,
+      gymId: r.gymId,
+      previousMembershipStart: r.previousMembershipStart,
+      previousMembershipEnd: r.previousMembershipEnd,
+      newMembershipStart: r.newMembershipStart,
+      newMembershipEnd: r.newMembershipEnd,
+      renewalDate: r.renewalDate,
+      renewalType: r.renewalType as RenewalType,
+      coursePackageId: r.coursePackageId || undefined,
+      packageFees: r.packageFees ? Number(r.packageFees) : undefined,
+      maxDiscount: r.maxDiscount ? Number(r.maxDiscount) : undefined,
+      afterDiscount: r.afterDiscount ? Number(r.afterDiscount) : undefined,
+      extraDiscount: r.extraDiscount ? Number(r.extraDiscount) : undefined,
+      finalFees: r.finalFees ? Number(r.finalFees) : undefined,
+      paymentStatus: r.paymentStatus as PaymentStatus,
+      paymentMode: r.paymentMode || undefined,
+      paidAmount: r.paidAmount ? Number(r.paidAmount) : undefined,
+      pendingAmount: r.pendingAmount ? Number(r.pendingAmount) : undefined,
+      notes: r.notes || undefined,
+      isActive: r.isActive,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+      createdBy: r.createdBy || undefined,
+      updatedBy: r.updatedBy || undefined,
+    }));
+
+    return { renewals, total };
+  }
+
+  /**
+   * Get membership renewal by ID
+   */
+  async getMembershipRenewalById(gymId: string, renewalId: string): Promise<MembershipRenewal> {
+    const renewal = await prisma.membershipRenewal.findFirst({
+      where: { id: renewalId, gymId },
+      include: {
+        member: {
+          include: {
+            user: { select: { name: true, email: true } }
+          }
+        }
+      }
+    });
+
+    if (!renewal) {
+      throw new NotFoundException('Membership renewal not found');
+    }
+
+    return {
+      id: renewal.id,
+      renewalNumber: renewal.renewalNumber,
+      memberId: renewal.memberId,
+      memberName: renewal.member.user.name,
+      memberEmail: renewal.member.user.email,
+      memberPhone: renewal.member.phone || undefined,
+      gymId: renewal.gymId,
+      previousMembershipStart: renewal.previousMembershipStart,
+      previousMembershipEnd: renewal.previousMembershipEnd,
+      newMembershipStart: renewal.newMembershipStart,
+      newMembershipEnd: renewal.newMembershipEnd,
+      renewalDate: renewal.renewalDate,
+      renewalType: renewal.renewalType as RenewalType,
+      coursePackageId: renewal.coursePackageId || undefined,
+      packageFees: renewal.packageFees ? Number(renewal.packageFees) : undefined,
+      maxDiscount: renewal.maxDiscount ? Number(renewal.maxDiscount) : undefined,
+      afterDiscount: renewal.afterDiscount ? Number(renewal.afterDiscount) : undefined,
+      extraDiscount: renewal.extraDiscount ? Number(renewal.extraDiscount) : undefined,
+      finalFees: renewal.finalFees ? Number(renewal.finalFees) : undefined,
+      paymentStatus: renewal.paymentStatus as PaymentStatus,
+      paymentMode: renewal.paymentMode || undefined,
+      paidAmount: renewal.paidAmount ? Number(renewal.paidAmount) : undefined,
+      pendingAmount: renewal.pendingAmount ? Number(renewal.pendingAmount) : undefined,
+      notes: renewal.notes || undefined,
+      isActive: renewal.isActive,
+      createdAt: renewal.createdAt,
+      updatedAt: renewal.updatedAt,
+      createdBy: renewal.createdBy || undefined,
+      updatedBy: renewal.updatedBy || undefined,
+    };
+  }
+
+  /**
+   * Get member renewal history - all renewals for a specific member
+   */
+  async getMemberRenewalHistory(gymId: string, memberId: string): Promise<MemberRenewalHistory> {
+    const member = await prisma.member.findFirst({
+      where: { id: memberId, gymId },
+      include: { user: { select: { name: true, email: true } } }
+    });
+
+    if (!member) {
+      throw new NotFoundException('Member not found');
+    }
+
+    const renewals = await prisma.membershipRenewal.findMany({
+      where: { memberId, gymId, isActive: true },
+      orderBy: { renewalDate: 'desc' },
+      include: {
+        member: {
+          include: {
+            user: { select: { name: true, email: true } }
+          }
+        }
+      }
+    });
+
+    // Determine member status
+    const today = new Date();
+    let memberStatus: 'Active' | 'Expired' | 'InActive' = 'Active';
+    if (!member.isActive) {
+      memberStatus = 'InActive';
+    } else if (member.membershipEnd < today) {
+      memberStatus = 'Expired';
+    }
+
+    return {
+      member: {
+        id: member.id,
+        memberId: member.memberId || undefined,
+        name: member.user.name,
+        email: member.user.email,
+        phone: member.phone || undefined,
+        currentMembershipStart: member.membershipStart,
+        currentMembershipEnd: member.membershipEnd,
+        memberStatus,
+      },
+      totalRenewals: renewals.length,
+      renewals: renewals.map(r => ({
+        id: r.id,
+        renewalNumber: r.renewalNumber,
+        memberId: r.memberId,
+        memberName: r.member.user.name,
+        memberEmail: r.member.user.email,
+        memberPhone: r.member.phone || undefined,
+        gymId: r.gymId,
+        previousMembershipStart: r.previousMembershipStart,
+        previousMembershipEnd: r.previousMembershipEnd,
+        newMembershipStart: r.newMembershipStart,
+        newMembershipEnd: r.newMembershipEnd,
+        renewalDate: r.renewalDate,
+        renewalType: r.renewalType as RenewalType,
+        coursePackageId: r.coursePackageId || undefined,
+        packageFees: r.packageFees ? Number(r.packageFees) : undefined,
+        maxDiscount: r.maxDiscount ? Number(r.maxDiscount) : undefined,
+        afterDiscount: r.afterDiscount ? Number(r.afterDiscount) : undefined,
+        extraDiscount: r.extraDiscount ? Number(r.extraDiscount) : undefined,
+        finalFees: r.finalFees ? Number(r.finalFees) : undefined,
+        paymentStatus: r.paymentStatus as PaymentStatus,
+        paymentMode: r.paymentMode || undefined,
+        paidAmount: r.paidAmount ? Number(r.paidAmount) : undefined,
+        pendingAmount: r.pendingAmount ? Number(r.pendingAmount) : undefined,
+        notes: r.notes || undefined,
+        isActive: r.isActive,
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+        createdBy: r.createdBy || undefined,
+        updatedBy: r.updatedBy || undefined,
+      })),
+    };
+  }
+
+  /**
+   * Update membership renewal (mainly for payment updates)
+   */
+  async updateMembershipRenewal(
+    gymId: string,
+    userId: string,
+    renewalId: string,
+    data: UpdateMembershipRenewalRequest
+  ): Promise<MembershipRenewal> {
+    const existing = await prisma.membershipRenewal.findFirst({
+      where: { id: renewalId, gymId }
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Membership renewal not found');
+    }
+
+    // Recalculate payment amounts if paidAmount updated
+    let updateData: any = { ...data, updatedBy: userId };
+
+    if (data.paidAmount !== undefined) {
+      const finalFees = Number(existing.finalFees) || 0;
+      const paidAmount = data.paidAmount;
+      const pendingAmount = Math.max(0, finalFees - paidAmount);
+
+      let paymentStatus = data.paymentStatus || existing.paymentStatus;
+      if (paidAmount >= finalFees && finalFees > 0) {
+        paymentStatus = 'PAID';
+      } else if (paidAmount > 0) {
+        paymentStatus = 'PARTIAL';
+      } else {
+        paymentStatus = 'PENDING';
+      }
+
+      updateData = {
+        ...updateData,
+        paidAmount,
+        pendingAmount,
+        paymentStatus,
+      };
+    }
+
+    const updated = await prisma.membershipRenewal.update({
+      where: { id: renewalId },
+      data: updateData,
+      include: {
+        member: {
+          include: {
+            user: { select: { name: true, email: true } }
+          }
+        }
+      }
+    });
+
+    return {
+      id: updated.id,
+      renewalNumber: updated.renewalNumber,
+      memberId: updated.memberId,
+      memberName: updated.member.user.name,
+      memberEmail: updated.member.user.email,
+      memberPhone: updated.member.phone || undefined,
+      gymId: updated.gymId,
+      previousMembershipStart: updated.previousMembershipStart,
+      previousMembershipEnd: updated.previousMembershipEnd,
+      newMembershipStart: updated.newMembershipStart,
+      newMembershipEnd: updated.newMembershipEnd,
+      renewalDate: updated.renewalDate,
+      renewalType: updated.renewalType as RenewalType,
+      coursePackageId: updated.coursePackageId || undefined,
+      packageFees: updated.packageFees ? Number(updated.packageFees) : undefined,
+      maxDiscount: updated.maxDiscount ? Number(updated.maxDiscount) : undefined,
+      afterDiscount: updated.afterDiscount ? Number(updated.afterDiscount) : undefined,
+      extraDiscount: updated.extraDiscount ? Number(updated.extraDiscount) : undefined,
+      finalFees: updated.finalFees ? Number(updated.finalFees) : undefined,
+      paymentStatus: updated.paymentStatus as PaymentStatus,
+      paymentMode: updated.paymentMode || undefined,
+      paidAmount: updated.paidAmount ? Number(updated.paidAmount) : undefined,
+      pendingAmount: updated.pendingAmount ? Number(updated.pendingAmount) : undefined,
+      notes: updated.notes || undefined,
+      isActive: updated.isActive,
+      createdAt: updated.createdAt,
+      updatedAt: updated.updatedAt,
+      createdBy: updated.createdBy || undefined,
+      updatedBy: updated.updatedBy || undefined,
+    };
+  }
+
+  /**
+   * Get Renewal Rate Report - comprehensive analytics for gym owner
+   */
+  async getRenewalRateReport(gymId: string): Promise<RenewalRateReport> {
+    const today = new Date();
+    const twelveMonthsAgo = new Date(today);
+    twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+
+    // Get member counts
+    const [totalMembers, totalActiveMembers, totalExpiredMembers] = await Promise.all([
+      prisma.member.count({ where: { gymId, isActive: true } }),
+      prisma.member.count({
+        where: {
+          gymId,
+          isActive: true,
+          membershipStart: { lte: today },
+          membershipEnd: { gte: today },
+        }
+      }),
+      prisma.member.count({
+        where: {
+          gymId,
+          isActive: true,
+          membershipEnd: { lt: today },
+        }
+      }),
+    ]);
+
+    // Get all renewals
+    const allRenewals = await prisma.membershipRenewal.findMany({
+      where: { gymId, isActive: true }
+    });
+
+    const totalRenewals = allRenewals.length;
+
+    // Calculate renewal rate (members who have renewed at least once / total members)
+    const membersWithRenewals = new Set(allRenewals.map(r => r.memberId)).size;
+    const renewalRate = totalMembers > 0 ? (membersWithRenewals / totalMembers) * 100 : 0;
+
+    // Renewals by type
+    const renewalTypeCount: Record<RenewalType, number> = {
+      'STANDARD': 0,
+      'EARLY': 0,
+      'LATE': 0,
+      'UPGRADE': 0,
+      'DOWNGRADE': 0,
+    };
+    allRenewals.forEach(r => {
+      renewalTypeCount[r.renewalType as RenewalType]++;
+    });
+    const renewalsByType = Object.entries(renewalTypeCount).map(([type, count]) => ({
+      type: type as RenewalType,
+      count,
+      percentage: totalRenewals > 0 ? (count / totalRenewals) * 100 : 0,
+    }));
+
+    // Renewals by payment status
+    const paymentStatusCount: Record<PaymentStatus, { count: number; amount: number }> = {
+      'PAID': { count: 0, amount: 0 },
+      'PENDING': { count: 0, amount: 0 },
+      'PARTIAL': { count: 0, amount: 0 },
+    };
+    allRenewals.forEach(r => {
+      paymentStatusCount[r.paymentStatus as PaymentStatus].count++;
+      paymentStatusCount[r.paymentStatus as PaymentStatus].amount += Number(r.finalFees) || 0;
+    });
+    const renewalsByPaymentStatus = Object.entries(paymentStatusCount).map(([status, data]) => ({
+      status: status as PaymentStatus,
+      count: data.count,
+      totalAmount: data.amount,
+    }));
+
+    // Monthly renewal trends (last 12 months)
+    const monthlyData: Map<string, { renewalCount: number; newMemberCount: number; expiredCount: number }> = new Map();
+
+    for (let i = 0; i < 12; i++) {
+      const monthDate = new Date(today);
+      monthDate.setMonth(monthDate.getMonth() - i);
+      const monthKey = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
+      monthlyData.set(monthKey, { renewalCount: 0, newMemberCount: 0, expiredCount: 0 });
+    }
+
+    // Count renewals per month
+    allRenewals.forEach(r => {
+      const monthKey = `${r.renewalDate.getFullYear()}-${String(r.renewalDate.getMonth() + 1).padStart(2, '0')}`;
+      if (monthlyData.has(monthKey)) {
+        monthlyData.get(monthKey)!.renewalCount++;
+      }
+    });
+
+    // Get new members per month
+    const newMembers = await prisma.member.findMany({
+      where: { gymId, createdAt: { gte: twelveMonthsAgo } },
+      select: { createdAt: true }
+    });
+    newMembers.forEach(m => {
+      const monthKey = `${m.createdAt.getFullYear()}-${String(m.createdAt.getMonth() + 1).padStart(2, '0')}`;
+      if (monthlyData.has(monthKey)) {
+        monthlyData.get(monthKey)!.newMemberCount++;
+      }
+    });
+
+    // Get expired memberships per month
+    const expiredMembers = await prisma.member.findMany({
+      where: { gymId, membershipEnd: { gte: twelveMonthsAgo, lt: today } },
+      select: { membershipEnd: true }
+    });
+    expiredMembers.forEach(m => {
+      const monthKey = `${m.membershipEnd.getFullYear()}-${String(m.membershipEnd.getMonth() + 1).padStart(2, '0')}`;
+      if (monthlyData.has(monthKey)) {
+        monthlyData.get(monthKey)!.expiredCount++;
+      }
+    });
+
+    const monthlyRenewals = Array.from(monthlyData.entries())
+      .map(([month, data]) => ({
+        month,
+        renewalCount: data.renewalCount,
+        newMemberCount: data.newMemberCount,
+        expiredCount: data.expiredCount,
+        renewalRate: data.expiredCount > 0 ? (data.renewalCount / data.expiredCount) * 100 : 0,
+      }))
+      .sort((a, b) => a.month.localeCompare(b.month));
+
+    // Revenue calculations
+    const totalRenewalRevenue = allRenewals.reduce((sum, r) => sum + (Number(r.paidAmount) || 0), 0);
+    const averageRenewalFees = totalRenewals > 0 ? totalRenewalRevenue / totalRenewals : 0;
+
+    // Package popularity in renewals
+    const packageStats: Map<string, { packageId: string; packageName: string; renewalCount: number; totalRevenue: number }> = new Map();
+
+    const coursePackages = await prisma.coursePackage.findMany({
+      where: { gymId },
+      select: { id: true, packageName: true }
+    });
+    const packageNameMap = new Map(coursePackages.map(p => [p.id, p.packageName]));
+
+    allRenewals.forEach(r => {
+      if (r.coursePackageId) {
+        const existing = packageStats.get(r.coursePackageId);
+        if (existing) {
+          existing.renewalCount++;
+          existing.totalRevenue += Number(r.finalFees) || 0;
+        } else {
+          packageStats.set(r.coursePackageId, {
+            packageId: r.coursePackageId,
+            packageName: packageNameMap.get(r.coursePackageId) || 'Unknown Package',
+            renewalCount: 1,
+            totalRevenue: Number(r.finalFees) || 0,
+          });
+        }
+      }
+    });
+
+    const packageRenewalStats = Array.from(packageStats.values())
+      .sort((a, b) => b.renewalCount - a.renewalCount);
+
+    return {
+      totalMembers,
+      totalActiveMembers,
+      totalExpiredMembers,
+      totalRenewals,
+      renewalRate: Math.round(renewalRate * 100) / 100,
+      renewalsByType,
+      renewalsByPaymentStatus,
+      monthlyRenewals,
+      totalRenewalRevenue,
+      averageRenewalFees: Math.round(averageRenewalFees * 100) / 100,
+      packageRenewalStats,
     };
   }
 }

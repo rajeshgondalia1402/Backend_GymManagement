@@ -8,6 +8,21 @@ export const paginationSchema = z.object({
   search: z.string().optional(),
   sortBy: z.string().optional(),
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+  // Member-specific filters
+  status: z.enum(['Active', 'InActive', 'Expired']).optional(),
+  isActive: z.string().optional().transform((val) => val === 'true' ? true : val === 'false' ? false : undefined),
+  memberType: z.enum(['REGULAR', 'PT']).optional(),
+  gender: z.string().optional(),
+  bloodGroup: z.string().optional(),
+  maritalStatus: z.string().optional(),
+  smsFacility: z.string().optional().transform((val) => val === 'true' ? true : val === 'false' ? false : undefined),
+  // Date range filters
+  membershipStartFrom: z.string().optional(),
+  membershipStartTo: z.string().optional(),
+  membershipEndFrom: z.string().optional(),
+  membershipEndTo: z.string().optional(),
+  // Course package filter
+  coursePackageId: z.string().uuid().optional(),
 });
 
 export const idParamSchema = z.object({
@@ -191,13 +206,34 @@ export const createMemberSchema = z.object({
   email: z.string().email('Invalid email format'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   phone: z.string().min(10, 'Phone must be at least 10 characters'),
+  altContactNo: z.string().min(10, 'Alternate contact must be at least 10 characters').optional(),
+  address: z.string().optional(),
+  gender: z.string().optional(),
+  occupation: z.string().optional(),
+  maritalStatus: z.string().optional(),
+  bloodGroup: z.string().optional(),
+  dateOfBirth: z.string().optional(),
+  anniversaryDate: z.string().optional(),
+  emergencyContact: z.string().optional(),
+  healthNotes: z.string().optional(),
+  idProofType: z.string().optional(),
+  smsFacility: z.union([z.boolean(), z.string().transform(val => val === 'true')]).optional(),
   trainerId: z.string().uuid('Invalid trainer ID').optional(),
   memberType: z.enum(['REGULAR', 'PT']).optional().default('REGULAR'),
-  membershipStartDate: z.string().datetime().optional(),
-  membershipEndDate: z.string().datetime().optional(),
+  membershipStartDate: z.string().optional(),
+  membershipEndDate: z.string().optional(),
+  // Fee-related fields
+  coursePackageId: z.string().uuid('Invalid course package ID').optional(),
+  packageFees: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
+  maxDiscount: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
+  afterDiscount: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
+  extraDiscount: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
+  finalFees: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
 });
 
-export const updateMemberSchema = createMemberSchema.partial().omit({ password: true });
+export const updateMemberSchema = createMemberSchema.partial().omit({ password: true }).extend({
+  isActive: z.union([z.boolean(), z.string().transform(val => val === 'true')]).optional(),
+});
 
 // PT Member validation schemas
 export const createPTMemberSchema = z.object({
@@ -325,6 +361,111 @@ export const updateProfileSchema = z.object({
   height: z.number().positive().optional(),
   weight: z.number().positive().optional(),
   fitnessGoal: z.string().optional(),
+});
+
+// Member Inquiry validation schemas
+export const createMemberInquirySchema = z.object({
+  fullName: z.string().min(2, 'Full name must be at least 2 characters'),
+  contactNo: z.string().min(10, 'Contact number must be at least 10 characters'),
+  inquiryDate: z.string().datetime().optional(),
+  dob: z.string().datetime().optional(),
+  followUp: z.boolean().optional().default(false),
+  followUpDate: z.string().datetime().optional(),
+  gender: z.enum(['Male', 'Female', 'Other']).optional(),
+  address: z.string().optional(),
+  heardAbout: z.string().optional(),
+  comments: z.string().optional(),
+  memberPhoto: z.string().optional(),
+  height: z.any().optional(),
+  weight: z.any().optional(),
+  referenceName: z.string().optional(),
+});
+
+export const updateMemberInquirySchema = createMemberInquirySchema.partial().extend({
+  isActive: z.boolean().optional(),
+});
+
+export const userIdParamSchema = z.object({
+  userId: z.string().uuid('Invalid user ID format'),
+});
+
+// Course Package validation schemas
+export const createCoursePackageSchema = z.object({
+  packageName: z.string().min(2, 'Package name must be at least 2 characters'),
+  description: z.string().optional(),
+  fees: z.number().positive('Fees must be positive'),
+  maxDiscount: z.number().min(0, 'Max discount must be non-negative').optional(),
+  discountType: z.enum(['PERCENTAGE', 'AMOUNT']).optional(),
+});
+
+export const updateCoursePackageSchema = createCoursePackageSchema.partial().extend({
+  isActive: z.boolean().optional(),
+});
+
+// Member Balance Payment validation schemas
+export const createMemberBalancePaymentSchema = z.object({
+  paymentDate: z.string().optional(),
+  contactNo: z.string().min(10, 'Contact number must be at least 10 characters').optional(),
+  paidFees: z.union([z.number().positive('Paid fees must be positive'), z.string().transform(val => parseFloat(val))]),
+  payMode: z.string().min(1, 'Payment mode is required'),
+  nextPaymentDate: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+export const updateMemberBalancePaymentSchema = createMemberBalancePaymentSchema.partial().extend({
+  isActive: z.boolean().optional(),
+});
+
+// Membership Renewal validation schemas
+export const createMembershipRenewalSchema = z.object({
+  memberId: z.string().uuid('Invalid member ID'),
+
+  // New membership dates (required)
+  newMembershipStart: z.string().min(1, 'New membership start date is required'),
+  newMembershipEnd: z.string().min(1, 'New membership end date is required'),
+
+  // Renewal type
+  renewalType: z.enum(['STANDARD', 'EARLY', 'LATE', 'UPGRADE', 'DOWNGRADE']).optional(),
+
+  // Package and fees
+  coursePackageId: z.string().uuid('Invalid course package ID').optional(),
+  packageFees: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
+  maxDiscount: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
+  afterDiscount: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
+  extraDiscount: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
+  finalFees: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
+
+  // Payment info
+  paymentMode: z.string().optional(),
+  paidAmount: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
+
+  notes: z.string().optional(),
+});
+
+export const updateMembershipRenewalSchema = z.object({
+  // Payment info (most common update)
+  paymentStatus: z.enum(['PAID', 'PENDING', 'PARTIAL']).optional(),
+  paymentMode: z.string().optional(),
+  paidAmount: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
+
+  // Can also update notes
+  notes: z.string().optional(),
+  isActive: z.boolean().optional(),
+});
+
+// Renewal pagination with additional filters
+export const renewalPaginationSchema = z.object({
+  page: z.string().optional().transform((val) => parseInt(val || '1', 10)),
+  limit: z.string().optional().transform((val) => parseInt(val || '10', 10)),
+  search: z.string().optional(),
+  sortBy: z.string().optional().default('renewalDate'),
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+  // Renewal-specific filters
+  renewalType: z.enum(['STANDARD', 'EARLY', 'LATE', 'UPGRADE', 'DOWNGRADE']).optional(),
+  paymentStatus: z.enum(['PAID', 'PENDING', 'PARTIAL']).optional(),
+  // Date range filters
+  renewalDateFrom: z.string().optional(),
+  renewalDateTo: z.string().optional(),
 });
 
 // Validation middleware factory
