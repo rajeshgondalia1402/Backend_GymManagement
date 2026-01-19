@@ -514,15 +514,23 @@ class GymOwnerService {
     const memberRole = await prisma.rolemaster.findFirst({ where: { rolename: 'MEMBER' } });
     if (!memberRole) throw new NotFoundException('MEMBER role not found');
 
-    // Generate auto-increment member ID
-    const lastMember = await prisma.member.findFirst({
-      where: { gymId },
-      orderBy: { createdAt: 'desc' },
+    // Generate unique auto-increment member ID by finding maximum existing ID
+    const allMembers = await prisma.member.findMany({
+      where: { gymId, memberId: { not: null } },
       select: { memberId: true }
     });
-    const nextMemberId = lastMember?.memberId
-      ? String(parseInt(lastMember.memberId) + 1)
-      : '1001';
+
+    // Extract numeric values and find the maximum
+    let maxId = 1000; // Default starting point (first ID will be 1001)
+    for (const m of allMembers) {
+      if (m.memberId) {
+        const numericId = parseInt(m.memberId, 10);
+        if (!isNaN(numericId) && numericId > maxId) {
+          maxId = numericId;
+        }
+      }
+    }
+    const nextMemberId = String(maxId + 1);
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
     const membershipEnd = data.membershipEndDate
@@ -657,6 +665,7 @@ class GymOwnerService {
       if (data.idProofType !== undefined) updateData.idProofType = data.idProofType;
       if (data.smsFacility !== undefined) updateData.smsFacility = data.smsFacility;
       if (data.isActive !== undefined) updateData.isActive = data.isActive;
+      if (data.memberType !== undefined) updateData.memberType = data.memberType;
       if (data.membershipStartDate) updateData.membershipStart = new Date(data.membershipStartDate);
       if (data.membershipEndDate) updateData.membershipEnd = new Date(data.membershipEndDate);
 
@@ -671,6 +680,30 @@ class GymOwnerService {
       // Handle file uploads
       if (files?.memberPhoto) updateData.memberPhoto = files.memberPhoto;
       if (files?.idProofDocument) updateData.idProofDocument = files.idProofDocument;
+
+      // Generate unique memberId if it doesn't exist
+      if (!existingMember.memberId) {
+        // Find all existing member IDs for this gym and get the maximum numeric value
+        const allMembers = await tx.member.findMany({
+          where: { gymId, memberId: { not: null } },
+          select: { memberId: true }
+        });
+
+        // Extract numeric values and find the maximum
+        let maxId = 1000; // Default starting point
+        for (const m of allMembers) {
+          if (m.memberId) {
+            const numericId = parseInt(m.memberId, 10);
+            if (!isNaN(numericId) && numericId > maxId) {
+              maxId = numericId;
+            }
+          }
+        }
+
+        // Generate next unique ID
+        const nextMemberId = String(maxId + 1);
+        updateData.memberId = nextMemberId;
+      }
 
       const member = await tx.member.update({
         where: { id: memberId },
