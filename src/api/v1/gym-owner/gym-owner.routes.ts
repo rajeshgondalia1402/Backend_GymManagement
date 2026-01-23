@@ -43,7 +43,11 @@ import {
   createMembershipRenewalSchema,
   updateMembershipRenewalSchema,
   renewalPaginationSchema,
+  // New PT Addon schemas
+  addPTAddonSchema,
+  removePTAddonSchema,
   uploadMemberFiles,
+  uploadTrainerFiles,
   handleUploadError,
 } from '../../../common/middleware';
 
@@ -72,7 +76,7 @@ router.get('/dashboard', gymOwnerController.getDashboard.bind(gymOwnerController
  * /api/v1/gym-owner/trainers:
  *   get:
  *     summary: Get all trainers
- *     tags: [Gym Owner]
+ *     tags: [Gym Owner - Trainers]
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -88,25 +92,153 @@ router.get('/trainers/:id', validate(idParamSchema, 'params'), gymOwnerControlle
  * /api/v1/gym-owner/trainers:
  *   post:
  *     summary: Create a new trainer
- *     tags: [Gym Owner]
+ *     tags: [Gym Owner - Trainers]
  *     security:
  *       - bearerAuth: []
+ *     consumes:
+ *       - multipart/form-data
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - firstName
+ *               - lastName
+ *               - email
+ *               - password
+ *               - phone
+ *             properties:
+ *               firstName:
+ *                 type: string
+ *               lastName:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               specialization:
+ *                 type: string
+ *               experience:
+ *                 type: integer
+ *                 description: Years of experience
+ *               gender:
+ *                 type: string
+ *                 enum: [Male, Female, Other]
+ *               dateOfBirth:
+ *                 type: string
+ *                 format: date
+ *               joiningDate:
+ *                 type: string
+ *                 format: date
+ *               salary:
+ *                 type: number
+ *                 description: Monthly salary
+ *               idProofType:
+ *                 type: string
+ *                 description: Type of ID proof (Aadhar, PAN, etc.)
+ *               trainerPhoto:
+ *                 type: string
+ *                 format: binary
+ *                 description: Passport size photo
+ *               idProofDocument:
+ *                 type: string
+ *                 format: binary
+ *                 description: ID proof document
  *     responses:
  *       201:
  *         description: Trainer created successfully
  */
-router.post('/trainers', validate(createTrainerSchema), gymOwnerController.createTrainer.bind(gymOwnerController));
+router.post('/trainers', uploadTrainerFiles, handleUploadError, validate(createTrainerSchema), gymOwnerController.createTrainer.bind(gymOwnerController));
 
-router.put('/trainers/:id', validate(idParamSchema, 'params'), validate(updateTrainerSchema), gymOwnerController.updateTrainer.bind(gymOwnerController));
+/**
+ * @swagger
+ * /api/v1/gym-owner/trainers/{id}:
+ *   put:
+ *     summary: Update a trainer
+ *     tags: [Gym Owner - Trainers]
+ *     security:
+ *       - bearerAuth: []
+ *     consumes:
+ *       - multipart/form-data
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               firstName:
+ *                 type: string
+ *               lastName:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               specialization:
+ *                 type: string
+ *               experience:
+ *                 type: integer
+ *               gender:
+ *                 type: string
+ *                 enum: [Male, Female, Other]
+ *               dateOfBirth:
+ *                 type: string
+ *                 format: date
+ *               joiningDate:
+ *                 type: string
+ *                 format: date
+ *               salary:
+ *                 type: number
+ *               idProofType:
+ *                 type: string
+ *               isActive:
+ *                 type: boolean
+ *               trainerPhoto:
+ *                 type: string
+ *                 format: binary
+ *               idProofDocument:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Trainer updated successfully
+ */
+router.put('/trainers/:id', uploadTrainerFiles, handleUploadError, validate(idParamSchema, 'params'), validate(updateTrainerSchema), gymOwnerController.updateTrainer.bind(gymOwnerController));
 
+/**
+ * @swagger
+ * /api/v1/gym-owner/trainers/{id}:
+ *   delete:
+ *     summary: Soft delete a trainer (set isActive to false)
+ *     tags: [Gym Owner - Trainers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Trainer deactivated successfully
+ */
 router.delete('/trainers/:id', validate(idParamSchema, 'params'), gymOwnerController.deleteTrainer.bind(gymOwnerController));
 
 /**
  * @swagger
  * /api/v1/gym-owner/trainers/{id}/toggle-status:
  *   patch:
- *     summary: Toggle trainer active status
- *     tags: [Gym Owner]
+ *     summary: Toggle trainer active status (activate/deactivate)
+ *     tags: [Gym Owner - Trainers]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -120,6 +252,7 @@ router.delete('/trainers/:id', validate(idParamSchema, 'params'), gymOwnerContro
  *         description: Trainer status toggled successfully
  */
 router.patch('/trainers/:id/toggle-status', validate(idParamSchema, 'params'), gymOwnerController.toggleTrainerStatus.bind(gymOwnerController));
+
 
 // Members
 /**
@@ -1911,10 +2044,16 @@ router.get('/course-packages/active', gymOwnerController.getAllActiveCoursePacka
  *           type: boolean
  *         description: Filter by active status
  *       - in: query
+ *         name: coursePackageType
+ *         schema:
+ *           type: string
+ *           enum: [REGULAR, PT]
+ *         description: Filter by package type (REGULAR for gym membership, PT for personal training)
+ *       - in: query
  *         name: sortBy
  *         schema:
  *           type: string
- *           enum: [packageName, fees, createdAt]
+ *           enum: [packageName, fees, createdAt, coursePackageType]
  *         description: Sort field
  *       - in: query
  *         name: sortOrder
@@ -1998,6 +2137,11 @@ router.get('/course-packages/:id', validate(idParamSchema, 'params'), gymOwnerCo
  *                 enum: [PERCENTAGE, AMOUNT]
  *                 default: PERCENTAGE
  *                 description: Type of discount (PERCENTAGE or AMOUNT)
+ *               coursePackageType:
+ *                 type: string
+ *                 enum: [REGULAR, PT]
+ *                 default: REGULAR
+ *                 description: Type of package - REGULAR for gym membership, PT for personal training
  *     responses:
  *       201:
  *         description: Course package created successfully
@@ -2052,6 +2196,10 @@ router.post('/course-packages', validate(createCoursePackageSchema), gymOwnerCon
  *                 type: string
  *                 enum: [PERCENTAGE, AMOUNT]
  *                 description: Type of discount
+ *               coursePackageType:
+ *                 type: string
+ *                 enum: [REGULAR, PT]
+ *                 description: Type of package - REGULAR for gym membership, PT for personal training
  *               isActive:
  *                 type: boolean
  *                 description: Whether the package is active
@@ -2776,5 +2924,146 @@ router.get('/members/:memberId/renewal-history', validate(memberIdParamSchema, '
  *                         type: number
  */
 router.get('/reports/renewal-rate', gymOwnerController.getRenewalRateReport.bind(gymOwnerController));
+
+// =============================================
+// PT Addon Management Routes
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/members/{memberId}/add-pt:
+ *   post:
+ *     summary: Add PT addon to existing member
+ *     tags: [Gym Owner - PT Addon]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: memberId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - ptPackageName
+ *               - trainerId
+ *               - sessionsTotal
+ *               - ptPackageFees
+ *               - ptFinalFees
+ *             properties:
+ *               ptPackageName:
+ *                 type: string
+ *               trainerId:
+ *                 type: string
+ *               sessionsTotal:
+ *                 type: integer
+ *               sessionDuration:
+ *                 type: integer
+ *                 default: 60
+ *               ptPackageFees:
+ *                 type: number
+ *               ptMaxDiscount:
+ *                 type: number
+ *               ptExtraDiscount:
+ *                 type: number
+ *               ptFinalFees:
+ *                 type: number
+ *               initialPayment:
+ *                 type: number
+ *               paymentMode:
+ *                 type: string
+ *               startDate:
+ *                 type: string
+ *               endDate:
+ *                 type: string
+ *               goals:
+ *                 type: string
+ *               notes:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: PT addon added successfully
+ */
+router.post('/members/:memberId/add-pt', validate(memberIdParamSchema, 'params'), validate(addPTAddonSchema), gymOwnerController.addPTAddon.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/members/{memberId}/remove-pt:
+ *   delete:
+ *     summary: Remove PT addon from member
+ *     tags: [Gym Owner - PT Addon]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: memberId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - action
+ *             properties:
+ *               action:
+ *                 type: string
+ *                 enum: [COMPLETE, FORFEIT, CARRY_FORWARD]
+ *                 description: How to handle remaining sessions
+ *               notes:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: PT addon removed successfully
+ */
+router.delete('/members/:memberId/remove-pt', validate(memberIdParamSchema, 'params'), validate(removePTAddonSchema), gymOwnerController.removePTAddon.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/members/{memberId}/payment-summary:
+ *   get:
+ *     summary: Get combined payment summary for member (Regular + PT)
+ *     tags: [Gym Owner - PT Addon]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: memberId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Payment summary retrieved successfully
+ */
+router.get('/members/:memberId/payment-summary', validate(memberIdParamSchema, 'params'), gymOwnerController.getMemberPaymentSummary.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/members/{memberId}/session-credits:
+ *   get:
+ *     summary: Get session credits for a member
+ *     tags: [Gym Owner - PT Addon]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: memberId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Session credits retrieved successfully
+ */
+router.get('/members/:memberId/session-credits', validate(memberIdParamSchema, 'params'), gymOwnerController.getMemberSessionCredits.bind(gymOwnerController));
 
 export default router;
