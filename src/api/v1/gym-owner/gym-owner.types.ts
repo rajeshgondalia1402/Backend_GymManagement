@@ -5,6 +5,15 @@ export interface Trainer {
   lastName: string;
   phone?: string;
   specialization?: string;
+  experience?: number;
+  gender?: string;
+  dateOfBirth?: Date;
+  joiningDate?: Date;
+  salary?: number;
+  password?: string;
+  trainerPhoto?: string;
+  idProofType?: string;
+  idProofDocument?: string;
   isActive: boolean;
   gymId: string;
   createdAt: Date;
@@ -19,14 +28,29 @@ export interface CreateTrainerRequest {
   password: string;
   phone: string;
   specialization?: string;
+  experience?: number;
+  gender?: string;
+  dateOfBirth?: string;
+  joiningDate?: string;
+  salary?: number;
+  idProofType?: string;
 }
 
 export interface UpdateTrainerRequest {
   firstName?: string;
   lastName?: string;
+  password?: string;
   phone?: string;
   specialization?: string;
+  experience?: number;
+  gender?: string;
+  dateOfBirth?: string;
+  joiningDate?: string;
+  salary?: number;
+  idProofType?: string;
+  isActive?: boolean;
 }
+
 
 export interface Member {
   id: string;
@@ -53,7 +77,7 @@ export interface Member {
   gymId: string;
   trainerId?: string;
   trainer?: Trainer;
-  memberType: 'REGULAR' | 'PT';
+  memberType: 'REGULAR' | 'PT' | 'REGULAR_PT';
   membershipStartDate?: Date;
   membershipEndDate?: Date;
   coursePackageId?: string;
@@ -62,6 +86,26 @@ export interface Member {
   afterDiscount?: number;
   extraDiscount?: number;
   finalFees?: number;
+  // PT Addon Fields
+  hasPTAddon?: boolean;
+  ptPackageName?: string;
+  ptPackageFees?: number;
+  ptMaxDiscount?: number;
+  ptAfterDiscount?: number;
+  ptExtraDiscount?: number;
+  ptFinalFees?: number;
+  // PT Session Info (from PTMember if exists)
+  ptInfo?: {
+    trainerId: string;
+    trainerName: string;
+    sessionsTotal: number;
+    sessionsUsed: number;
+    sessionsRemaining: number;
+    sessionDuration: number;
+    startDate: Date;
+    endDate?: Date;
+    goals?: string;
+  };
   createdAt: Date;
   createdBy?: string;
   updatedBy?: string;
@@ -86,7 +130,7 @@ export interface CreateMemberRequest {
   idProofType?: string;
   smsFacility?: boolean;
   trainerId?: string;
-  memberType?: 'REGULAR' | 'PT';
+  memberType?: 'REGULAR' | 'PT' | 'REGULAR_PT';
   membershipStartDate?: string;
   membershipEndDate?: string;
   coursePackageId?: string;
@@ -95,6 +139,20 @@ export interface CreateMemberRequest {
   afterDiscount?: number;
   extraDiscount?: number;
   finalFees?: number;
+  // PT Addon Fields (for REGULAR_PT type)
+  hasPTAddon?: boolean;
+  ptPackageName?: string;
+  ptTrainerId?: string;
+  ptSessionsTotal?: number;
+  ptSessionDuration?: number;
+  ptPackageFees?: number;
+  ptMaxDiscount?: number;
+  ptExtraDiscount?: number;
+  ptFinalFees?: number;
+  ptStartDate?: string;
+  ptEndDate?: string;
+  ptGoals?: string;
+  ptNotes?: string;
 }
 
 export interface UpdateMemberRequest {
@@ -115,7 +173,7 @@ export interface UpdateMemberRequest {
   smsFacility?: boolean;
   isActive?: boolean;
   trainerId?: string;
-  memberType?: 'REGULAR' | 'PT';
+  memberType?: 'REGULAR' | 'PT' | 'REGULAR_PT';
   membershipStartDate?: string;
   membershipEndDate?: string;
   coursePackageId?: string;
@@ -124,6 +182,13 @@ export interface UpdateMemberRequest {
   afterDiscount?: number;
   extraDiscount?: number;
   finalFees?: number;
+  // PT Addon Fields
+  hasPTAddon?: boolean;
+  ptPackageName?: string;
+  ptPackageFees?: number;
+  ptMaxDiscount?: number;
+  ptExtraDiscount?: number;
+  ptFinalFees?: number;
 }
 
 // PT Member Types
@@ -172,6 +237,87 @@ export interface UpdatePTMemberRequest {
   goals?: string;
   notes?: string;
   isActive?: boolean;
+}
+
+// =============================================
+// PT Addon & Payment Type Conversion Types
+// =============================================
+
+// Payment type - distinguishes between Regular and PT fee payments
+export type PaymentFor = 'REGULAR' | 'PT';
+
+// PT session handling options when removing PT
+export type PTRemovalAction = 'COMPLETE' | 'FORFEIT' | 'CARRY_FORWARD';
+
+// Add PT addon to existing member request
+export interface AddPTAddonRequest {
+  ptPackageName: string;
+  trainerId: string;
+  sessionsTotal: number;
+  sessionDuration?: number;
+  ptPackageFees: number;
+  ptMaxDiscount?: number;
+  ptExtraDiscount?: number;
+  ptFinalFees: number;
+  initialPayment?: number;
+  paymentMode?: string;
+  startDate?: string;
+  endDate?: string;
+  goals?: string;
+  notes?: string;
+}
+
+// Remove PT addon request
+export interface RemovePTAddonRequest {
+  action: PTRemovalAction; // COMPLETE, FORFEIT, CARRY_FORWARD
+  notes?: string;
+}
+
+// PT Session Credit - for carrying forward unused sessions
+export interface PTSessionCredit {
+  id: string;
+  memberId: string;
+  memberName?: string;
+  sessionCredits: number;
+  usedCredits: number;
+  remainingCredits: number;
+  originalPackage: string;
+  creditDate: Date;
+  expiryDate: Date;
+  reason?: string;
+  notes?: string;
+  isActive: boolean;
+  gymId: string;
+  createdAt: Date;
+}
+
+// Combined payment summary for Regular + PT fees
+export interface MemberPaymentSummary {
+  memberId: string;
+  memberName: string;
+
+  // Regular fees summary
+  regular: {
+    finalFees: number;
+    totalPaid: number;
+    pendingAmount: number;
+    paymentStatus: 'PAID' | 'PARTIAL' | 'PENDING';
+    paymentCount: number;
+  };
+
+  // PT fees summary (if applicable)
+  pt?: {
+    finalFees: number;
+    totalPaid: number;
+    pendingAmount: number;
+    paymentStatus: 'PAID' | 'PARTIAL' | 'PENDING';
+    paymentCount: number;
+  };
+
+  // Combined totals
+  grandTotal: number;
+  totalPaid: number;
+  totalPending: number;
 }
 
 // Supplement Types
@@ -372,6 +518,8 @@ export interface PaginationParams {
   membershipEndTo?: string;
   // Course package filter
   coursePackageId?: string;
+  // Course package type filter
+  coursePackageType?: 'REGULAR' | 'PT';
 }
 
 // Report Types
@@ -559,6 +707,8 @@ export interface UpdateMemberInquiryRequest {
 }
 
 // Course Package Types
+export type CoursePackageType = 'REGULAR' | 'PT';
+
 export interface CoursePackage {
   id: string;
   packageName: string;
@@ -566,6 +716,7 @@ export interface CoursePackage {
   fees: number;
   maxDiscount?: number;
   discountType: 'PERCENTAGE' | 'AMOUNT';
+  coursePackageType: CoursePackageType;
   isActive: boolean;
   gymId: string;
   createdAt: Date;
@@ -580,6 +731,7 @@ export interface CreateCoursePackageRequest {
   fees: number;
   maxDiscount?: number;
   discountType?: 'PERCENTAGE' | 'AMOUNT';
+  coursePackageType?: CoursePackageType;
 }
 
 export interface UpdateCoursePackageRequest {
@@ -588,6 +740,7 @@ export interface UpdateCoursePackageRequest {
   fees?: number;
   maxDiscount?: number;
   discountType?: 'PERCENTAGE' | 'AMOUNT';
+  coursePackageType?: CoursePackageType;
   isActive?: boolean;
 }
 
@@ -597,6 +750,7 @@ export interface MemberBalancePayment {
   receiptNo: string;
   memberId: string;
   memberName?: string;
+  paymentFor: PaymentFor; // REGULAR or PT
   paymentDate: Date;
   contactNo?: string;
   paidFees: number;
@@ -612,6 +766,7 @@ export interface MemberBalancePayment {
 }
 
 export interface CreateMemberBalancePaymentRequest {
+  paymentFor?: PaymentFor; // REGULAR or PT - defaults to REGULAR
   paymentDate?: string;
   contactNo?: string;
   paidFees: number;

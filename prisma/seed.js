@@ -43,12 +43,14 @@ async function main() {
   console.log('✅ Cleaned existing data');
 
   // Create Rolemaster entries
-  const [adminRole, gymOwnerRole, memberRole] = await Promise.all([
+  const [adminRole, gymOwnerRole, memberRole, trainerRole] = await Promise.all([
     prisma.rolemaster.create({ data: { rolename: 'ADMIN' } }),
     prisma.rolemaster.create({ data: { rolename: 'GYM_OWNER' } }),
-    prisma.rolemaster.create({ data: { rolename: 'MEMBER' } })
+    prisma.rolemaster.create({ data: { rolename: 'MEMBER' } }),
+    prisma.rolemaster.create({ data: { rolename: 'TRAINER' } })
   ]);
   console.log('✅ Created rolemaster entries');
+
 
   // Create Admin
   const adminPassword = await bcrypt.hash('admin123', 10);
@@ -129,7 +131,7 @@ async function main() {
         email: 'mike.trainer@fitnesspro.com',
         password: trainerPassword,
         name: 'Mike Johnson',
-        roleId: memberRole.Id
+        roleId: trainerRole.Id
       }
     }),
     prisma.user.create({
@@ -137,10 +139,11 @@ async function main() {
         email: 'sarah.trainer@fitnesspro.com',
         password: trainerPassword,
         name: 'Sarah Williams',
-        roleId: memberRole.Id
+        roleId: trainerRole.Id
       }
     })
   ]);
+
 
   const trainers = await Promise.all([
     prisma.trainer.create({
