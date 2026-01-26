@@ -243,3 +243,84 @@ export const deleteOldMemberFile = (filePath: string | null | undefined): void =
     }
   }
 };
+
+// =============================================
+// Trainer Photo and Document Uploads
+// =============================================
+
+// Ensure trainer uploads directories exist
+const trainerPhotosDir = path.join(uploadsDir, 'trainer-photos');
+const trainerDocumentsDir = path.join(uploadsDir, 'trainer-documents');
+
+if (!fs.existsSync(trainerPhotosDir)) {
+  fs.mkdirSync(trainerPhotosDir, { recursive: true });
+}
+
+if (!fs.existsSync(trainerDocumentsDir)) {
+  fs.mkdirSync(trainerDocumentsDir, { recursive: true });
+}
+
+// Multer configuration for trainer uploads (photo + document)
+export const uploadTrainerFiles = multer({
+  storage: multer.diskStorage({
+    destination: (req: Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
+      if (file.fieldname === 'trainerPhoto') {
+        cb(null, trainerPhotosDir);
+      } else if (file.fieldname === 'idProofDocument') {
+        cb(null, trainerDocumentsDir);
+      } else {
+        cb(null, uploadsDir);
+      }
+    },
+    filename: (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const ext = path.extname(file.originalname);
+      if (file.fieldname === 'trainerPhoto') {
+        cb(null, `trainer-photo-${uniqueSuffix}${ext}`);
+      } else if (file.fieldname === 'idProofDocument') {
+        cb(null, `trainer-doc-${uniqueSuffix}${ext}`);
+      } else {
+        cb(null, `file-${uniqueSuffix}${ext}`);
+      }
+    }
+  }),
+  fileFilter: (req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
+    if (file.fieldname === 'trainerPhoto') {
+      imageFileFilter(req, file, cb);
+    } else if (file.fieldname === 'idProofDocument') {
+      documentFileFilter(req, file, cb);
+    } else {
+      cb(null, true);
+    }
+  },
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB max file size
+  }
+}).fields([
+  { name: 'trainerPhoto', maxCount: 1 },
+  { name: 'idProofDocument', maxCount: 1 }
+]);
+
+// Get the relative path for trainer photo
+export const getRelativeTrainerPhotoPath = (filename: string): string => {
+  return `/uploads/trainer-photos/${filename}`;
+};
+
+// Get the relative path for trainer document
+export const getRelativeTrainerDocumentPath = (filename: string): string => {
+  return `/uploads/trainer-documents/${filename}`;
+};
+
+// Utility function to delete old trainer file
+export const deleteOldTrainerFile = (filePath: string | null | undefined): void => {
+  if (filePath) {
+    const fullPath = path.join(process.cwd(), filePath);
+    if (fs.existsSync(fullPath)) {
+      try {
+        fs.unlinkSync(fullPath);
+      } catch (error) {
+        console.error('Error deleting old trainer file:', error);
+      }
+    }
+  }
+};

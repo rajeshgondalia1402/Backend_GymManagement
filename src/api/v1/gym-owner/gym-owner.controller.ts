@@ -54,7 +54,20 @@ class GymOwnerController {
   async createTrainer(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const gymId = this.getGymId(req);
-      const trainer = await gymOwnerService.createTrainer(gymId, req.body);
+
+      // Handle file uploads
+      const files: { trainerPhoto?: string; idProofDocument?: string } = {};
+      if (req.files && typeof req.files === 'object') {
+        const uploadedFiles = req.files as { [fieldname: string]: Express.Multer.File[] };
+        if (uploadedFiles.trainerPhoto && uploadedFiles.trainerPhoto[0]) {
+          files.trainerPhoto = `/uploads/trainer-photos/${uploadedFiles.trainerPhoto[0].filename}`;
+        }
+        if (uploadedFiles.idProofDocument && uploadedFiles.idProofDocument[0]) {
+          files.idProofDocument = `/uploads/trainer-documents/${uploadedFiles.idProofDocument[0].filename}`;
+        }
+      }
+
+      const trainer = await gymOwnerService.createTrainer(gymId, req.body, files);
       successResponse(res, trainer, 'Trainer created successfully', 201);
     } catch (error) {
       next(error);
@@ -64,7 +77,20 @@ class GymOwnerController {
   async updateTrainer(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const gymId = this.getGymId(req);
-      const trainer = await gymOwnerService.updateTrainer(gymId, req.params.id, req.body);
+
+      // Handle file uploads
+      const files: { trainerPhoto?: string; idProofDocument?: string } = {};
+      if (req.files && typeof req.files === 'object') {
+        const uploadedFiles = req.files as { [fieldname: string]: Express.Multer.File[] };
+        if (uploadedFiles.trainerPhoto && uploadedFiles.trainerPhoto[0]) {
+          files.trainerPhoto = `/uploads/trainer-photos/${uploadedFiles.trainerPhoto[0].filename}`;
+        }
+        if (uploadedFiles.idProofDocument && uploadedFiles.idProofDocument[0]) {
+          files.idProofDocument = `/uploads/trainer-documents/${uploadedFiles.idProofDocument[0].filename}`;
+        }
+      }
+
+      const trainer = await gymOwnerService.updateTrainer(gymId, req.params.id, req.body, files);
       successResponse(res, trainer, 'Trainer updated successfully');
     } catch (error) {
       next(error);
@@ -75,11 +101,12 @@ class GymOwnerController {
     try {
       const gymId = this.getGymId(req);
       await gymOwnerService.deleteTrainer(gymId, req.params.id);
-      successResponse(res, null, 'Trainer deleted successfully');
+      successResponse(res, null, 'Trainer deactivated successfully');
     } catch (error) {
       next(error);
     }
   }
+
 
   // Members
   async getMembers(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
@@ -135,6 +162,16 @@ class GymOwnerController {
       const gymId = this.getGymId(req);
       const member = await gymOwnerService.getMemberById(gymId, req.params.id);
       successResponse(res, member, 'Member retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getMemberMembershipDetails(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const membershipDetails = await gymOwnerService.getMemberMembershipDetails(gymId, req.params.id);
+      successResponse(res, membershipDetails, 'Member membership details retrieved successfully');
     } catch (error) {
       next(error);
     }
@@ -895,7 +932,7 @@ class GymOwnerController {
   async getCoursePackages(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const gymId = this.getGymId(req);
-      const { page = 1, limit = 10, search, sortBy, sortOrder, isActive } = req.query as any;
+      const { page = 1, limit = 10, search, sortBy, sortOrder, isActive, coursePackageType } = req.query as any;
       const { packages, total } = await gymOwnerService.getCoursePackages(gymId, {
         page: Number(page),
         limit: Number(limit),
@@ -903,6 +940,7 @@ class GymOwnerController {
         sortBy,
         sortOrder,
         isActive: isActive !== undefined ? isActive === 'true' : undefined,
+        coursePackageType: coursePackageType || undefined,
       });
       paginatedResponse(res, packages, Number(page), Number(limit), total, 'Course packages retrieved successfully');
     } catch (error) {
@@ -1118,6 +1156,56 @@ class GymOwnerController {
       const gymId = this.getGymId(req);
       const report = await gymOwnerService.getRenewalRateReport(gymId);
       successResponse(res, report, 'Renewal rate report retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // =============================================
+  // PT Addon Management Methods
+  // =============================================
+
+  // Add PT addon to existing member
+  async addPTAddon(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const userId = req.user!.id;
+      const member = await gymOwnerService.addPTAddon(gymId, userId, req.params.memberId, req.body);
+      successResponse(res, member, 'PT addon added successfully', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Remove PT addon from member
+  async removePTAddon(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const userId = req.user!.id;
+      const member = await gymOwnerService.removePTAddon(gymId, userId, req.params.memberId, req.body);
+      successResponse(res, member, 'PT addon removed successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Get combined payment summary for member
+  async getMemberPaymentSummary(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const summary = await gymOwnerService.getMemberPaymentSummary(gymId, req.params.memberId);
+      successResponse(res, summary, 'Member payment summary retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Get session credits for a member
+  async getMemberSessionCredits(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const credits = await gymOwnerService.getMemberSessionCredits(gymId, req.params.memberId);
+      successResponse(res, credits, 'Member session credits retrieved successfully');
     } catch (error) {
       next(error);
     }

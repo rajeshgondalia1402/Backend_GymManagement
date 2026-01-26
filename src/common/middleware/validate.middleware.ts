@@ -11,7 +11,8 @@ export const paginationSchema = z.object({
   // Member-specific filters
   status: z.enum(['Active', 'InActive', 'Expired']).optional(),
   isActive: z.string().optional().transform((val) => val === 'true' ? true : val === 'false' ? false : undefined),
-  memberType: z.enum(['REGULAR', 'PT']).optional(),
+  memberType: z.enum(['REGULAR', 'PT', 'REGULAR_PT']).optional(),
+  hasPTAddon: z.string().optional().transform((val) => val === 'true' ? true : val === 'false' ? false : undefined),
   gender: z.string().optional(),
   bloodGroup: z.string().optional(),
   maritalStatus: z.string().optional(),
@@ -23,6 +24,8 @@ export const paginationSchema = z.object({
   membershipEndTo: z.string().optional(),
   // Course package filter
   coursePackageId: z.string().uuid().optional(),
+  // Payment filter
+  paymentFor: z.enum(['REGULAR', 'PT']).optional(),
 });
 
 export const idParamSchema = z.object({
@@ -196,9 +199,29 @@ export const createTrainerSchema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
   phone: z.string().min(10, 'Phone must be at least 10 characters'),
   specialization: z.string().optional(),
+  experience: z.union([z.number(), z.string().transform(val => parseInt(val, 10))]).optional(),
+  gender: z.string().optional(),
+  dateOfBirth: z.string().optional(),
+  joiningDate: z.string().optional(),
+  salary: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
+  idProofType: z.string().optional(),
 });
 
-export const updateTrainerSchema = createTrainerSchema.partial().omit({ password: true });
+export const updateTrainerSchema = z.object({
+  firstName: z.string().min(2, 'First name must be at least 2 characters').optional(),
+  lastName: z.string().min(2, 'Last name must be at least 2 characters').optional(),
+  password: z.string().min(6, 'Password must be at least 6 characters').optional(),
+  phone: z.string().min(10, 'Phone must be at least 10 characters').optional(),
+  specialization: z.string().optional(),
+  experience: z.union([z.number(), z.string().transform(val => parseInt(val, 10))]).optional(),
+  gender: z.string().optional(),
+  dateOfBirth: z.string().optional(),
+  joiningDate: z.string().optional(),
+  salary: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
+  idProofType: z.string().optional(),
+  isActive: z.union([z.boolean(), z.string().transform(val => val === 'true')]).optional(),
+});
+
 
 export const createMemberSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
@@ -219,7 +242,7 @@ export const createMemberSchema = z.object({
   idProofType: z.string().optional(),
   smsFacility: z.union([z.boolean(), z.string().transform(val => val === 'true')]).optional(),
   trainerId: z.string().uuid('Invalid trainer ID').optional(),
-  memberType: z.enum(['REGULAR', 'PT']).optional().default('REGULAR'),
+  memberType: z.enum(['REGULAR', 'PT', 'REGULAR_PT']).optional().default('REGULAR'),
   membershipStartDate: z.string().optional(),
   membershipEndDate: z.string().optional(),
   // Fee-related fields
@@ -229,6 +252,20 @@ export const createMemberSchema = z.object({
   afterDiscount: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
   extraDiscount: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
   finalFees: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
+  // PT Addon Fields (for REGULAR_PT type)
+  hasPTAddon: z.union([z.boolean(), z.string().transform(val => val === 'true')]).optional(),
+  ptPackageName: z.string().optional(),
+  ptTrainerId: z.string().uuid('Invalid PT trainer ID').optional(),
+  ptSessionsTotal: z.union([z.number(), z.string().transform(val => parseInt(val, 10))]).optional(),
+  ptSessionDuration: z.union([z.number(), z.string().transform(val => parseInt(val, 10))]).optional(),
+  ptPackageFees: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
+  ptMaxDiscount: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
+  ptExtraDiscount: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
+  ptFinalFees: z.union([z.number(), z.string().transform(val => parseFloat(val))]).optional(),
+  ptStartDate: z.string().optional(),
+  ptEndDate: z.string().optional(),
+  ptGoals: z.string().optional(),
+  ptNotes: z.string().optional(),
 });
 
 export const updateMemberSchema = createMemberSchema.partial().omit({ password: true }).extend({
@@ -389,21 +426,57 @@ export const userIdParamSchema = z.object({
   userId: z.string().uuid('Invalid user ID format'),
 });
 
-// Course Package validation schemas
+// Course Package validation schemas - helper for months field
+const monthsFieldSchema = z.union([
+  z.number().int().positive('Months must be greater than 0'),
+  z.string().transform((val) => {
+    const parsed = parseInt(val, 10);
+    if (isNaN(parsed) || parsed <= 0) {
+      throw new Error('Months must be greater than 0');
+    }
+    return parsed;
+  })
+]);
+
 export const createCoursePackageSchema = z.object({
   packageName: z.string().min(2, 'Package name must be at least 2 characters'),
   description: z.string().optional(),
   fees: z.number().positive('Fees must be positive'),
   maxDiscount: z.number().min(0, 'Max discount must be non-negative').optional(),
   discountType: z.enum(['PERCENTAGE', 'AMOUNT']).optional(),
+  coursePackageType: z.enum(['REGULAR', 'PT']).optional().default('REGULAR'),
+  Months: monthsFieldSchema.optional(),
+  months: monthsFieldSchema.optional(),
+}).transform((data) => {
+  // Normalize months/Months field - prefer lowercase 'months' if both provided
+  const monthsValue = data.months ?? data.Months;
+  const { months, ...rest } = data;
+  return { ...rest, Months: monthsValue };
+}).refine((data) => data.Months !== undefined, {
+  message: 'Months is required',
+  path: ['Months'],
 });
 
-export const updateCoursePackageSchema = createCoursePackageSchema.partial().extend({
+export const updateCoursePackageSchema = z.object({
+  packageName: z.string().min(2, 'Package name must be at least 2 characters').optional(),
+  description: z.string().optional(),
+  fees: z.number().positive('Fees must be positive').optional(),
+  maxDiscount: z.number().min(0, 'Max discount must be non-negative').optional(),
+  discountType: z.enum(['PERCENTAGE', 'AMOUNT']).optional(),
+  coursePackageType: z.enum(['REGULAR', 'PT']).optional(),
+  Months: monthsFieldSchema.optional(),
+  months: monthsFieldSchema.optional(),
   isActive: z.boolean().optional(),
+}).transform((data) => {
+  // Normalize months/Months field - prefer lowercase 'months' if both provided
+  const monthsValue = data.months ?? data.Months;
+  const { months, ...rest } = data;
+  return { ...rest, Months: monthsValue };
 });
 
 // Member Balance Payment validation schemas
 export const createMemberBalancePaymentSchema = z.object({
+  paymentFor: z.enum(['REGULAR', 'PT']).optional().default('REGULAR'),
   paymentDate: z.string().optional(),
   contactNo: z.string().min(10, 'Contact number must be at least 10 characters').optional(),
   paidFees: z.union([z.number().positive('Paid fees must be positive'), z.string().transform(val => parseFloat(val))]),
@@ -414,6 +487,30 @@ export const createMemberBalancePaymentSchema = z.object({
 
 export const updateMemberBalancePaymentSchema = createMemberBalancePaymentSchema.partial().extend({
   isActive: z.boolean().optional(),
+});
+
+// PT Addon validation schemas
+export const addPTAddonSchema = z.object({
+  ptPackageName: z.string().min(2, 'PT package name is required'),
+  trainerId: z.string().uuid('Invalid trainer ID'),
+  sessionsTotal: z.union([z.number().int().positive('Sessions must be positive'), z.string().transform(val => parseInt(val, 10))]),
+  sessionDuration: z.union([z.number().int().positive(), z.string().transform(val => parseInt(val, 10))]).optional().default(60),
+  ptPackageFees: z.union([z.number().positive('PT fees must be positive'), z.string().transform(val => parseFloat(val))]),
+  ptMaxDiscount: z.union([z.number().min(0), z.string().transform(val => parseFloat(val))]).optional(),
+  ptExtraDiscount: z.union([z.number().min(0), z.string().transform(val => parseFloat(val))]).optional(),
+  ptFinalFees: z.union([z.number().positive('Final PT fees is required'), z.string().transform(val => parseFloat(val))]),
+  initialPayment: z.union([z.number().min(0), z.string().transform(val => parseFloat(val))]).optional(),
+  paymentMode: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  goals: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+// Remove PT Addon validation schema
+export const removePTAddonSchema = z.object({
+  action: z.enum(['COMPLETE', 'FORFEIT', 'CARRY_FORWARD']),
+  notes: z.string().optional(),
 });
 
 // Membership Renewal validation schemas

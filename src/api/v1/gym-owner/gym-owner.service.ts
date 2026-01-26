@@ -62,6 +62,14 @@ import {
   RenewalRateReport,
   RenewalType,
   PaymentStatus,
+  // New imports for PT Addon & Payment Type Conversion
+  AddPTAddonRequest,
+  RemovePTAddonRequest,
+  PTSessionCredit,
+  MemberPaymentSummary,
+  PaymentFor,
+  // Membership Details
+  MemberMembershipDetailsResponse,
 } from './gym-owner.types';
 
 class GymOwnerService {
@@ -149,6 +157,15 @@ class GymOwnerService {
       lastName: t.user.name.split(' ').slice(1).join(' ') || '',
       phone: t.phone || undefined,
       specialization: t.specialization || undefined,
+      experience: t.experience || undefined,
+      gender: t.gender || undefined,
+      dateOfBirth: t.dateOfBirth || undefined,
+      joiningDate: t.joiningDate || undefined,
+      salary: t.salary ? Number(t.salary) : undefined,
+      password: t.password || undefined,
+      trainerPhoto: t.trainerPhoto || undefined,
+      idProofType: t.idProofType || undefined,
+      idProofDocument: t.idProofDocument || undefined,
       isActive: t.isActive && t.user.isActive,
       gymId: t.gymId,
       createdAt: t.createdAt,
@@ -156,6 +173,7 @@ class GymOwnerService {
 
     return { trainers, total };
   }
+
 
   async getTrainerById(gymId: string, trainerId: string): Promise<Trainer> {
     const trainer = await prisma.trainer.findFirst({
@@ -174,13 +192,22 @@ class GymOwnerService {
       lastName: trainer.user.name.split(' ').slice(1).join(' ') || '',
       phone: trainer.phone || undefined,
       specialization: trainer.specialization || undefined,
+      experience: trainer.experience || undefined,
+      gender: trainer.gender || undefined,
+      dateOfBirth: trainer.dateOfBirth || undefined,
+      joiningDate: trainer.joiningDate || undefined,
+      salary: trainer.salary ? Number(trainer.salary) : undefined,
+      password: trainer.password || undefined,
+      trainerPhoto: trainer.trainerPhoto || undefined,
+      idProofType: trainer.idProofType || undefined,
+      idProofDocument: trainer.idProofDocument || undefined,
       isActive: trainer.isActive && trainer.user.isActive,
       gymId: trainer.gymId,
       createdAt: trainer.createdAt,
     };
   }
 
-  async createTrainer(gymId: string, data: CreateTrainerRequest): Promise<Trainer> {
+  async createTrainer(gymId: string, data: CreateTrainerRequest, files?: { trainerPhoto?: string; idProofDocument?: string }): Promise<Trainer> {
     const existingUser = await prisma.user.findUnique({ where: { email: data.email } });
     if (existingUser) throw new ConflictException('User with this email already exists');
 
@@ -209,6 +236,15 @@ class GymOwnerService {
           gymId,
           phone: data.phone,
           specialization: data.specialization,
+          experience: data.experience,
+          gender: data.gender,
+          dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
+          joiningDate: data.joiningDate ? new Date(data.joiningDate) : new Date(), // Default to today
+          salary: data.salary,
+          password: data.password, // Store plain text password for frontend display
+          idProofType: data.idProofType,
+          trainerPhoto: files?.trainerPhoto,
+          idProofDocument: files?.idProofDocument,
         },
         include: {
           user: { select: { id: true, name: true, email: true, isActive: true } }
@@ -225,13 +261,22 @@ class GymOwnerService {
       lastName: data.lastName,
       phone: data.phone,
       specialization: data.specialization,
+      experience: result.experience || undefined,
+      gender: result.gender || undefined,
+      dateOfBirth: result.dateOfBirth || undefined,
+      joiningDate: result.joiningDate || undefined,
+      salary: result.salary ? Number(result.salary) : undefined,
+      password: result.password || undefined,
+      trainerPhoto: result.trainerPhoto || undefined,
+      idProofType: result.idProofType || undefined,
+      idProofDocument: result.idProofDocument || undefined,
       isActive: result.isActive,
       gymId: result.gymId,
       createdAt: result.createdAt,
     };
   }
 
-  async updateTrainer(gymId: string, trainerId: string, data: UpdateTrainerRequest): Promise<Trainer> {
+  async updateTrainer(gymId: string, trainerId: string, data: UpdateTrainerRequest, files?: { trainerPhoto?: string; idProofDocument?: string }): Promise<Trainer> {
     const existingTrainer = await prisma.trainer.findFirst({
       where: { id: trainerId, gymId },
       include: { user: true }
@@ -250,12 +295,36 @@ class GymOwnerService {
         });
       }
 
+      // Update user password if provided
+      if (data.password) {
+        const hashedPassword = await bcrypt.hash(data.password, 10);
+        await tx.user.update({
+          where: { id: existingTrainer.userId },
+          data: { password: hashedPassword }
+        });
+      }
+
+      // Build update data
+      const updateData: any = {};
+      if (data.phone !== undefined) updateData.phone = data.phone;
+      if (data.specialization !== undefined) updateData.specialization = data.specialization;
+      if (data.experience !== undefined) updateData.experience = data.experience;
+      if (data.gender !== undefined) updateData.gender = data.gender;
+      if (data.dateOfBirth !== undefined) updateData.dateOfBirth = data.dateOfBirth ? new Date(data.dateOfBirth) : null;
+      if (data.joiningDate !== undefined) updateData.joiningDate = data.joiningDate ? new Date(data.joiningDate) : null;
+      if (data.salary !== undefined) updateData.salary = data.salary;
+      if (data.idProofType !== undefined) updateData.idProofType = data.idProofType;
+      if (data.isActive !== undefined) updateData.isActive = data.isActive;
+      // Update plain text password in Trainer table for display
+      if (data.password) updateData.password = data.password;
+
+      // Handle file uploads
+      if (files?.trainerPhoto) updateData.trainerPhoto = files.trainerPhoto;
+      if (files?.idProofDocument) updateData.idProofDocument = files.idProofDocument;
+
       const trainer = await tx.trainer.update({
         where: { id: trainerId },
-        data: {
-          phone: data.phone,
-          specialization: data.specialization,
-        },
+        data: updateData,
         include: {
           user: { select: { id: true, name: true, email: true, isActive: true } }
         }
@@ -271,6 +340,15 @@ class GymOwnerService {
       lastName: result.user.name.split(' ').slice(1).join(' ') || '',
       phone: result.phone || undefined,
       specialization: result.specialization || undefined,
+      experience: result.experience || undefined,
+      gender: result.gender || undefined,
+      dateOfBirth: result.dateOfBirth || undefined,
+      joiningDate: result.joiningDate || undefined,
+      salary: result.salary ? Number(result.salary) : undefined,
+      password: result.password || undefined,
+      trainerPhoto: result.trainerPhoto || undefined,
+      idProofType: result.idProofType || undefined,
+      idProofDocument: result.idProofDocument || undefined,
       isActive: result.isActive && result.user.isActive,
       gymId: result.gymId,
       createdAt: result.createdAt,
@@ -283,11 +361,50 @@ class GymOwnerService {
     });
     if (!trainer) throw new NotFoundException('Trainer not found');
 
-    // Delete trainer and associated user
-    await prisma.$transaction(async (tx) => {
-      await tx.trainer.delete({ where: { id: trainerId } });
-      await tx.user.delete({ where: { id: trainer.userId } });
+    // Soft delete - set isActive to false
+    await prisma.trainer.update({
+      where: { id: trainerId },
+      data: { isActive: false }
     });
+  }
+
+  async toggleTrainerStatus(gymId: string, trainerId: string): Promise<Trainer> {
+    const existingTrainer = await prisma.trainer.findFirst({
+      where: { id: trainerId, gymId },
+      include: {
+        user: { select: { id: true, name: true, email: true, isActive: true } }
+      }
+    });
+    if (!existingTrainer) throw new NotFoundException('Trainer not found');
+
+    const updatedTrainer = await prisma.trainer.update({
+      where: { id: trainerId },
+      data: { isActive: !existingTrainer.isActive },
+      include: {
+        user: { select: { id: true, name: true, email: true, isActive: true } }
+      }
+    });
+
+    return {
+      id: updatedTrainer.id,
+      email: updatedTrainer.user.email,
+      firstName: updatedTrainer.user.name.split(' ')[0] || updatedTrainer.user.name,
+      lastName: updatedTrainer.user.name.split(' ').slice(1).join(' ') || '',
+      phone: updatedTrainer.phone || undefined,
+      specialization: updatedTrainer.specialization || undefined,
+      experience: updatedTrainer.experience || undefined,
+      gender: updatedTrainer.gender || undefined,
+      dateOfBirth: updatedTrainer.dateOfBirth || undefined,
+      joiningDate: updatedTrainer.joiningDate || undefined,
+      salary: updatedTrainer.salary ? Number(updatedTrainer.salary) : undefined,
+      password: updatedTrainer.password || undefined,
+      trainerPhoto: updatedTrainer.trainerPhoto || undefined,
+      idProofType: updatedTrainer.idProofType || undefined,
+      idProofDocument: updatedTrainer.idProofDocument || undefined,
+      isActive: updatedTrainer.isActive && updatedTrainer.user.isActive,
+      gymId: updatedTrainer.gymId,
+      createdAt: updatedTrainer.createdAt,
+    };
   }
 
   // Members
@@ -1105,30 +1222,6 @@ class GymOwnerService {
     return { ...member, trainerId };
   }
 
-  // Toggle status methods
-  async toggleTrainerStatus(gymId: string, trainerId: string): Promise<{ isActive: boolean }> {
-    const trainer = await prisma.trainer.findFirst({
-      where: { id: trainerId, gymId },
-      include: { user: true }
-    });
-
-    if (!trainer) throw new NotFoundException('Trainer not found');
-
-    const newStatus = !trainer.user.isActive;
-
-    await prisma.$transaction(async (tx) => {
-      await tx.trainer.update({
-        where: { id: trainerId },
-        data: { isActive: newStatus }
-      });
-      await tx.user.update({
-        where: { id: trainer.userId },
-        data: { isActive: newStatus }
-      });
-    });
-
-    return { isActive: newStatus };
-  }
 
   // =============================================
   // PT Member Methods
@@ -2621,7 +2714,7 @@ class GymOwnerService {
   // =============================================
 
   async getCoursePackages(gymId: string, params: PaginationParams): Promise<{ packages: CoursePackage[]; total: number }> {
-    const { page, limit, search, sortBy = 'createdAt', sortOrder = 'desc', isActive } = params;
+    const { page, limit, search, sortBy = 'createdAt', sortOrder = 'desc', isActive, coursePackageType } = params;
     const skip = (page - 1) * limit;
 
     // Default to only active packages if isActive is not explicitly set
@@ -2631,6 +2724,7 @@ class GymOwnerService {
       gymId,
       isActive: activeFilter,
       ...(search && { packageName: { contains: search, mode: 'insensitive' as const } }),
+      ...(coursePackageType && { coursePackageType }),
     };
 
     const [packageRecords, total] = await Promise.all([
@@ -2650,6 +2744,8 @@ class GymOwnerService {
       fees: Number(p.fees),
       maxDiscount: p.maxDiscount ? Number(p.maxDiscount) : undefined,
       discountType: p.discountType as 'PERCENTAGE' | 'AMOUNT',
+      coursePackageType: p.coursePackageType as 'REGULAR' | 'PT',
+      Months: p.Months,
       isActive: p.isActive,
       gymId: p.gymId,
       createdAt: p.createdAt,
@@ -2677,6 +2773,8 @@ class GymOwnerService {
       fees: Number(p.fees),
       maxDiscount: p.maxDiscount ? Number(p.maxDiscount) : undefined,
       discountType: p.discountType as 'PERCENTAGE' | 'AMOUNT',
+      coursePackageType: p.coursePackageType as 'REGULAR' | 'PT',
+      Months: p.Months,
       isActive: p.isActive,
       gymId: p.gymId,
       createdAt: p.createdAt,
@@ -2700,6 +2798,8 @@ class GymOwnerService {
       fees: Number(packageRecord.fees),
       maxDiscount: packageRecord.maxDiscount ? Number(packageRecord.maxDiscount) : undefined,
       discountType: packageRecord.discountType as 'PERCENTAGE' | 'AMOUNT',
+      coursePackageType: packageRecord.coursePackageType as 'REGULAR' | 'PT',
+      Months: packageRecord.Months,
       isActive: packageRecord.isActive,
       gymId: packageRecord.gymId,
       createdAt: packageRecord.createdAt,
@@ -2726,6 +2826,8 @@ class GymOwnerService {
         fees: data.fees,
         maxDiscount: data.maxDiscount,
         discountType: data.discountType || 'PERCENTAGE',
+        coursePackageType: data.coursePackageType || 'REGULAR',
+        Months: data.Months,
         gymId,
         createdBy: userId,
       },
@@ -2738,6 +2840,8 @@ class GymOwnerService {
       fees: Number(packageRecord.fees),
       maxDiscount: packageRecord.maxDiscount ? Number(packageRecord.maxDiscount) : undefined,
       discountType: packageRecord.discountType as 'PERCENTAGE' | 'AMOUNT',
+      coursePackageType: packageRecord.coursePackageType as 'REGULAR' | 'PT',
+      Months: packageRecord.Months,
       isActive: packageRecord.isActive,
       gymId: packageRecord.gymId,
       createdAt: packageRecord.createdAt,
@@ -2771,6 +2875,8 @@ class GymOwnerService {
     if (data.fees !== undefined) updateData.fees = data.fees;
     if (data.maxDiscount !== undefined) updateData.maxDiscount = data.maxDiscount;
     if (data.discountType !== undefined) updateData.discountType = data.discountType;
+    if (data.coursePackageType !== undefined) updateData.coursePackageType = data.coursePackageType;
+    if (data.Months !== undefined) updateData.Months = data.Months;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
 
     const packageRecord = await prisma.coursePackage.update({
@@ -2785,6 +2891,8 @@ class GymOwnerService {
       fees: Number(packageRecord.fees),
       maxDiscount: packageRecord.maxDiscount ? Number(packageRecord.maxDiscount) : undefined,
       discountType: packageRecord.discountType as 'PERCENTAGE' | 'AMOUNT',
+      coursePackageType: packageRecord.coursePackageType as 'REGULAR' | 'PT',
+      Months: packageRecord.Months,
       isActive: packageRecord.isActive,
       gymId: packageRecord.gymId,
       createdAt: packageRecord.createdAt,
@@ -2827,6 +2935,8 @@ class GymOwnerService {
       fees: Number(packageRecord.fees),
       maxDiscount: packageRecord.maxDiscount ? Number(packageRecord.maxDiscount) : undefined,
       discountType: packageRecord.discountType as 'PERCENTAGE' | 'AMOUNT',
+      coursePackageType: packageRecord.coursePackageType as 'REGULAR' | 'PT',
+      Months: packageRecord.Months,
       isActive: packageRecord.isActive,
       gymId: packageRecord.gymId,
       createdAt: packageRecord.createdAt,
@@ -2953,6 +3063,8 @@ class GymOwnerService {
         fees: Number(packageRecord.fees),
         maxDiscount: packageRecord.maxDiscount ? Number(packageRecord.maxDiscount) : undefined,
         discountType: packageRecord.discountType as 'PERCENTAGE' | 'AMOUNT',
+        coursePackageType: packageRecord.coursePackageType as 'REGULAR' | 'PT',
+        Months: packageRecord.Months,
         isActive: packageRecord.isActive,
         gymId: packageRecord.gymId,
         createdAt: packageRecord.createdAt,
@@ -2998,12 +3110,23 @@ class GymOwnerService {
     });
     if (!member) throw new NotFoundException('Member not found');
 
-    // Validate payment doesn't exceed final fees
-    const finalFees = member.finalFees ? Number(member.finalFees) : 0;
+    // Determine payment type (default to REGULAR)
+    const paymentFor = (data.paymentFor || 'REGULAR') as 'REGULAR' | 'PT';
 
-    // Get total already paid
+    // Get the relevant final fees based on payment type
+    let finalFees: number;
+    if (paymentFor === 'PT') {
+      if (!member.hasPTAddon) {
+        throw new ForbiddenException('Member does not have PT addon. Cannot make PT payment.');
+      }
+      finalFees = member.ptFinalFees ? Number(member.ptFinalFees) : 0;
+    } else {
+      finalFees = member.finalFees ? Number(member.finalFees) : 0;
+    }
+
+    // Get total already paid for this payment type
     const existingPayments = await prisma.memberBalancePayment.findMany({
-      where: { memberId, gymId, isActive: true },
+      where: { memberId, gymId, isActive: true, paymentFor },
       select: { paidFees: true }
     });
     const totalAlreadyPaid = existingPayments.reduce((sum, p) => sum + Number(p.paidFees), 0);
@@ -3012,8 +3135,9 @@ class GymOwnerService {
     const newTotalPaid = totalAlreadyPaid + Number(data.paidFees);
     if (finalFees > 0 && newTotalPaid > finalFees) {
       const remainingAmount = finalFees - totalAlreadyPaid;
+      const feeType = paymentFor === 'PT' ? 'PT' : 'Regular';
       throw new ForbiddenException(
-        `Payment amount exceeds remaining balance. Final Fees: ₹${finalFees}, Already Paid: ₹${totalAlreadyPaid}, Remaining: ₹${remainingAmount}. Maximum payment allowed: ₹${remainingAmount}`
+        `Payment amount exceeds remaining ${feeType} balance. Final Fees: ₹${finalFees}, Already Paid: ₹${totalAlreadyPaid}, Remaining: ₹${remainingAmount}. Maximum payment allowed: ₹${remainingAmount}`
       );
     }
 
@@ -3024,6 +3148,7 @@ class GymOwnerService {
         receiptNo,
         memberId,
         gymId,
+        paymentFor,
         paymentDate: data.paymentDate ? new Date(data.paymentDate) : new Date(),
         contactNo: data.contactNo || member.phone,
         paidFees: data.paidFees,
@@ -3040,6 +3165,7 @@ class GymOwnerService {
       receiptNo: payment.receiptNo,
       memberId: payment.memberId,
       memberName: payment.member.user.name,
+      paymentFor: payment.paymentFor as PaymentFor,
       paymentDate: payment.paymentDate,
       contactNo: payment.contactNo || undefined,
       paidFees: Number(payment.paidFees),
@@ -3086,6 +3212,7 @@ class GymOwnerService {
       receiptNo: payment.receiptNo,
       memberId: payment.memberId,
       memberName: payment.member.user.name,
+      paymentFor: payment.paymentFor as PaymentFor,
       paymentDate: payment.paymentDate,
       contactNo: payment.contactNo || undefined,
       paidFees: Number(payment.paidFees),
@@ -3113,6 +3240,7 @@ class GymOwnerService {
       receiptNo: payment.receiptNo,
       memberId: payment.memberId,
       memberName: payment.member.user.name,
+      paymentFor: payment.paymentFor as PaymentFor,
       paymentDate: payment.paymentDate,
       contactNo: payment.contactNo || undefined,
       paidFees: Number(payment.paidFees),
@@ -3162,6 +3290,7 @@ class GymOwnerService {
         receiptNo: payment.receiptNo,
         memberId: payment.memberId,
         memberName: payment.member.user.name,
+        paymentFor: payment.paymentFor as PaymentFor,
         paymentDate: payment.paymentDate,
         contactNo: payment.contactNo || undefined,
         paidFees: Number(payment.paidFees),
@@ -3213,6 +3342,7 @@ class GymOwnerService {
       receiptNo: payment.receiptNo,
       memberId: payment.memberId,
       memberName: payment.member.user.name,
+      paymentFor: payment.paymentFor as PaymentFor,
       paymentDate: payment.paymentDate,
       contactNo: payment.contactNo || undefined,
       paidFees: Number(payment.paidFees),
@@ -3890,6 +4020,462 @@ class GymOwnerService {
       averageRenewalFees: Math.round(averageRenewalFees * 100) / 100,
       packageRenewalStats,
     };
+  }
+
+  // =============================================
+  // PT Addon Management Methods
+  // =============================================
+
+  // Add PT addon to existing Regular member
+  async addPTAddon(
+    gymId: string,
+    userId: string,
+    memberId: string,
+    data: AddPTAddonRequest
+  ): Promise<Member> {
+    // Validate member exists and belongs to gym
+    const member = await prisma.member.findFirst({
+      where: { id: memberId, gymId },
+      include: { user: { select: { name: true, email: true } }, ptMember: true }
+    });
+    if (!member) throw new NotFoundException('Member not found');
+
+    // Check if already has ACTIVE PT addon (inactive PT records are allowed from previous removals)
+    const hasActivePT = member.hasPTAddon || (member.ptMember && member.ptMember.isActive);
+    if (hasActivePT) {
+      throw new ConflictException('Member already has PT addon. Remove existing PT first.');
+    }
+
+    // Validate trainer exists
+    const trainer = await prisma.trainer.findFirst({
+      where: { id: data.trainerId, gymId, isActive: true },
+      include: { user: { select: { name: true } } }
+    });
+    if (!trainer) throw new NotFoundException('Trainer not found or inactive');
+
+    // Calculate PT fees after discount
+    const ptAfterDiscount = Number(data.ptPackageFees) - (Number(data.ptMaxDiscount) || 0);
+
+    // Check if there's an existing (inactive) PT record that we need to update
+    const existingPTMember = member.ptMember;
+
+    // Transaction to create/update PTMember and update Member
+    const result = await prisma.$transaction(async (tx) => {
+      let ptMember;
+
+      if (existingPTMember && !existingPTMember.isActive) {
+        // Update existing inactive PT record (re-adding PT after removal)
+        ptMember = await tx.pTMember.update({
+          where: { id: existingPTMember.id },
+          data: {
+            trainerId: data.trainerId,
+            packageName: data.ptPackageName,
+            sessionsTotal: data.sessionsTotal,
+            sessionsUsed: 0, // Reset sessions used for new PT package
+            sessionDuration: data.sessionDuration || 60,
+            startDate: data.startDate ? new Date(data.startDate) : new Date(),
+            endDate: data.endDate ? new Date(data.endDate) : null,
+            goals: data.goals,
+            notes: data.notes,
+            isActive: true, // Re-activate
+            updatedBy: userId,
+          }
+        });
+      } else {
+        // Create new PTMember record (first time adding PT)
+        ptMember = await tx.pTMember.create({
+          data: {
+            memberId,
+            trainerId: data.trainerId,
+            gymId,
+            packageName: data.ptPackageName,
+            sessionsTotal: data.sessionsTotal,
+            sessionDuration: data.sessionDuration || 60,
+            startDate: data.startDate ? new Date(data.startDate) : new Date(),
+            endDate: data.endDate ? new Date(data.endDate) : undefined,
+            goals: data.goals,
+            notes: data.notes,
+            createdBy: userId,
+          }
+        });
+      }
+
+      // Update Member with PT addon fields
+      const updatedMember = await tx.member.update({
+        where: { id: memberId },
+        data: {
+          hasPTAddon: true,
+          memberType: member.memberType === 'REGULAR' ? 'REGULAR_PT' : member.memberType,
+          ptPackageName: data.ptPackageName,
+          ptPackageFees: data.ptPackageFees,
+          ptMaxDiscount: data.ptMaxDiscount,
+          ptAfterDiscount,
+          ptExtraDiscount: data.ptExtraDiscount,
+          ptFinalFees: data.ptFinalFees,
+          updatedBy: userId,
+        },
+        include: {
+          user: { select: { name: true, email: true } },
+          ptMember: { include: { trainer: { include: { user: { select: { name: true } } } } } }
+        }
+      });
+
+      // Create initial payment if provided
+      if (data.initialPayment && data.initialPayment > 0) {
+        const receiptNo = await this.generateReceiptNo(gymId);
+        await tx.memberBalancePayment.create({
+          data: {
+            receiptNo,
+            memberId,
+            gymId,
+            paymentFor: 'PT',
+            paymentDate: new Date(),
+            paidFees: data.initialPayment,
+            payMode: data.paymentMode || 'CASH',
+            notes: 'Initial PT payment',
+            createdBy: userId,
+          }
+        });
+      }
+
+      return updatedMember;
+    });
+
+    return this.mapMemberToResponse(result);
+  }
+
+  // Remove PT addon from member
+  async removePTAddon(
+    gymId: string,
+    userId: string,
+    memberId: string,
+    data: RemovePTAddonRequest
+  ): Promise<Member> {
+    // Validate member exists and has PT addon
+    const member = await prisma.member.findFirst({
+      where: { id: memberId, gymId },
+      include: {
+        user: { select: { name: true, email: true } },
+        ptMember: { include: { trainer: { include: { user: { select: { name: true } } } } } }
+      }
+    });
+    if (!member) throw new NotFoundException('Member not found');
+    if (!member.hasPTAddon && !member.ptMember) {
+      throw new BadRequestException('Member does not have PT addon to remove');
+    }
+
+    const ptMember = member.ptMember;
+    const sessionsRemaining = ptMember ? ptMember.sessionsTotal - ptMember.sessionsUsed : 0;
+
+    const result = await prisma.$transaction(async (tx) => {
+      // Handle based on action
+      if (data.action === 'CARRY_FORWARD' && sessionsRemaining > 0) {
+        // Create session credit
+        const expiryDate = new Date();
+        expiryDate.setMonth(expiryDate.getMonth() + 6); // 6 months expiry
+
+        await tx.pTSessionCredit.create({
+          data: {
+            memberId,
+            gymId,
+            sessionCredits: sessionsRemaining,
+            originalPackage: member.ptPackageName || ptMember?.packageName || 'PT Package',
+            creditDate: new Date(),
+            expiryDate,
+            reason: 'PT membership removed - sessions carried forward',
+            notes: data.notes,
+            createdBy: userId,
+          }
+        });
+      }
+
+      // Deactivate PTMember if exists (but keep record for history)
+      if (ptMember) {
+        await tx.pTMember.update({
+          where: { id: ptMember.id },
+          data: {
+            isActive: false,
+            notes: `${ptMember.notes || ''}\n[Removed on ${new Date().toISOString()}] Action: ${data.action}. ${data.notes || ''}`.trim(),
+            updatedBy: userId,
+          }
+        });
+      }
+
+      // Update Member to remove PT addon
+      const updatedMember = await tx.member.update({
+        where: { id: memberId },
+        data: {
+          hasPTAddon: false,
+          memberType: member.memberType === 'REGULAR_PT' ? 'REGULAR' : member.memberType,
+          // Clear PT fields
+          ptPackageName: null,
+          ptPackageFees: null,
+          ptMaxDiscount: null,
+          ptAfterDiscount: null,
+          ptExtraDiscount: null,
+          ptFinalFees: null,
+          updatedBy: userId,
+        },
+        include: {
+          user: { select: { name: true, email: true } },
+          ptMember: { include: { trainer: { include: { user: { select: { name: true } } } } } }
+        }
+      });
+
+      return updatedMember;
+    });
+
+    return this.mapMemberToResponse(result);
+  }
+
+  // Get combined payment summary for Regular + PT fees
+  async getMemberPaymentSummary(gymId: string, memberId: string): Promise<MemberPaymentSummary> {
+    const member = await prisma.member.findFirst({
+      where: { id: memberId, gymId },
+      include: { user: { select: { name: true } } }
+    });
+    if (!member) throw new NotFoundException('Member not found');
+
+    // Get all payments grouped by type
+    const payments = await prisma.memberBalancePayment.findMany({
+      where: { memberId, gymId, isActive: true }
+    });
+
+    // Calculate Regular summary
+    const regularPayments = payments.filter(p => p.paymentFor === 'REGULAR');
+    const regularFinalFees = member.finalFees ? Number(member.finalFees) : 0;
+    const regularTotalPaid = regularPayments.reduce((sum, p) => sum + Number(p.paidFees), 0);
+    const regularPending = Math.max(0, regularFinalFees - regularTotalPaid);
+    const regularStatus = regularFinalFees === 0 ? 'PENDING' :
+      regularTotalPaid >= regularFinalFees ? 'PAID' :
+        regularTotalPaid > 0 ? 'PARTIAL' : 'PENDING';
+
+    // Calculate PT summary if applicable
+    let ptSummary: MemberPaymentSummary['pt'] | undefined;
+    if (member.hasPTAddon && member.ptFinalFees) {
+      const ptPayments = payments.filter(p => p.paymentFor === 'PT');
+      const ptFinalFees = Number(member.ptFinalFees);
+      const ptTotalPaid = ptPayments.reduce((sum, p) => sum + Number(p.paidFees), 0);
+      const ptPending = Math.max(0, ptFinalFees - ptTotalPaid);
+      const ptStatus = ptFinalFees === 0 ? 'PENDING' :
+        ptTotalPaid >= ptFinalFees ? 'PAID' :
+          ptTotalPaid > 0 ? 'PARTIAL' : 'PENDING';
+
+      ptSummary = {
+        finalFees: ptFinalFees,
+        totalPaid: ptTotalPaid,
+        pendingAmount: ptPending,
+        paymentStatus: ptStatus as 'PAID' | 'PARTIAL' | 'PENDING',
+        paymentCount: ptPayments.length,
+      };
+    }
+
+    // Calculate grand totals
+    const grandTotal = regularFinalFees + (ptSummary?.finalFees || 0);
+    const totalPaid = regularTotalPaid + (ptSummary?.totalPaid || 0);
+    const totalPending = regularPending + (ptSummary?.pendingAmount || 0);
+
+    return {
+      memberId: member.id,
+      memberName: member.user.name,
+      regular: {
+        finalFees: regularFinalFees,
+        totalPaid: regularTotalPaid,
+        pendingAmount: regularPending,
+        paymentStatus: regularStatus as 'PAID' | 'PARTIAL' | 'PENDING',
+        paymentCount: regularPayments.length,
+      },
+      pt: ptSummary,
+      grandTotal,
+      totalPaid,
+      totalPending,
+    };
+  }
+
+  // Get session credits for a member
+  async getMemberSessionCredits(gymId: string, memberId: string): Promise<PTSessionCredit[]> {
+    const member = await prisma.member.findFirst({
+      where: { id: memberId, gymId }
+    });
+    if (!member) throw new NotFoundException('Member not found');
+
+    const credits = await prisma.pTSessionCredit.findMany({
+      where: { memberId, gymId, isActive: true },
+      include: { member: { include: { user: { select: { name: true } } } } },
+      orderBy: { expiryDate: 'asc' }
+    });
+
+    return credits.map(credit => ({
+      id: credit.id,
+      memberId: credit.memberId,
+      memberName: credit.member.user.name,
+      sessionCredits: credit.sessionCredits,
+      usedCredits: credit.usedCredits,
+      remainingCredits: credit.sessionCredits - credit.usedCredits,
+      originalPackage: credit.originalPackage,
+      creditDate: credit.creditDate,
+      expiryDate: credit.expiryDate,
+      reason: credit.reason || undefined,
+      notes: credit.notes || undefined,
+      isActive: credit.isActive,
+      gymId: credit.gymId,
+      createdAt: credit.createdAt,
+    }));
+  }
+
+  // Helper method to map member to response with PT info
+  private mapMemberToResponse(member: any): Member {
+    const ptInfo = member.ptMember && member.ptMember.isActive !== false ? {
+      trainerId: member.ptMember.trainerId,
+      trainerName: member.ptMember.trainer?.user?.name || 'Unknown',
+      sessionsTotal: member.ptMember.sessionsTotal,
+      sessionsUsed: member.ptMember.sessionsUsed,
+      sessionsRemaining: member.ptMember.sessionsTotal - member.ptMember.sessionsUsed,
+      sessionDuration: member.ptMember.sessionDuration,
+      startDate: member.ptMember.startDate,
+      endDate: member.ptMember.endDate || undefined,
+      goals: member.ptMember.goals || undefined,
+    } : undefined;
+
+    return {
+      id: member.id,
+      memberId: member.memberId || undefined,
+      email: member.user.email,
+      firstName: member.user.name.split(' ')[0] || member.user.name,
+      lastName: member.user.name.split(' ').slice(1).join(' ') || '',
+      phone: member.phone || undefined,
+      altContactNo: member.altContactNo || undefined,
+      address: member.address || undefined,
+      gender: member.gender || undefined,
+      occupation: member.occupation || undefined,
+      maritalStatus: member.maritalStatus || undefined,
+      bloodGroup: member.bloodGroup || undefined,
+      dateOfBirth: member.dateOfBirth || undefined,
+      anniversaryDate: member.anniversaryDate || undefined,
+      emergencyContact: member.emergencyContact || undefined,
+      healthNotes: member.healthNotes || undefined,
+      idProofType: member.idProofType || undefined,
+      idProofDocument: member.idProofDocument || undefined,
+      memberPhoto: member.memberPhoto || undefined,
+      smsFacility: member.smsFacility,
+      isActive: member.isActive,
+      gymId: member.gymId,
+      memberType: member.memberType,
+      membershipStartDate: member.membershipStart,
+      membershipEndDate: member.membershipEnd,
+      coursePackageId: member.coursePackageId || undefined,
+      packageFees: member.packageFees ? Number(member.packageFees) : undefined,
+      maxDiscount: member.maxDiscount ? Number(member.maxDiscount) : undefined,
+      afterDiscount: member.afterDiscount ? Number(member.afterDiscount) : undefined,
+      extraDiscount: member.extraDiscount ? Number(member.extraDiscount) : undefined,
+      finalFees: member.finalFees ? Number(member.finalFees) : undefined,
+      // PT Addon Fields
+      hasPTAddon: member.hasPTAddon,
+      ptPackageName: member.ptPackageName || undefined,
+      ptPackageFees: member.ptPackageFees ? Number(member.ptPackageFees) : undefined,
+      ptMaxDiscount: member.ptMaxDiscount ? Number(member.ptMaxDiscount) : undefined,
+      ptAfterDiscount: member.ptAfterDiscount ? Number(member.ptAfterDiscount) : undefined,
+      ptExtraDiscount: member.ptExtraDiscount ? Number(member.ptExtraDiscount) : undefined,
+      ptFinalFees: member.ptFinalFees ? Number(member.ptFinalFees) : undefined,
+      ptInfo,
+      createdAt: member.createdAt,
+      createdBy: member.createdBy || undefined,
+      updatedBy: member.updatedBy || undefined,
+    };
+  }
+
+  // Get Member Membership Details
+  async getMemberMembershipDetails(gymId: string, memberId: string): Promise<MemberMembershipDetailsResponse> {
+    const member = await prisma.member.findFirst({
+      where: { id: memberId, gymId },
+      include: {
+        ptMember: {
+          include: {
+            trainer: {
+              include: {
+                user: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!member) throw new NotFoundException('Member not found');
+
+    // Get all balance payments for this member
+    const allPayments = await prisma.memberBalancePayment.findMany({
+      where: { memberId, gymId, isActive: true },
+      select: { paidFees: true, paymentFor: true }
+    });
+
+    // Calculate total paid for REGULAR payments
+    const regularPayments = allPayments.filter(p => p.paymentFor === 'REGULAR');
+    const totalPaidRegular = regularPayments.reduce((sum, p) => sum + Number(p.paidFees), 0);
+
+    // Calculate total paid for PT payments
+    const ptPayments = allPayments.filter(p => p.paymentFor === 'PT');
+    const totalPaidPT = ptPayments.reduce((sum, p) => sum + Number(p.paidFees), 0);
+
+    // Determine if member has regular membership
+    const hasRegularMembership = !!member.packageFees && Number(member.packageFees) > 0;
+
+    // Determine if member has PT membership
+    const hasPTMembership = member.hasPTAddon && !!member.ptPackageFees && Number(member.ptPackageFees) > 0;
+
+    const response: MemberMembershipDetailsResponse = {
+      hasRegularMembership,
+      hasPTMembership,
+    };
+
+    // Add regular membership details if exists
+    if (hasRegularMembership) {
+      const finalFees = member.finalFees ? Number(member.finalFees) : Number(member.packageFees);
+      const totalPendingRegular = Math.max(0, finalFees - totalPaidRegular);
+
+      response.regularMembershipDetails = {
+        packageFees: Number(member.packageFees),
+        maxDiscount: member.maxDiscount ? Number(member.maxDiscount) : 0,
+        afterDiscount: member.afterDiscount ? Number(member.afterDiscount) : Number(member.packageFees),
+        extraDiscount: member.extraDiscount ? Number(member.extraDiscount) : 0,
+        finalFees,
+        totalPaidFees: totalPaidRegular,
+        totalPendingFees: totalPendingRegular,
+        coursePackageId: member.coursePackageId || undefined,
+        membershipStart: member.membershipStart,
+        membershipEnd: member.membershipEnd,
+        membershipStatus: member.membershipStatus,
+      };
+    }
+
+    // Add PT membership details if exists
+    if (hasPTMembership && member.ptMember) {
+      const sessionsRemaining = member.ptMember.sessionsTotal - member.ptMember.sessionsUsed;
+      const ptFinalFees = member.ptFinalFees ? Number(member.ptFinalFees) : Number(member.ptPackageFees);
+      const totalPendingPT = Math.max(0, ptFinalFees - totalPaidPT);
+
+      response.ptMembershipDetails = {
+        packageFees: Number(member.ptPackageFees),
+        maxDiscount: member.ptMaxDiscount ? Number(member.ptMaxDiscount) : 0,
+        afterDiscount: member.ptAfterDiscount ? Number(member.ptAfterDiscount) : Number(member.ptPackageFees),
+        extraDiscount: member.ptExtraDiscount ? Number(member.ptExtraDiscount) : 0,
+        finalFees: ptFinalFees,
+        totalPaidFees: totalPaidPT,
+        totalPendingFees: totalPendingPT,
+        packageName: member.ptPackageName || member.ptMember.packageName,
+        trainerId: member.ptMember.trainerId,
+        trainerName: member.ptMember.trainer.user.name,
+        sessionsTotal: member.ptMember.sessionsTotal,
+        sessionsUsed: member.ptMember.sessionsUsed,
+        sessionsRemaining,
+        sessionDuration: member.ptMember.sessionDuration,
+        startDate: member.ptMember.startDate,
+        endDate: member.ptMember.endDate || undefined,
+        goals: member.ptMember.goals || undefined,
+      };
+    }
+
+    return response;
   }
 }
 

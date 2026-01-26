@@ -101,23 +101,32 @@ model Gym {
 }
 
 model Trainer {
-  id             String                    @id @default(uuid())
-  specialization String?
-  experience     Int?
-  phone          String?
-  isActive       Boolean                   @default(true)
-  createdAt      DateTime                  @default(now())
-  updatedAt      DateTime                  @updatedAt
-  createdBy      String?
-  updatedBy      String?
-  userId         String                    @unique
-  gymId          String
-  members        MemberTrainerAssignment[]
-  ptMembers      PTMember[]
-  gym            Gym                       @relation(fields: [gymId], references: [id], onDelete: Cascade)
-  user           User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String                    @id @default(uuid())
+  specialization  String?
+  experience      Int?
+  phone           String?
+  gender          String?                   // Male, Female, Other
+  dateOfBirth     DateTime?                 // Trainer's date of birth
+  joiningDate     DateTime?                 // Date when trainer joined the gym
+  salary          Decimal?                  @db.Decimal(10, 2) // Monthly salary
+  password        String?                   // Plain text password for display on frontend
+  trainerPhoto    String?                   // Path to trainer's passport size photo
+  idProofType     String?                   // Type of ID proof (Aadhar, PAN, etc.)
+  idProofDocument String?                   // Path to uploaded ID document
+  isActive        Boolean                   @default(true)
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+  createdBy       String?
+  updatedBy       String?
+  userId          String                    @unique
+  gymId           String
+  members         MemberTrainerAssignment[]
+  ptMembers       PTMember[]
+  gym             Gym                       @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  user            User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([gymId])
+  @@index([isActive])
 }
 
 model Member {
@@ -155,6 +164,16 @@ model Member {
   extraDiscount       Decimal?                   @db.Decimal(10, 2) // Additional extra discount
   finalFees           Decimal?                   @db.Decimal(10, 2) // Final fees after all discounts
   membershipStatus    SubscriptionStatus         @default(ACTIVE)
+  
+  // PT Addon Fields - For combined Regular + PT memberships
+  hasPTAddon          Boolean                    @default(false)  // Whether member has active PT addon
+  ptPackageName       String?                    // PT package name
+  ptPackageFees       Decimal?                   @db.Decimal(10, 2) // Original PT package fees
+  ptMaxDiscount       Decimal?                   @db.Decimal(10, 2) // PT max discount allowed
+  ptAfterDiscount     Decimal?                   @db.Decimal(10, 2) // PT amount after max discount
+  ptExtraDiscount     Decimal?                   @db.Decimal(10, 2) // PT extra discount
+  ptFinalFees         Decimal?                   @db.Decimal(10, 2) // PT final fees after all discounts
+  
   gym                 Gym                        @relation(fields: [gymId], references: [id], onDelete: Cascade)
   user                User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
   dietAssignments     MemberDietAssignment[]
@@ -164,37 +183,41 @@ model Member {
   memberDietPlans     MemberDietPlan[]
   balancePayments     MemberBalancePayment[]     // Balance payment records
   membershipRenewals  MembershipRenewal[]        // Membership renewal history
+  ptSessionCredits    PTSessionCredit[]          // PT session credits for carry forward
 
   @@index([gymId])
   @@index([membershipStatus])
   @@index([memberType])
   @@index([memberId])
   @@index([isActive])
+  @@index([hasPTAddon])
 }
 
 // Member Balance Payment - tracks partial payments toward final fees
 model MemberBalancePayment {
-  id              String    @id @default(uuid())
-  receiptNo       String    // Auto-generated receipt number (e.g., RCP-001)
-  memberId        String    // Reference to Member
-  paymentDate     DateTime  @default(now())
-  contactNo       String?   // Member contact (from member or override)
-  paidFees        Decimal   @db.Decimal(10, 2) // Amount paid in this transaction
-  payMode         String    // CASH, CARD, UPI, BANK_TRANSFER, CHEQUE, etc.
-  nextPaymentDate DateTime? // Optional next payment reminder date
-  notes           String?   // Optional notes/remarks
-  isActive        Boolean   @default(true)
-  gymId           String    // Reference to Gym for ownership
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id              String     @id @default(uuid())
+  receiptNo       String     // Auto-generated receipt number (e.g., RCP-001)
+  memberId        String     // Reference to Member
+  paymentFor      PaymentFor @default(REGULAR)  // REGULAR or PT - which fees this payment is for
+  paymentDate     DateTime   @default(now())
+  contactNo       String?    // Member contact (from member or override)
+  paidFees        Decimal    @db.Decimal(10, 2) // Amount paid in this transaction
+  payMode         String     // CASH, CARD, UPI, BANK_TRANSFER, CHEQUE, etc.
+  nextPaymentDate DateTime?  // Optional next payment reminder date
+  notes           String?    // Optional notes/remarks
+  isActive        Boolean    @default(true)
+  gymId           String     // Reference to Gym for ownership
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
   createdBy       String?
   updatedBy       String?
-  member          Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  member          Member     @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
   @@index([memberId])
   @@index([gymId])
   @@index([receiptNo])
   @@index([paymentDate])
+  @@index([paymentFor])
   @@map("memberbalancepayment")
 }
 
@@ -223,6 +246,32 @@ model PTMember {
   @@index([gymId])
   @@index([trainerId])
   @@index([memberId])
+}
+
+// PT Session Credit - For carrying forward unused sessions when PT is removed
+model PTSessionCredit {
+  id              String    @id @default(uuid())
+  memberId        String    // Reference to Member
+  sessionCredits  Int       // Number of sessions credited
+  originalPackage String    // Original PT package name
+  creditDate      DateTime  @default(now()) // When credit was created
+  expiryDate      DateTime  // When credit expires (typically 6 months)
+  usedCredits     Int       @default(0) // Credits already used
+  reason          String?   // Why sessions were credited (e.g., "PT membership removed")
+  notes           String?   // Optional notes
+  isActive        Boolean   @default(true)
+  gymId           String    // Reference to Gym
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  createdBy       String?
+  updatedBy       String?
+  member          Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId])
+  @@index([gymId])
+  @@index([expiryDate])
+  @@index([isActive])
+  @@map("ptsessioncredit")
 }
 
 model Supplement {
@@ -525,8 +574,15 @@ enum SubscriptionStatus {
 }
 
 enum MemberType {
-  REGULAR
-  PT
+  REGULAR      // Regular membership only
+  PT           // PT membership only (legacy support)
+  REGULAR_PT   // Combined: Regular + PT membership
+}
+
+// Payment type - distinguishes between Regular and PT fee payments
+enum PaymentFor {
+  REGULAR   // Payment for regular membership fees
+  PT        // Payment for PT membership fees
 }
 
 enum InquirySource {
@@ -552,26 +608,34 @@ enum DiscountType {
   AMOUNT
 }
 
+enum CoursePackageType {
+  REGULAR   // Regular gym membership packages
+  PT        // Personal Training packages
+}
+
 model CoursePackage {
-  id            String       @id @default(uuid())
-  packageName   String
-  description   String?
-  fees          Decimal      @db.Decimal(10, 2)
-  maxDiscount   Decimal?     @db.Decimal(10, 2)
-  discountType  DiscountType @default(PERCENTAGE)
-  isActive      Boolean      @default(true)
-  gymId         String
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  createdBy     String?
-  updatedBy     String?
-  gym           Gym          @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  id                 String            @id @default(uuid())
+  packageName        String
+  description        String?
+  fees               Decimal           @db.Decimal(10, 2)
+  maxDiscount        Decimal?          @db.Decimal(10, 2)
+  discountType       DiscountType      @default(PERCENTAGE)
+  coursePackageType  CoursePackageType @default(REGULAR)
+  Months             Int               @default(1) @map("Months")
+  isActive           Boolean           @default(true)
+  gymId              String
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  createdBy          String?
+  updatedBy          String?
+  gym                Gym               @relation(fields: [gymId], references: [id], onDelete: Cascade)
 
   @@unique([packageName, gymId])
   @@map("coursepackage")
   @@index([gymId])
   @@index([packageName])
   @@index([isActive])
+  @@index([coursePackageType])
 }
 
 // Membership Renewal - Every renewal creates a NEW ROW for historical tracking
