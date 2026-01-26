@@ -15,7 +15,9 @@
     "prisma:seed": "node prisma/seed.js",
     "prisma:studio": "prisma studio",
     "clean": "rimraf dist",
-    "prebuild": "npm run clean"
+    "prebuild": "npm run clean",
+    "postinstall": "node scripts/create-db.mjs",
+    "setup": "node scripts/create-db.mjs --force"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
