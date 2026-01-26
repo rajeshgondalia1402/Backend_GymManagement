@@ -68,6 +68,8 @@ import {
   PTSessionCredit,
   MemberPaymentSummary,
   PaymentFor,
+  // Membership Details
+  MemberMembershipDetailsResponse,
 } from './gym-owner.types';
 
 class GymOwnerService {
@@ -2743,6 +2745,7 @@ class GymOwnerService {
       maxDiscount: p.maxDiscount ? Number(p.maxDiscount) : undefined,
       discountType: p.discountType as 'PERCENTAGE' | 'AMOUNT',
       coursePackageType: p.coursePackageType as 'REGULAR' | 'PT',
+      Months: p.Months,
       isActive: p.isActive,
       gymId: p.gymId,
       createdAt: p.createdAt,
@@ -2771,6 +2774,7 @@ class GymOwnerService {
       maxDiscount: p.maxDiscount ? Number(p.maxDiscount) : undefined,
       discountType: p.discountType as 'PERCENTAGE' | 'AMOUNT',
       coursePackageType: p.coursePackageType as 'REGULAR' | 'PT',
+      Months: p.Months,
       isActive: p.isActive,
       gymId: p.gymId,
       createdAt: p.createdAt,
@@ -2795,6 +2799,7 @@ class GymOwnerService {
       maxDiscount: packageRecord.maxDiscount ? Number(packageRecord.maxDiscount) : undefined,
       discountType: packageRecord.discountType as 'PERCENTAGE' | 'AMOUNT',
       coursePackageType: packageRecord.coursePackageType as 'REGULAR' | 'PT',
+      Months: packageRecord.Months,
       isActive: packageRecord.isActive,
       gymId: packageRecord.gymId,
       createdAt: packageRecord.createdAt,
@@ -2822,6 +2827,7 @@ class GymOwnerService {
         maxDiscount: data.maxDiscount,
         discountType: data.discountType || 'PERCENTAGE',
         coursePackageType: data.coursePackageType || 'REGULAR',
+        Months: data.Months,
         gymId,
         createdBy: userId,
       },
@@ -2835,6 +2841,7 @@ class GymOwnerService {
       maxDiscount: packageRecord.maxDiscount ? Number(packageRecord.maxDiscount) : undefined,
       discountType: packageRecord.discountType as 'PERCENTAGE' | 'AMOUNT',
       coursePackageType: packageRecord.coursePackageType as 'REGULAR' | 'PT',
+      Months: packageRecord.Months,
       isActive: packageRecord.isActive,
       gymId: packageRecord.gymId,
       createdAt: packageRecord.createdAt,
@@ -2869,6 +2876,7 @@ class GymOwnerService {
     if (data.maxDiscount !== undefined) updateData.maxDiscount = data.maxDiscount;
     if (data.discountType !== undefined) updateData.discountType = data.discountType;
     if (data.coursePackageType !== undefined) updateData.coursePackageType = data.coursePackageType;
+    if (data.Months !== undefined) updateData.Months = data.Months;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
 
     const packageRecord = await prisma.coursePackage.update({
@@ -2884,6 +2892,7 @@ class GymOwnerService {
       maxDiscount: packageRecord.maxDiscount ? Number(packageRecord.maxDiscount) : undefined,
       discountType: packageRecord.discountType as 'PERCENTAGE' | 'AMOUNT',
       coursePackageType: packageRecord.coursePackageType as 'REGULAR' | 'PT',
+      Months: packageRecord.Months,
       isActive: packageRecord.isActive,
       gymId: packageRecord.gymId,
       createdAt: packageRecord.createdAt,
@@ -2927,6 +2936,7 @@ class GymOwnerService {
       maxDiscount: packageRecord.maxDiscount ? Number(packageRecord.maxDiscount) : undefined,
       discountType: packageRecord.discountType as 'PERCENTAGE' | 'AMOUNT',
       coursePackageType: packageRecord.coursePackageType as 'REGULAR' | 'PT',
+      Months: packageRecord.Months,
       isActive: packageRecord.isActive,
       gymId: packageRecord.gymId,
       createdAt: packageRecord.createdAt,
@@ -3054,6 +3064,7 @@ class GymOwnerService {
         maxDiscount: packageRecord.maxDiscount ? Number(packageRecord.maxDiscount) : undefined,
         discountType: packageRecord.discountType as 'PERCENTAGE' | 'AMOUNT',
         coursePackageType: packageRecord.coursePackageType as 'REGULAR' | 'PT',
+        Months: packageRecord.Months,
         isActive: packageRecord.isActive,
         gymId: packageRecord.gymId,
         createdAt: packageRecord.createdAt,
@@ -4371,6 +4382,100 @@ class GymOwnerService {
       createdBy: member.createdBy || undefined,
       updatedBy: member.updatedBy || undefined,
     };
+  }
+
+  // Get Member Membership Details
+  async getMemberMembershipDetails(gymId: string, memberId: string): Promise<MemberMembershipDetailsResponse> {
+    const member = await prisma.member.findFirst({
+      where: { id: memberId, gymId },
+      include: {
+        ptMember: {
+          include: {
+            trainer: {
+              include: {
+                user: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    if (!member) throw new NotFoundException('Member not found');
+
+    // Get all balance payments for this member
+    const allPayments = await prisma.memberBalancePayment.findMany({
+      where: { memberId, gymId, isActive: true },
+      select: { paidFees: true, paymentFor: true }
+    });
+
+    // Calculate total paid for REGULAR payments
+    const regularPayments = allPayments.filter(p => p.paymentFor === 'REGULAR');
+    const totalPaidRegular = regularPayments.reduce((sum, p) => sum + Number(p.paidFees), 0);
+
+    // Calculate total paid for PT payments
+    const ptPayments = allPayments.filter(p => p.paymentFor === 'PT');
+    const totalPaidPT = ptPayments.reduce((sum, p) => sum + Number(p.paidFees), 0);
+
+    // Determine if member has regular membership
+    const hasRegularMembership = !!member.packageFees && Number(member.packageFees) > 0;
+
+    // Determine if member has PT membership
+    const hasPTMembership = member.hasPTAddon && !!member.ptPackageFees && Number(member.ptPackageFees) > 0;
+
+    const response: MemberMembershipDetailsResponse = {
+      hasRegularMembership,
+      hasPTMembership,
+    };
+
+    // Add regular membership details if exists
+    if (hasRegularMembership) {
+      const finalFees = member.finalFees ? Number(member.finalFees) : Number(member.packageFees);
+      const totalPendingRegular = Math.max(0, finalFees - totalPaidRegular);
+
+      response.regularMembershipDetails = {
+        packageFees: Number(member.packageFees),
+        maxDiscount: member.maxDiscount ? Number(member.maxDiscount) : 0,
+        afterDiscount: member.afterDiscount ? Number(member.afterDiscount) : Number(member.packageFees),
+        extraDiscount: member.extraDiscount ? Number(member.extraDiscount) : 0,
+        finalFees,
+        totalPaidFees: totalPaidRegular,
+        totalPendingFees: totalPendingRegular,
+        coursePackageId: member.coursePackageId || undefined,
+        membershipStart: member.membershipStart,
+        membershipEnd: member.membershipEnd,
+        membershipStatus: member.membershipStatus,
+      };
+    }
+
+    // Add PT membership details if exists
+    if (hasPTMembership && member.ptMember) {
+      const sessionsRemaining = member.ptMember.sessionsTotal - member.ptMember.sessionsUsed;
+      const ptFinalFees = member.ptFinalFees ? Number(member.ptFinalFees) : Number(member.ptPackageFees);
+      const totalPendingPT = Math.max(0, ptFinalFees - totalPaidPT);
+
+      response.ptMembershipDetails = {
+        packageFees: Number(member.ptPackageFees),
+        maxDiscount: member.ptMaxDiscount ? Number(member.ptMaxDiscount) : 0,
+        afterDiscount: member.ptAfterDiscount ? Number(member.ptAfterDiscount) : Number(member.ptPackageFees),
+        extraDiscount: member.ptExtraDiscount ? Number(member.ptExtraDiscount) : 0,
+        finalFees: ptFinalFees,
+        totalPaidFees: totalPaidPT,
+        totalPendingFees: totalPendingPT,
+        packageName: member.ptPackageName || member.ptMember.packageName,
+        trainerId: member.ptMember.trainerId,
+        trainerName: member.ptMember.trainer.user.name,
+        sessionsTotal: member.ptMember.sessionsTotal,
+        sessionsUsed: member.ptMember.sessionsUsed,
+        sessionsRemaining,
+        sessionDuration: member.ptMember.sessionDuration,
+        startDate: member.ptMember.startDate,
+        endDate: member.ptMember.endDate || undefined,
+        goals: member.ptMember.goals || undefined,
+      };
+    }
+
+    return response;
   }
 }
 

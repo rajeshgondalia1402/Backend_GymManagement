@@ -167,6 +167,16 @@ class GymOwnerController {
     }
   }
 
+  async getMemberMembershipDetails(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const membershipDetails = await gymOwnerService.getMemberMembershipDetails(gymId, req.params.id);
+      successResponse(res, membershipDetails, 'Member membership details retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async createMember(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const gymId = this.getGymId(req);

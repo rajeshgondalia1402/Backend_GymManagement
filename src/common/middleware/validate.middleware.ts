@@ -426,7 +426,18 @@ export const userIdParamSchema = z.object({
   userId: z.string().uuid('Invalid user ID format'),
 });
 
-// Course Package validation schemas
+// Course Package validation schemas - helper for months field
+const monthsFieldSchema = z.union([
+  z.number().int().positive('Months must be greater than 0'),
+  z.string().transform((val) => {
+    const parsed = parseInt(val, 10);
+    if (isNaN(parsed) || parsed <= 0) {
+      throw new Error('Months must be greater than 0');
+    }
+    return parsed;
+  })
+]);
+
 export const createCoursePackageSchema = z.object({
   packageName: z.string().min(2, 'Package name must be at least 2 characters'),
   description: z.string().optional(),
@@ -434,10 +445,33 @@ export const createCoursePackageSchema = z.object({
   maxDiscount: z.number().min(0, 'Max discount must be non-negative').optional(),
   discountType: z.enum(['PERCENTAGE', 'AMOUNT']).optional(),
   coursePackageType: z.enum(['REGULAR', 'PT']).optional().default('REGULAR'),
+  Months: monthsFieldSchema.optional(),
+  months: monthsFieldSchema.optional(),
+}).transform((data) => {
+  // Normalize months/Months field - prefer lowercase 'months' if both provided
+  const monthsValue = data.months ?? data.Months;
+  const { months, ...rest } = data;
+  return { ...rest, Months: monthsValue };
+}).refine((data) => data.Months !== undefined, {
+  message: 'Months is required',
+  path: ['Months'],
 });
 
-export const updateCoursePackageSchema = createCoursePackageSchema.partial().extend({
+export const updateCoursePackageSchema = z.object({
+  packageName: z.string().min(2, 'Package name must be at least 2 characters').optional(),
+  description: z.string().optional(),
+  fees: z.number().positive('Fees must be positive').optional(),
+  maxDiscount: z.number().min(0, 'Max discount must be non-negative').optional(),
+  discountType: z.enum(['PERCENTAGE', 'AMOUNT']).optional(),
+  coursePackageType: z.enum(['REGULAR', 'PT']).optional(),
+  Months: monthsFieldSchema.optional(),
+  months: monthsFieldSchema.optional(),
   isActive: z.boolean().optional(),
+}).transform((data) => {
+  // Normalize months/Months field - prefer lowercase 'months' if both provided
+  const monthsValue = data.months ?? data.Months;
+  const { months, ...rest } = data;
+  return { ...rest, Months: monthsValue };
 });
 
 // Member Balance Payment validation schemas
