@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import config from './env';
 
+class Database {
   private static instance: PrismaClient;
   private constructor() {}
 
@@ -28,4 +29,5 @@ import config from './env';
 }
 
 export const prismaClient = Database.getInstance();
+export const prisma = prismaClient;
 export default Database;

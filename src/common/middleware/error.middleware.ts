@@ -52,6 +52,7 @@ export const errorHandler = (
         errorResponse(res, 'Database error', 500);
         return;
     }
+  }
 
   // Handle JWT errors
   if (err instanceof TokenExpiredError) {
