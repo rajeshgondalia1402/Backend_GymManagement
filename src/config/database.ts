@@ -1,31 +1,12 @@
 import { PrismaClient } from '@prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
-import pg from 'pg';
 import config from './env';
 
-const { Pool } = pg;
-
-class Database {
   private static instance: PrismaClient;
-  private static pool: pg.Pool;
-
   private constructor() {}
 
   public static getInstance(): PrismaClient {
     if (!Database.instance) {
-      // Create connection pool
-      Database.pool = new Pool({
-        connectionString: config.env.DATABASE_URL,
-      });
-
-      // Create Prisma adapter
-      const adapter = new PrismaPg(Database.pool);
-
-      // Create Prisma client with adapter
-      Database.instance = new PrismaClient({
-        adapter,
-        log: config.isDevelopment ? ['query', 'error', 'warn'] : ['error'],
-      });
+      Database.instance = new PrismaClient();
     }
     return Database.instance;
   }
@@ -42,12 +23,9 @@ class Database {
 
   public static async disconnect(): Promise<void> {
     await Database.getInstance().$disconnect();
-    if (Database.pool) {
-      await Database.pool.end();
-    }
     console.log('👋 Database disconnected');
   }
 }
 
-export const prisma = Database.getInstance();
+export const prismaClient = Database.getInstance();
 export default Database;

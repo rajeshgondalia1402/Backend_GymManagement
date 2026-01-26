@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
-import { Prisma } from '@prisma/client';
+import { PrismaClientKnownRequestError } from '@prisma/client-runtime-utils';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import { BaseException } from '../exceptions';
 import { errorResponse } from '../utils/response.util';
@@ -36,8 +36,9 @@ export const errorHandler = (
   }
 
   // Handle Prisma errors
-  if (err instanceof Prisma.PrismaClientKnownRequestError) {
-    switch (err.code) {
+  if (err instanceof PrismaClientKnownRequestError) {
+    const code = (err as PrismaClientKnownRequestError).code;
+    switch (code) {
       case 'P2002':
         errorResponse(res, 'A record with this value already exists', 409);
         return;
@@ -51,7 +52,6 @@ export const errorHandler = (
         errorResponse(res, 'Database error', 500);
         return;
     }
-  }
 
   // Handle JWT errors
   if (err instanceof TokenExpiredError) {

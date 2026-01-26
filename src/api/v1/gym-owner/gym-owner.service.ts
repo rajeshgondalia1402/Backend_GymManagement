@@ -3996,7 +3996,7 @@ class GymOwnerService {
         } else {
           packageStats.set(r.coursePackageId, {
             packageId: r.coursePackageId,
-            packageName: packageNameMap.get(r.coursePackageId) || 'Unknown Package',
+            packageName: typeof packageNameMap.get(r.coursePackageId) === 'string' ? packageNameMap.get(r.coursePackageId) as string : 'Unknown Package',
             renewalCount: 1,
             totalRevenue: Number(r.finalFees) || 0,
           });
