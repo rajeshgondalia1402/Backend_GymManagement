@@ -1,0 +1,4 @@
+{
+  "typescript.tsserver.log": "off",
+  "typescript.enablePromptUseWorkspaceTsdk": true
+}

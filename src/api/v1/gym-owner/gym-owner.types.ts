@@ -717,6 +717,7 @@ export interface CoursePackage {
   maxDiscount?: number;
   discountType: 'PERCENTAGE' | 'AMOUNT';
   coursePackageType: CoursePackageType;
+  Months: number;
   isActive: boolean;
   gymId: string;
   createdAt: Date;
@@ -732,6 +733,8 @@ export interface CreateCoursePackageRequest {
   maxDiscount?: number;
   discountType?: 'PERCENTAGE' | 'AMOUNT';
   coursePackageType?: CoursePackageType;
+  Months: number;
+  months?: number; // Alternative lowercase version
 }
 
 export interface UpdateCoursePackageRequest {
@@ -741,6 +744,8 @@ export interface UpdateCoursePackageRequest {
   maxDiscount?: number;
   discountType?: 'PERCENTAGE' | 'AMOUNT';
   coursePackageType?: CoursePackageType;
+  Months?: number;
+  months?: number; // Alternative lowercase version
   isActive?: boolean;
 }
 
@@ -947,6 +952,52 @@ export interface RenewalRateReport {
     renewalCount: number;
     totalRevenue: number;
   }[];
+}
+
+// =============================================
+// Member Membership Details Types
+// =============================================
+
+export interface RegularMembershipDetails {
+  packageFees: number;
+  maxDiscount: number;
+  afterDiscount: number;
+  extraDiscount: number;
+  finalFees: number;
+  totalPaidFees: number;
+  totalPendingFees: number;
+  coursePackageId?: string;
+  coursePackageName?: string;
+  membershipStart: Date;
+  membershipEnd: Date;
+  membershipStatus: 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
+}
+
+export interface PTMembershipDetails {
+  packageFees: number;
+  maxDiscount: number;
+  afterDiscount: number;
+  extraDiscount: number;
+  finalFees: number;
+  totalPaidFees: number;
+  totalPendingFees: number;
+  packageName: string;
+  trainerId: string;
+  trainerName: string;
+  sessionsTotal: number;
+  sessionsUsed: number;
+  sessionsRemaining: number;
+  sessionDuration: number;
+  startDate: Date;
+  endDate?: Date;
+  goals?: string;
+}
+
+export interface MemberMembershipDetailsResponse {
+  hasRegularMembership: boolean;
+  hasPTMembership: boolean;
+  regularMembershipDetails?: RegularMembershipDetails;
+  ptMembershipDetails?: PTMembershipDetails;
 }
 
 

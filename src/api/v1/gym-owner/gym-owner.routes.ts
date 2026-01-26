@@ -372,6 +372,27 @@ router.get('/members/:id', validate(idParamSchema, 'params'), gymOwnerController
 
 /**
  * @swagger
+ * /api/v1/gym-owner/members/{id}/membership-details:
+ *   get:
+ *     summary: Get member membership details
+ *     tags: [Gym Owner - Members]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Member ID
+ *     responses:
+ *       200:
+ *         description: Member membership details retrieved successfully
+ */
+router.get('/members/:id/membership-details', validate(idParamSchema, 'params'), gymOwnerController.getMemberMembershipDetails.bind(gymOwnerController));
+
+/**
+ * @swagger
  * /api/v1/gym-owner/members:
  *   post:
  *     summary: Create a new member
@@ -2112,6 +2133,7 @@ router.get('/course-packages/:id', validate(idParamSchema, 'params'), gymOwnerCo
  *             required:
  *               - packageName
  *               - fees
+ *               - months
  *             properties:
  *               packageName:
  *                 type: string
@@ -2142,6 +2164,11 @@ router.get('/course-packages/:id', validate(idParamSchema, 'params'), gymOwnerCo
  *                 enum: [REGULAR, PT]
  *                 default: REGULAR
  *                 description: Type of package - REGULAR for gym membership, PT for personal training
+ *               months:
+ *                 type: integer
+ *                 minimum: 1
+ *                 description: Duration of the package in months
+ *                 example: 3
  *     responses:
  *       201:
  *         description: Course package created successfully
@@ -2200,6 +2227,11 @@ router.post('/course-packages', validate(createCoursePackageSchema), gymOwnerCon
  *                 type: string
  *                 enum: [REGULAR, PT]
  *                 description: Type of package - REGULAR for gym membership, PT for personal training
+ *               months:
+ *                 type: integer
+ *                 minimum: 1
+ *                 description: Duration of the package in months
+ *                 example: 3
  *               isActive:
  *                 type: boolean
  *                 description: Whether the package is active
