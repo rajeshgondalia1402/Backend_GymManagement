@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
-import { PrismaClientKnownRequestError } from '@prisma/client-runtime-utils';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 import { BaseException } from '../exceptions';
 import { errorResponse } from '../utils/response.util';
