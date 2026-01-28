@@ -324,3 +324,56 @@ export const deleteOldTrainerFile = (filePath: string | null | undefined): void 
     }
   }
 };
+
+// =============================================
+// Expense Attachment Uploads
+// =============================================
+
+// Ensure expense attachments directory exists
+const expenseAttachmentsDir = path.join(uploadsDir, 'expense-attachments');
+
+if (!fs.existsSync(expenseAttachmentsDir)) {
+  fs.mkdirSync(expenseAttachmentsDir, { recursive: true });
+}
+
+// Multer configuration for expense attachments (supports images and PDFs)
+export const uploadExpenseAttachments = multer({
+  storage: multer.diskStorage({
+    destination: (req: Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
+      cb(null, expenseAttachmentsDir);
+    },
+    filename: (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const ext = path.extname(file.originalname);
+      cb(null, `expense-attachment-${uniqueSuffix}${ext}`);
+    }
+  }),
+  fileFilter: documentFileFilter, // Allows images + PDF
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB max file size for receipts/invoices
+  }
+}).array('attachments', 5); // Allow up to 5 attachments
+
+// Get the relative path for expense attachment
+export const getRelativeExpenseAttachmentPath = (filename: string): string => {
+  return `/uploads/expense-attachments/${filename}`;
+};
+
+// Utility function to delete expense attachment
+export const deleteExpenseAttachment = (filePath: string | null | undefined): void => {
+  if (filePath) {
+    const fullPath = path.join(process.cwd(), filePath);
+    if (fs.existsSync(fullPath)) {
+      try {
+        fs.unlinkSync(fullPath);
+      } catch (error) {
+        console.error('Error deleting expense attachment:', error);
+      }
+    }
+  }
+};
+
+// Utility function to delete multiple expense attachments
+export const deleteExpenseAttachments = (filePaths: string[]): void => {
+  filePaths.forEach(filePath => deleteExpenseAttachment(filePath));
+};

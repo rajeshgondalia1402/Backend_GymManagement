@@ -88,6 +88,7 @@ model Gym {
   members            Member[]
   trainers           Trainer[]
   expenseGroups      ExpenseGroupMaster[]
+  expenses           ExpenseMaster[]
   designations       DesignationMaster[]
   bodyParts          BodyPartMaster[]
   workoutExercises   WorkoutExerciseMaster[]
@@ -501,17 +502,43 @@ model PaymentTypeMaster {
 }
 
 model ExpenseGroupMaster {
-  id               String   @id @default(uuid())
+  id               String          @id @default(uuid())
   expenseGroupName String
   gymId            String
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  gym              Gym      @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  gym              Gym             @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  expenses         ExpenseMaster[]
 
   @@unique([expenseGroupName, gymId])
   @@map("expensegroupmaster")
   @@index([gymId])
   @@index([expenseGroupName])
+}
+
+model ExpenseMaster {
+  id              String           @id @default(uuid())
+  expenseDate     DateTime         @default(now())
+  name            String
+  expenseGroupId  String
+  description     String?
+  paymentMode     PaymentMode
+  amount          Decimal          @db.Decimal(10, 2)
+  attachments     String[]         @default([])
+  createdBy       String
+  gymId           String
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  expenseGroup    ExpenseGroupMaster @relation(fields: [expenseGroupId], references: [id], onDelete: Restrict)
+  gym             Gym              @relation(fields: [gymId], references: [id], onDelete: Cascade)
+
+  @@map("expensemaster")
+  @@index([gymId])
+  @@index([expenseGroupId])
+  @@index([expenseDate])
+  @@index([isActive])
+  @@index([createdBy])
 }
 
 model DesignationMaster {
@@ -701,4 +728,14 @@ enum PaymentStatus {
   PAID
   PENDING
   PARTIAL
+}
+
+enum PaymentMode {
+  CASH
+  CARD
+  UPI
+  BANK_TRANSFER
+  CHEQUE
+  NET_BANKING
+  OTHER
 }
