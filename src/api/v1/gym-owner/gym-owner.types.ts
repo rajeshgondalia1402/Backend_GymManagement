@@ -575,6 +575,74 @@ export interface UpdateExpenseGroupRequest {
   expenseGroupName: string;
 }
 
+// =============================================
+// Expense Management Types
+// =============================================
+
+export type PaymentMode = 'CASH' | 'CARD' | 'UPI' | 'BANK_TRANSFER' | 'CHEQUE' | 'NET_BANKING' | 'OTHER';
+
+export interface Expense {
+  id: string;
+  expenseDate: Date;
+  name: string;
+  expenseGroupId: string;
+  expenseGroupName?: string;
+  description?: string;
+  paymentMode: PaymentMode;
+  amount: number;
+  attachments?: string[]; // Array of file paths
+  createdBy: string;
+  gymId: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateExpenseRequest {
+  expenseDate?: string; // ISO date string
+  name: string;
+  expenseGroupId: string;
+  description?: string;
+  paymentMode: PaymentMode;
+  amount: number;
+  // attachments will be uploaded via multipart/form-data (req.files)
+}
+
+export interface UpdateExpenseRequest {
+  expenseDate?: string; // ISO date string
+  name?: string;
+  expenseGroupId?: string;
+  description?: string;
+  paymentMode?: PaymentMode;
+  amount?: number;
+  isActive?: boolean;
+  // attachments will be uploaded via multipart/form-data (req.files)
+  // existing attachments to keep (comma-separated paths or array)
+  keepAttachments?: string;
+}
+
+export interface ExpenseListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  // Filters
+  year?: number;
+  dateFrom?: string; // Date string (YYYY-MM-DD or ISO)
+  dateTo?: string; // Date string (YYYY-MM-DD or ISO)
+  expenseGroupId?: string;
+  paymentMode?: PaymentMode;
+}
+
+export interface ExpenseListResponse {
+  expenses: Expense[];
+  total: number;
+  page: number;
+  limit: number;
+  totalAmount: number; // Sum of all expenses matching the filter
+}
+
 // Designation Master Types
 export interface Designation {
   id: string;

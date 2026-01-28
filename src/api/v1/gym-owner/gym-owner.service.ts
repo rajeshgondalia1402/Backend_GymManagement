@@ -1,4 +1,6 @@
 import bcrypt from 'bcryptjs';
+import fs from 'fs';
+import path from 'path';
 import { prisma } from '../../../config/database';
 import { NotFoundException, ConflictException, ForbiddenException, BadRequestException } from '../../../common/exceptions';
 import {
@@ -36,6 +38,12 @@ import {
   ExpenseGroup,
   CreateExpenseGroupRequest,
   UpdateExpenseGroupRequest,
+  Expense,
+  CreateExpenseRequest,
+  UpdateExpenseRequest,
+  ExpenseListParams,
+  ExpenseListResponse,
+  PaymentMode,
   Designation,
   CreateDesignationRequest,
   UpdateDesignationRequest,
@@ -1996,9 +2004,370 @@ class GymOwnerService {
     // Hard delete
     await this.getExpenseGroupById(gymId, id);
 
+    // Check if expense group has expenses
+    const expenseCount = await prisma.expenseMaster.count({
+      where: { expenseGroupId: id, isActive: true },
+    });
+
+    if (expenseCount > 0) {
+      throw new BadRequestException(
+        `Cannot delete expense group. It has ${expenseCount} active expense(s) associated with it.`
+      );
+    }
+
     await prisma.expenseGroupMaster.delete({
       where: { id },
     });
+  }
+
+  // =============================================
+  // Expense Management CRUD
+  // =============================================
+
+  /**
+   * Create a new expense
+   */
+  async createExpense(
+    gymId: string,
+    userId: string,
+    data: CreateExpenseRequest,
+    attachmentPaths?: string[]
+  ): Promise<Expense> {
+    // Verify expense group exists and belongs to the gym
+    const expenseGroup = await prisma.expenseGroupMaster.findFirst({
+      where: { id: data.expenseGroupId, gymId },
+    });
+
+    if (!expenseGroup) {
+      throw new NotFoundException('Expense group not found');
+    }
+
+    const expense = await prisma.expenseMaster.create({
+      data: {
+        expenseDate: data.expenseDate ? new Date(data.expenseDate) : new Date(),
+        name: data.name,
+        expenseGroupId: data.expenseGroupId,
+        description: data.description,
+        paymentMode: data.paymentMode,
+        amount: data.amount,
+        attachments: attachmentPaths || [],
+        createdBy: userId,
+        gymId,
+      },
+      include: {
+        expenseGroup: true,
+      },
+    });
+
+    return {
+      id: expense.id,
+      expenseDate: expense.expenseDate,
+      name: expense.name,
+      expenseGroupId: expense.expenseGroupId,
+      expenseGroupName: expense.expenseGroup.expenseGroupName,
+      description: expense.description || undefined,
+      paymentMode: expense.paymentMode as PaymentMode,
+      amount: Number(expense.amount),
+      attachments: expense.attachments || undefined,
+      createdBy: expense.createdBy,
+      gymId: expense.gymId,
+      isActive: expense.isActive,
+      createdAt: expense.createdAt,
+      updatedAt: expense.updatedAt,
+    };
+  }
+
+  /**
+   * Update an expense
+   */
+  async updateExpense(
+    gymId: string,
+    expenseId: string,
+    data: UpdateExpenseRequest,
+    newAttachmentPaths?: string[]
+  ): Promise<Expense> {
+    // Verify expense exists and belongs to the gym
+    const existing = await prisma.expenseMaster.findFirst({
+      where: { id: expenseId, gymId },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Expense not found');
+    }
+
+    // If updating expense group, verify it exists
+    if (data.expenseGroupId) {
+      const expenseGroup = await prisma.expenseGroupMaster.findFirst({
+        where: { id: data.expenseGroupId, gymId },
+      });
+
+      if (!expenseGroup) {
+        throw new NotFoundException('Expense group not found');
+      }
+    }
+
+    // Handle attachments update
+    let finalAttachments: string[] = [];
+
+    // Helper function to delete attachment file
+    const deleteAttachmentFile = (filePath: string | null | undefined): void => {
+      if (filePath) {
+        const fullPath = path.join(process.cwd(), filePath);
+        if (fs.existsSync(fullPath)) {
+          try {
+            fs.unlinkSync(fullPath);
+          } catch (error) {
+            console.error('Error deleting expense attachment:', error);
+          }
+        }
+      }
+    };
+
+    // Parse keepAttachments (existing attachments to keep)
+    if (data.keepAttachments) {
+      const keepAttachmentsArray = typeof data.keepAttachments === 'string'
+        ? data.keepAttachments.split(',').filter(Boolean)
+        : [];
+
+      // Delete attachments that are not in keepAttachments list
+      const attachmentsToDelete = existing.attachments.filter(
+        (att: string) => !keepAttachmentsArray.includes(att)
+      );
+
+      attachmentsToDelete.forEach((att: string) => deleteAttachmentFile(att));
+
+      finalAttachments = keepAttachmentsArray;
+    } else if (newAttachmentPaths && newAttachmentPaths.length > 0) {
+      // If new attachments provided but no keepAttachments, delete all old attachments
+      existing.attachments.forEach((att: string) => deleteAttachmentFile(att));
+      finalAttachments = [];
+    } else {
+      // Keep existing attachments if no changes
+      finalAttachments = existing.attachments;
+    }
+
+    // Add new attachments if provided
+    if (newAttachmentPaths && newAttachmentPaths.length > 0) {
+      finalAttachments = [...finalAttachments, ...newAttachmentPaths];
+    }
+
+    const expense = await prisma.expenseMaster.update({
+      where: { id: expenseId },
+      data: {
+        ...(data.expenseDate && { expenseDate: new Date(data.expenseDate) }),
+        ...(data.name && { name: data.name }),
+        ...(data.expenseGroupId && { expenseGroupId: data.expenseGroupId }),
+        ...(data.description !== undefined && { description: data.description }),
+        ...(data.paymentMode && { paymentMode: data.paymentMode }),
+        ...(data.amount !== undefined && { amount: data.amount }),
+        ...(data.isActive !== undefined && { isActive: data.isActive }),
+        attachments: finalAttachments,
+      },
+      include: {
+        expenseGroup: true,
+      },
+    });
+
+    return {
+      id: expense.id,
+      expenseDate: expense.expenseDate,
+      name: expense.name,
+      expenseGroupId: expense.expenseGroupId,
+      expenseGroupName: expense.expenseGroup.expenseGroupName,
+      description: expense.description || undefined,
+      paymentMode: expense.paymentMode as PaymentMode,
+      amount: Number(expense.amount),
+      attachments: expense.attachments || undefined,
+      createdBy: expense.createdBy,
+      gymId: expense.gymId,
+      isActive: expense.isActive,
+      createdAt: expense.createdAt,
+      updatedAt: expense.updatedAt,
+    };
+  }
+
+  /**
+   * Soft delete an expense
+   */
+  async softDeleteExpense(gymId: string, expenseId: string, deleteFiles: boolean = true): Promise<void> {
+    const expense = await prisma.expenseMaster.findFirst({
+      where: { id: expenseId, gymId },
+    });
+
+    if (!expense) {
+      throw new NotFoundException('Expense not found');
+    }
+
+    // Delete attachment files if requested
+    if (deleteFiles && expense.attachments && expense.attachments.length > 0) {
+      expense.attachments.forEach((filePath: string) => {
+        if (filePath) {
+          const fullPath = path.join(process.cwd(), filePath);
+          if (fs.existsSync(fullPath)) {
+            try {
+              fs.unlinkSync(fullPath);
+            } catch (error) {
+              console.error('Error deleting expense attachment:', error);
+            }
+          }
+        }
+      });
+    }
+
+    await prisma.expenseMaster.update({
+      where: { id: expenseId },
+      data: { isActive: false },
+    });
+  }
+
+  /**
+   * Get expense by ID
+   */
+  async getExpenseById(gymId: string, expenseId: string): Promise<Expense> {
+    const expense = await prisma.expenseMaster.findFirst({
+      where: { id: expenseId, gymId },
+      include: {
+        expenseGroup: true,
+      },
+    });
+
+    if (!expense) {
+      throw new NotFoundException('Expense not found');
+    }
+
+    return {
+      id: expense.id,
+      expenseDate: expense.expenseDate,
+      name: expense.name,
+      expenseGroupId: expense.expenseGroupId,
+      expenseGroupName: expense.expenseGroup.expenseGroupName,
+      description: expense.description || undefined,
+      paymentMode: expense.paymentMode as PaymentMode,
+      amount: Number(expense.amount),
+      attachments: expense.attachments || undefined,
+      createdBy: expense.createdBy,
+      gymId: expense.gymId,
+      isActive: expense.isActive,
+      createdAt: expense.createdAt,
+      updatedAt: expense.updatedAt,
+    };
+  }
+
+  /**
+   * List expenses with filters, pagination, and sorting (Report API)
+   */
+  async getExpenses(gymId: string, params: ExpenseListParams): Promise<ExpenseListResponse> {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      sortBy = 'expenseDate',
+      sortOrder = 'desc',
+      year,
+      dateFrom,
+      dateTo,
+      expenseGroupId,
+      paymentMode,
+    } = params;
+
+    const skip = (page - 1) * limit;
+
+    // Build where clause with filters
+    const where: any = {
+      gymId,
+      isActive: true,
+    };
+
+    // Text search - searches across name and description
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' as const } },
+        { description: { contains: search, mode: 'insensitive' as const } },
+        { expenseGroup: { expenseGroupName: { contains: search, mode: 'insensitive' as const } } },
+      ];
+    }
+
+    // Year filter - expenses in that year
+    if (year) {
+      const yearStart = new Date(year, 0, 1);
+      const yearEnd = new Date(year, 11, 31, 23, 59, 59);
+      where.expenseDate = {
+        gte: yearStart,
+        lte: yearEnd,
+      };
+    }
+
+    // Date range filters - override year filter if both provided
+    if (dateFrom || dateTo) {
+      where.expenseDate = {};
+      
+      if (dateFrom) {
+        // Set to start of day (00:00:00.000)
+        const fromDateObj = new Date(dateFrom);
+        fromDateObj.setHours(0, 0, 0, 0);
+        where.expenseDate.gte = fromDateObj;
+      }
+      
+      if (dateTo) {
+        // Set to end of day (23:59:59.999)
+        const toDateObj = new Date(dateTo);
+        toDateObj.setHours(23, 59, 59, 999);
+        where.expenseDate.lte = toDateObj;
+      }
+    }
+
+    // Expense group filter
+    if (expenseGroupId) {
+      where.expenseGroupId = expenseGroupId;
+    }
+
+    // Payment mode filter
+    if (paymentMode) {
+      where.paymentMode = paymentMode;
+    }
+
+    // Execute queries in parallel
+    const [expenseRecords, total, totalAmountResult] = await Promise.all([
+      prisma.expenseMaster.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          expenseGroup: true,
+        },
+      }),
+      prisma.expenseMaster.count({ where }),
+      prisma.expenseMaster.aggregate({
+        where,
+        _sum: { amount: true },
+      }),
+    ]);
+
+    const expenses: Expense[] = expenseRecords.map((e) => ({
+      id: e.id,
+      expenseDate: e.expenseDate,
+      name: e.name,
+      expenseGroupId: e.expenseGroupId,
+      expenseGroupName: e.expenseGroup.expenseGroupName,
+      description: e.description || undefined,
+      paymentMode: e.paymentMode as PaymentMode,
+      amount: Number(e.amount),
+      attachments: e.attachments || undefined,
+      createdBy: e.createdBy,
+      gymId: e.gymId,
+      isActive: e.isActive,
+      createdAt: e.createdAt,
+      updatedAt: e.updatedAt,
+    }));
+
+    return {
+      expenses,
+      total,
+      page,
+      limit,
+      totalAmount: Number(totalAmountResult._sum.amount || 0),
+    };
   }
 
   // Designation Master CRUD

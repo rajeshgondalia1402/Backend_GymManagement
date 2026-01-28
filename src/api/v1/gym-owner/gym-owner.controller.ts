@@ -666,6 +666,100 @@ class GymOwnerController {
     }
   }
 
+  // =============================================
+  // Expense Management CRUD
+  // =============================================
+
+  async createExpense(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const userId = req.user!.id;
+
+      // Handle file uploads
+      let attachmentPaths: string[] = [];
+      if (req.files && Array.isArray(req.files)) {
+        attachmentPaths = req.files.map((file: Express.Multer.File) =>
+          `/uploads/expense-attachments/${file.filename}`
+        );
+      }
+
+      const expense = await gymOwnerService.createExpense(gymId, userId, req.body, attachmentPaths);
+      successResponse(res, expense, 'Expense created successfully', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateExpense(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+
+      // Handle new file uploads
+      let newAttachmentPaths: string[] = [];
+      if (req.files && Array.isArray(req.files)) {
+        newAttachmentPaths = req.files.map((file: Express.Multer.File) =>
+          `/uploads/expense-attachments/${file.filename}`
+        );
+      }
+
+      const expense = await gymOwnerService.updateExpense(
+        gymId,
+        req.params.id,
+        req.body,
+        newAttachmentPaths.length > 0 ? newAttachmentPaths : undefined
+      );
+      successResponse(res, expense, 'Expense updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteExpense(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      await gymOwnerService.softDeleteExpense(gymId, req.params.id);
+      successResponse(res, null, 'Expense deleted successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getExpenseById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const expense = await gymOwnerService.getExpenseById(gymId, req.params.id);
+      successResponse(res, expense, 'Expense retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getExpenses(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const params = req.query as any;
+      const result = await gymOwnerService.getExpenses(gymId, params);
+
+      // Return paginated response with summary
+      res.status(200).json({
+        status: 'success',
+        message: 'Expenses retrieved successfully',
+        data: result.expenses,
+        pagination: {
+          page: result.page,
+          limit: result.limit,
+          total: result.total,
+          totalPages: Math.ceil(result.total / result.limit),
+        },
+        summary: {
+          totalAmount: result.totalAmount,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // Designation Master CRUD
   async getDesignations(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {

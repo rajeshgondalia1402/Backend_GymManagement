@@ -27,6 +27,9 @@ import {
   ptMemberIdParamSchema,
   createExpenseGroupSchema,
   updateExpenseGroupSchema,
+  createExpenseSchema,
+  updateExpenseSchema,
+  expenseReportSchema,
   createDesignationSchema,
   updateDesignationSchema,
   createBodyPartSchema,
@@ -48,6 +51,7 @@ import {
   removePTAddonSchema,
   uploadMemberFiles,
   uploadTrainerFiles,
+  uploadExpenseAttachments,
   handleUploadError,
 } from '../../../common/middleware';
 
@@ -1183,6 +1187,219 @@ router.put('/expense-groups/:id', validate(idParamSchema, 'params'), validate(up
  *         description: Expense group not found
  */
 router.delete('/expense-groups/:id', validate(idParamSchema, 'params'), gymOwnerController.deleteExpenseGroup.bind(gymOwnerController));
+
+// =============================================
+// Expense Management CRUD
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/expenses:
+ *   get:
+ *     summary: Get expenses with filters (Report API)
+ *     tags: [Gym Owner - Expenses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Items per page
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search in expense name, description, or expense group name
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           default: expenseDate
+ *         description: Field to sort by
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           default: desc
+ *       - in: query
+ *         name: year
+ *         schema:
+ *           type: integer
+ *         description: Filter by year (e.g., 2024)
+ *       - in: query
+ *         name: fromDate
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Filter from date (ISO format)
+ *       - in: query
+ *         name: toDate
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Filter to date (ISO format)
+ *       - in: query
+ *         name: expenseGroupId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filter by expense group
+ *       - in: query
+ *         name: paymentMode
+ *         schema:
+ *           type: string
+ *           enum: [CASH, CARD, UPI, BANK_TRANSFER, CHEQUE, NET_BANKING, OTHER]
+ *         description: Filter by payment mode
+ *     responses:
+ *       200:
+ *         description: Expenses retrieved successfully with summary
+ *       401:
+ *         description: Unauthorized
+ */
+router.get('/expenses', validate(expenseReportSchema, 'query'), gymOwnerController.getExpenses.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/expenses/{id}:
+ *   get:
+ *     summary: Get expense by ID
+ *     tags: [Gym Owner - Expenses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Expense retrieved successfully
+ *       404:
+ *         description: Expense not found
+ */
+router.get('/expenses/:id', validate(idParamSchema, 'params'), gymOwnerController.getExpenseById.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/expenses:
+ *   post:
+ *     summary: Create a new expense
+ *     tags: [Gym Owner - Expenses]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - expenseGroupId
+ *               - paymentMode
+ *               - amount
+ *             properties:
+ *               expenseDate:
+ *                 type: string
+ *                 format: date-time
+ *               name:
+ *                 type: string
+ *               expenseGroupId:
+ *                 type: string
+ *                 format: uuid
+ *               description:
+ *                 type: string
+ *               paymentMode:
+ *                 type: string
+ *                 enum: [CASH, CARD, UPI, BANK_TRANSFER, CHEQUE, NET_BANKING, OTHER]
+ *               amount:
+ *                 type: number
+ *     responses:
+ *       201:
+ *         description: Expense created successfully
+ *       404:
+ *         description: Expense group not found
+ */
+router.post('/expenses', uploadExpenseAttachments, handleUploadError, validate(createExpenseSchema), gymOwnerController.createExpense.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/expenses/{id}:
+ *   put:
+ *     summary: Update an expense
+ *     tags: [Gym Owner - Expenses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               expenseDate:
+ *                 type: string
+ *                 format: date-time
+ *               name:
+ *                 type: string
+ *               expenseGroupId:
+ *                 type: string
+ *                 format: uuid
+ *               description:
+ *                 type: string
+ *               paymentMode:
+ *                 type: string
+ *                 enum: [CASH, CARD, UPI, BANK_TRANSFER, CHEQUE, NET_BANKING, OTHER]
+ *               amount:
+ *                 type: number
+ *               isActive:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Expense updated successfully
+ *       404:
+ *         description: Expense not found
+ */
+router.put('/expenses/:id', uploadExpenseAttachments, handleUploadError, validate(idParamSchema, 'params'), validate(updateExpenseSchema), gymOwnerController.updateExpense.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/expenses/{id}:
+ *   delete:
+ *     summary: Soft delete an expense
+ *     tags: [Gym Owner - Expenses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Expense deleted successfully
+ *       404:
+ *         description: Expense not found
+ */
+router.delete('/expenses/:id', validate(idParamSchema, 'params'), gymOwnerController.deleteExpense.bind(gymOwnerController));
 
 // Designation Master CRUD
 /**

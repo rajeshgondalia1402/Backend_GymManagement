@@ -133,6 +133,58 @@ export const updateExpenseGroupSchema = z.object({
   expenseGroupName: z.string().min(2, 'Expense group name must be at least 2 characters'),
 });
 
+// Expense Management validation schemas
+export const createExpenseSchema = z.object({
+  expenseDate: z.string().datetime().optional(),
+  name: z.string().min(2, 'Expense name must be at least 2 characters'),
+  expenseGroupId: z.string().uuid('Invalid expense group ID'),
+  description: z.string().optional(),
+  paymentMode: z.enum(['CASH', 'CARD', 'UPI', 'BANK_TRANSFER', 'CHEQUE', 'NET_BANKING', 'OTHER'], {
+    errorMap: () => ({ message: 'Invalid payment mode' }),
+  }),
+  amount: z.union([
+    z.number().positive('Amount must be positive'),
+    z.string().transform((val) => {
+      const num = parseFloat(val);
+      if (isNaN(num) || num <= 0) throw new Error('Amount must be a positive number');
+      return num;
+    })
+  ]),
+});
+
+export const updateExpenseSchema = z.object({
+  expenseDate: z.string().datetime().optional(),
+  name: z.string().min(2, 'Expense name must be at least 2 characters').optional(),
+  expenseGroupId: z.string().uuid('Invalid expense group ID').optional(),
+  description: z.string().optional(),
+  paymentMode: z.enum(['CASH', 'CARD', 'UPI', 'BANK_TRANSFER', 'CHEQUE', 'NET_BANKING', 'OTHER'], {
+    errorMap: () => ({ message: 'Invalid payment mode' }),
+  }).optional(),
+  amount: z.union([
+    z.number().positive('Amount must be positive'),
+    z.string().transform((val) => {
+      const num = parseFloat(val);
+      if (isNaN(num) || num <= 0) throw new Error('Amount must be a positive number');
+      return num;
+    })
+  ]).optional(),
+  isActive: z.union([z.boolean(), z.string().transform((val) => val === 'true')]).optional(),
+});
+
+export const expenseReportSchema = z.object({
+  page: z.string().optional().transform((val) => parseInt(val || '1', 10)),
+  limit: z.string().optional().transform((val) => parseInt(val || '10', 10)),
+  search: z.string().optional(),
+  sortBy: z.string().optional().default('expenseDate'),
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+  // Filters
+  year: z.string().optional().transform((val) => val ? parseInt(val, 10) : undefined),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
+  expenseGroupId: z.string().uuid('Invalid expense group ID').optional(),
+  paymentMode: z.enum(['CASH', 'CARD', 'UPI', 'BANK_TRANSFER', 'CHEQUE', 'NET_BANKING', 'OTHER']).optional(),
+});
+
 // Designation Master validation schemas
 export const createDesignationSchema = z.object({
   designationName: z.string().min(2, 'Designation name must be at least 2 characters'),
