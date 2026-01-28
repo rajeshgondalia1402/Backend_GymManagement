@@ -528,6 +528,9 @@ class GymOwnerService {
 
     const members: Member[] = memberRecords.map((m) => {
       const activeTrainer = m.trainerAssignments[0]?.trainer;
+      // Check if member has PT - either PT type or has PT addon
+      const hasPT = m.memberType === 'PT' || m.hasPTAddon;
+
       return {
         id: m.id,
         memberId: m.memberId || undefined,
@@ -561,6 +564,14 @@ class GymOwnerService {
         afterDiscount: m.afterDiscount ? Number(m.afterDiscount) : undefined,
         extraDiscount: m.extraDiscount ? Number(m.extraDiscount) : undefined,
         finalFees: m.finalFees ? Number(m.finalFees) : undefined,
+        // PT Addon Fields - show actual values if PT, otherwise 0
+        hasPTAddon: m.hasPTAddon,
+        ptPackageName: hasPT ? (m.ptPackageName || undefined) : undefined,
+        ptPackageFees: hasPT ? (m.ptPackageFees ? Number(m.ptPackageFees) : undefined) : 0,
+        ptMaxDiscount: hasPT ? (m.ptMaxDiscount ? Number(m.ptMaxDiscount) : undefined) : 0,
+        ptAfterDiscount: hasPT ? (m.ptAfterDiscount ? Number(m.ptAfterDiscount) : undefined) : 0,
+        ptExtraDiscount: hasPT ? (m.ptExtraDiscount ? Number(m.ptExtraDiscount) : undefined) : 0,
+        ptFinalFees: hasPT ? (m.ptFinalFees ? Number(m.ptFinalFees) : undefined) : 0,
         createdAt: m.createdAt,
       };
     });
