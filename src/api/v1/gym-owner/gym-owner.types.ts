@@ -1068,4 +1068,107 @@ export interface MemberMembershipDetailsResponse {
   ptMembershipDetails?: PTMembershipDetails;
 }
 
+// =============================================
+// Diet Template Types
+// =============================================
 
+export interface DietMeal {
+  id?: string;
+  mealNo: number;       // 1-6 (Meal 1 to Meal 6)
+  title: string;        // e.g., "Breakfast", "Mid-Morning Snack", "Lunch", etc.
+  description: string;  // What to eat
+  time: string;         // e.g., "07:30 AM"
+}
+
+export interface DietTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  gymId: string;
+  createdBy: string;
+  creatorName?: string;
+  isActive: boolean;
+  mealsPerDay?: number; // Number of meals in the template
+  meals: DietMeal[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateDietTemplateRequest {
+  name: string;
+  description?: string;
+  meals: {
+    mealNo: number;
+    title: string;
+    description: string;
+    time: string;
+  }[];
+}
+
+export interface UpdateDietTemplateRequest {
+  name?: string;
+  description?: string;
+  meals?: {
+    mealNo: number;
+    title: string;
+    description: string;
+    time: string;
+  }[];
+}
+
+// =============================================
+// Member Diet Types
+// =============================================
+
+export interface MemberDietMeal {
+  id?: string;
+  mealNo: number;
+  title: string;
+  description: string;
+  time: string;
+}
+
+export interface MemberDiet {
+  id: string;
+  memberId: string;
+  memberName?: string;
+  memberEmail?: string;
+  dietTemplateId: string;
+  dietTemplateName?: string;
+  gymId: string;
+  startDate: Date;
+  endDate?: Date;
+  assignedBy: string;
+  assignerName?: string;
+  isActive: boolean;
+  notes?: string;
+  meals: MemberDietMeal[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateMemberDietRequest {
+  memberId: string;
+  dietTemplateId: string;
+  startDate: string;
+  endDate?: string;
+  notes?: string;
+  customMeals?: {
+    mealNo: number;
+    title: string;
+    description: string;
+    time: string;
+  }[];
+}
+
+export interface UpdateMemberDietRequest {
+  startDate?: string;
+  endDate?: string;
+  notes?: string;
+  meals?: {
+    mealNo: number;
+    title: string;
+    description: string;
+    time: string;
+  }[];
+}

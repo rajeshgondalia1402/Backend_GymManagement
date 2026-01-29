@@ -53,6 +53,15 @@ import {
   uploadTrainerFiles,
   uploadExpenseAttachments,
   handleUploadError,
+  // Diet Template & Member Diet schemas
+  createDietTemplateSchema,
+  updateDietTemplateSchema,
+  toggleDietTemplateActiveSchema,
+  createMemberDietSchema,
+  updateMemberDietSchema,
+  deactivateMemberDietSchema,
+  memberUuidParamSchema,
+  dietTemplatePaginationSchema,
 } from '../../../common/middleware';
 
 const router = Router();
@@ -3314,5 +3323,414 @@ router.get('/members/:memberId/payment-summary', validate(memberIdParamSchema, '
  *         description: Session credits retrieved successfully
  */
 router.get('/members/:memberId/session-credits', validate(memberIdParamSchema, 'params'), gymOwnerController.getMemberSessionCredits.bind(gymOwnerController));
+
+// =============================================
+// Diet Template Routes
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/diet-templates:
+ *   post:
+ *     summary: Create a new diet template
+ *     tags: [Gym Owner - Diet Templates]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - meals
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Template name
+ *               description:
+ *                 type: string
+ *                 description: Template description
+ *               meals:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - mealNo
+ *                     - title
+ *                     - description
+ *                     - time
+ *                   properties:
+ *                     mealNo:
+ *                       type: integer
+ *                       minimum: 1
+ *                       maximum: 6
+ *                       description: Meal number (1-6)
+ *                     title:
+ *                       type: string
+ *                       description: Meal title (e.g., Breakfast)
+ *                     description:
+ *                       type: string
+ *                       description: What to eat
+ *                     time:
+ *                       type: string
+ *                       description: Time (e.g., 07:30 AM)
+ *     responses:
+ *       201:
+ *         description: Diet template created successfully
+ */
+router.post('/diet-templates', validate(createDietTemplateSchema), gymOwnerController.createDietTemplate.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/diet-templates:
+ *   get:
+ *     summary: Get all diet templates
+ *     tags: [Gym Owner - Diet Templates]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search in template name, meal titles, and meal descriptions
+ *       - in: query
+ *         name: mealsPerDay
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 6
+ *         description: Filter by number of meals per day
+ *       - in: query
+ *         name: isActive
+ *         schema:
+ *           type: boolean
+ *         description: Filter by active status
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *     responses:
+ *       200:
+ *         description: Diet templates retrieved successfully
+ */
+router.get('/diet-templates', validate(dietTemplatePaginationSchema, 'query'), gymOwnerController.getDietTemplates.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/diet-templates/{id}:
+ *   get:
+ *     summary: Get a diet template by ID
+ *     tags: [Gym Owner - Diet Templates]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Diet template retrieved successfully
+ */
+router.get('/diet-templates/:id', validate(idParamSchema, 'params'), gymOwnerController.getDietTemplateById.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/diet-templates/{id}:
+ *   put:
+ *     summary: Update a diet template
+ *     tags: [Gym Owner - Diet Templates]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               meals:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     mealNo:
+ *                       type: integer
+ *                     title:
+ *                       type: string
+ *                     description:
+ *                       type: string
+ *                     time:
+ *                       type: string
+ *     responses:
+ *       200:
+ *         description: Diet template updated successfully
+ */
+router.put('/diet-templates/:id', validate(idParamSchema, 'params'), validate(updateDietTemplateSchema), gymOwnerController.updateDietTemplate.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/diet-templates/{id}/active:
+ *   patch:
+ *     summary: Toggle diet template active status
+ *     tags: [Gym Owner - Diet Templates]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - isActive
+ *             properties:
+ *               isActive:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Diet template status updated successfully
+ */
+router.patch('/diet-templates/:id/active', validate(idParamSchema, 'params'), validate(toggleDietTemplateActiveSchema), gymOwnerController.toggleDietTemplateActive.bind(gymOwnerController));
+
+// Alias route for toggle-status (frontend compatibility)
+router.patch('/diet-templates/:id/toggle-status', validate(idParamSchema, 'params'), validate(toggleDietTemplateActiveSchema), gymOwnerController.toggleDietTemplateActive.bind(gymOwnerController));
+
+// =============================================
+// Member Diet Routes
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/member-diets:
+ *   post:
+ *     summary: Assign a diet to a member
+ *     tags: [Gym Owner - Member Diets]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - memberId
+ *               - dietTemplateId
+ *               - startDate
+ *             properties:
+ *               memberId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Member UUID
+ *               dietTemplateId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Diet template UUID
+ *               startDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Diet start date
+ *               endDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Diet end date (optional)
+ *               notes:
+ *                 type: string
+ *                 description: Notes about the diet assignment
+ *               customMeals:
+ *                 type: array
+ *                 description: Optional custom meals to override template meals
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     mealNo:
+ *                       type: integer
+ *                     title:
+ *                       type: string
+ *                     description:
+ *                       type: string
+ *                     time:
+ *                       type: string
+ *     responses:
+ *       201:
+ *         description: Diet assigned to member successfully
+ */
+router.post('/member-diets', validate(createMemberDietSchema), gymOwnerController.createMemberDiet.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/member-diets/member/{memberUuid}:
+ *   get:
+ *     summary: Get all diets for a member
+ *     tags: [Gym Owner - Member Diets]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: memberUuid
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *     responses:
+ *       200:
+ *         description: Member diets retrieved successfully
+ */
+router.get('/member-diets/member/:memberUuid', validate(memberUuidParamSchema, 'params'), validate(paginationSchema, 'query'), gymOwnerController.getMemberDiets.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/member-diets/{id}:
+ *   get:
+ *     summary: Get a member diet by ID
+ *     tags: [Gym Owner - Member Diets]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Member diet retrieved successfully
+ */
+router.get('/member-diets/:id', validate(idParamSchema, 'params'), gymOwnerController.getMemberDietById.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/member-diets/{id}:
+ *   put:
+ *     summary: Update a member diet
+ *     tags: [Gym Owner - Member Diets]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               startDate:
+ *                 type: string
+ *                 format: date
+ *               endDate:
+ *                 type: string
+ *                 format: date
+ *               notes:
+ *                 type: string
+ *               meals:
+ *                 type: array
+ *                 description: Updated meals (replaces all existing meals)
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     mealNo:
+ *                       type: integer
+ *                     title:
+ *                       type: string
+ *                     description:
+ *                       type: string
+ *                     time:
+ *                       type: string
+ *     responses:
+ *       200:
+ *         description: Member diet updated successfully
+ */
+router.put('/member-diets/:id', validate(idParamSchema, 'params'), validate(updateMemberDietSchema), gymOwnerController.updateMemberDiet.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/member-diets/{id}/deactivate:
+ *   patch:
+ *     summary: Deactivate a member diet
+ *     tags: [Gym Owner - Member Diets]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               reason:
+ *                 type: string
+ *                 description: Reason for deactivation
+ *     responses:
+ *       200:
+ *         description: Member diet deactivated successfully
+ */
+router.patch('/member-diets/:id/deactivate', validate(idParamSchema, 'params'), validate(deactivateMemberDietSchema), gymOwnerController.deactivateMemberDiet.bind(gymOwnerController));
 
 export default router;

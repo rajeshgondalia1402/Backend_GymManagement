@@ -617,6 +617,186 @@ export const renewalPaginationSchema = z.object({
   renewalDateTo: z.string().optional(),
 });
 
+// Diet Template List/Search Pagination Schema
+export const dietTemplatePaginationSchema = z.object({
+  page: z.string().optional().transform((val) => parseInt(val || '1', 10)),
+  limit: z.string().optional().transform((val) => parseInt(val || '10', 10)),
+  search: z.string().optional(), // Search in template name, meal titles, meal descriptions
+  sortBy: z.string().optional().default('createdAt'),
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+  // Filter by meals per day (number of meals)
+  mealsPerDay: z.string().optional().transform((val) => val ? parseInt(val, 10) : undefined),
+  // Filter by active status
+  isActive: z.string().optional().transform((val) => val === 'true' ? true : val === 'false' ? false : undefined),
+});
+
+// ============================================
+// Diet Template Validation Schemas
+// ============================================
+
+// Diet Meal schema - for 6 meals per day
+// Supports both frontend naming (mealNumber, mealTitle, mealTime) and backend naming (mealNo, title, time)
+const dietMealSchema = z.object({
+  mealNo: z.number().int().min(1).max(6, 'Meal number must be between 1 and 6').optional(),
+  mealNumber: z.number().int().min(1).max(6, 'Meal number must be between 1 and 6').optional(),
+  title: z.string().min(2, 'Meal title must be at least 2 characters').optional(),
+  mealTitle: z.string().min(2, 'Meal title must be at least 2 characters').optional(),
+  description: z.string().min(1, 'Meal description is required'),
+  time: z.string().optional(),
+  mealTime: z.string().optional(),
+}).transform((data) => ({
+  mealNo: data.mealNo ?? data.mealNumber,
+  title: data.title ?? data.mealTitle,
+  description: data.description,
+  time: data.time ?? data.mealTime,
+})).refine(
+  (data) => data.mealNo !== undefined,
+  { message: 'mealNo or mealNumber is required', path: ['mealNo'] }
+).refine(
+  (data) => data.title !== undefined,
+  { message: 'title or mealTitle is required', path: ['title'] }
+).refine(
+  (data) => data.time !== undefined,
+  { message: 'time or mealTime is required', path: ['time'] }
+);
+
+// Create Diet Template schema
+// Supports both frontend naming (templateName) and backend naming (name)
+export const createDietTemplateSchema = z.object({
+  name: z.string().min(2, 'Template name must be at least 2 characters').optional(),
+  templateName: z.string().min(2, 'Template name must be at least 2 characters').optional(),
+  description: z.string().optional(),
+  mealsPerDay: z.number().int().min(1).max(6).optional(),
+  meals: z.array(dietMealSchema)
+    .min(1, 'At least one meal is required')
+    .max(6, 'Maximum 6 meals allowed'),
+}).transform((data) => ({
+  name: data.name ?? data.templateName,
+  description: data.description,
+  meals: data.meals,
+})).refine(
+  (data) => data.name !== undefined,
+  { message: 'name or templateName is required', path: ['name'] }
+).refine(
+  (data) => {
+    const mealNos = data.meals.map(m => m.mealNo);
+    return new Set(mealNos).size === mealNos.length;
+  },
+  { message: 'Meal numbers must be unique', path: ['meals'] }
+);
+
+// Update Diet Template schema
+export const updateDietTemplateSchema = z.object({
+  name: z.string().min(2, 'Template name must be at least 2 characters').optional(),
+  templateName: z.string().min(2, 'Template name must be at least 2 characters').optional(),
+  description: z.string().optional(),
+  mealsPerDay: z.number().int().min(1).max(6).optional(),
+  meals: z.array(dietMealSchema)
+    .min(1, 'At least one meal is required')
+    .max(6, 'Maximum 6 meals allowed')
+    .optional(),
+}).transform((data) => ({
+  name: data.name ?? data.templateName,
+  description: data.description,
+  meals: data.meals,
+})).refine(
+  (data) => {
+    if (data.meals) {
+      const mealNos = data.meals.map(m => m.mealNo);
+      return new Set(mealNos).size === mealNos.length;
+    }
+    return true;
+  },
+  { message: 'Meal numbers must be unique', path: ['meals'] }
+);
+
+// Toggle Diet Template Active Status schema
+// Accepts isActive boolean or empty body (will toggle current status)
+export const toggleDietTemplateActiveSchema = z.object({
+  isActive: z.union([z.boolean(), z.string().transform(val => val === 'true')]).optional(),
+  status: z.union([z.boolean(), z.string().transform(val => val === 'true' || val === 'active')]).optional(),
+}).transform((data) => ({
+  isActive: data.isActive ?? data.status,
+}));
+
+// ============================================
+// Member Diet Validation Schemas
+// ============================================
+
+// Member Diet Meal schema - for customized meals per member
+// Supports both frontend naming (mealNumber, mealTitle, mealTime) and backend naming (mealNo, title, time)
+const memberDietMealSchema = z.object({
+  mealNo: z.number().int().min(1).max(6, 'Meal number must be between 1 and 6').optional(),
+  mealNumber: z.number().int().min(1).max(6, 'Meal number must be between 1 and 6').optional(),
+  title: z.string().min(2, 'Meal title must be at least 2 characters').optional(),
+  mealTitle: z.string().min(2, 'Meal title must be at least 2 characters').optional(),
+  description: z.string().min(1, 'Meal description is required'),
+  time: z.string().optional(),
+  mealTime: z.string().optional(),
+}).transform((data) => ({
+  mealNo: data.mealNo ?? data.mealNumber,
+  title: data.title ?? data.mealTitle,
+  description: data.description,
+  time: data.time ?? data.mealTime,
+})).refine(
+  (data) => data.mealNo !== undefined,
+  { message: 'mealNo or mealNumber is required', path: ['mealNo'] }
+).refine(
+  (data) => data.title !== undefined,
+  { message: 'title or mealTitle is required', path: ['title'] }
+).refine(
+  (data) => data.time !== undefined,
+  { message: 'time or mealTime is required', path: ['time'] }
+);
+
+// Create Member Diet schema (assign diet to member)
+export const createMemberDietSchema = z.object({
+  memberId: z.string().uuid('Invalid member ID'),
+  dietTemplateId: z.string().uuid('Invalid diet template ID'),
+  startDate: z.string().min(1, 'Start date is required'),
+  endDate: z.string().optional(),
+  notes: z.string().optional(),
+  // Optional: Allow customizing meals during assignment
+  customMeals: z.array(memberDietMealSchema)
+    .max(6, 'Maximum 6 meals allowed')
+    .refine(
+      (meals) => {
+        const mealNos = meals.map(m => m.mealNo);
+        return new Set(mealNos).size === mealNos.length;
+      },
+      { message: 'Meal numbers must be unique' }
+    )
+    .optional(),
+});
+
+// Update Member Diet schema
+export const updateMemberDietSchema = z.object({
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  notes: z.string().optional(),
+  // Allow updating individual meals
+  meals: z.array(memberDietMealSchema)
+    .max(6, 'Maximum 6 meals allowed')
+    .refine(
+      (meals) => {
+        const mealNos = meals.map(m => m.mealNo);
+        return new Set(mealNos).size === mealNos.length;
+      },
+      { message: 'Meal numbers must be unique' }
+    )
+    .optional(),
+});
+
+// Deactivate Member Diet schema
+export const deactivateMemberDietSchema = z.object({
+  reason: z.string().optional(),
+});
+
+// Member UUID param schema
+export const memberUuidParamSchema = z.object({
+  memberUuid: z.string().uuid('Invalid member UUID format'),
+});
+
 // Validation middleware factory
 export const validate = (schema: ZodSchema, source: 'body' | 'query' | 'params' = 'body') => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {

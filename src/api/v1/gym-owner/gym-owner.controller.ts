@@ -1304,6 +1304,150 @@ class GymOwnerController {
       next(error);
     }
   }
+
+  // =============================================
+  // Diet Template Methods
+  // =============================================
+
+  // Create a new diet template
+  async createDietTemplate(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const userId = req.user!.id;
+      const template = await gymOwnerService.createDietTemplate(gymId, userId, req.body);
+      successResponse(res, template, 'Diet template created successfully', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Get all diet templates
+  async getDietTemplates(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { page = 1, limit = 10, search, sortBy, sortOrder, mealsPerDay, isActive } = req.query as any;
+      const { templates, total } = await gymOwnerService.getDietTemplates(gymId, {
+        page: Number(page),
+        limit: Number(limit),
+        search,
+        sortBy,
+        sortOrder,
+        mealsPerDay,
+        isActive,
+      });
+      paginatedResponse(res, templates, Number(page), Number(limit), total, 'Diet templates retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Get a single diet template by ID
+  async getDietTemplateById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const template = await gymOwnerService.getDietTemplateById(gymId, req.params.id);
+      successResponse(res, template, 'Diet template retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Update a diet template
+  async updateDietTemplate(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const template = await gymOwnerService.updateDietTemplate(gymId, req.params.id, req.body);
+      successResponse(res, template, 'Diet template updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Toggle diet template active status
+  async toggleDietTemplateActive(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      let { isActive } = req.body;
+      
+      // If isActive is not provided, fetch current status and toggle it
+      if (isActive === undefined || isActive === null) {
+        const currentTemplate = await gymOwnerService.getDietTemplateById(gymId, req.params.id);
+        isActive = !currentTemplate.isActive;
+      }
+      
+      const template = await gymOwnerService.toggleDietTemplateActive(gymId, req.params.id, isActive);
+      successResponse(res, template, `Diet template ${template.isActive ? 'activated' : 'deactivated'} successfully`);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // =============================================
+  // Member Diet Methods
+  // =============================================
+
+  // Assign diet to a member
+  async createMemberDiet(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const userId = req.user!.id;
+      const memberDiet = await gymOwnerService.createMemberDiet(gymId, userId, req.body);
+      successResponse(res, memberDiet, 'Diet assigned to member successfully', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Get all diets for a member
+  async getMemberDiets(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { page = 1, limit = 10, sortBy, sortOrder } = req.query as any;
+      const { diets, total } = await gymOwnerService.getMemberDiets(gymId, req.params.memberUuid, {
+        page: Number(page),
+        limit: Number(limit),
+        sortBy,
+        sortOrder,
+      });
+      paginatedResponse(res, diets, Number(page), Number(limit), total, 'Member diets retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Get a single member diet by ID
+  async getMemberDietById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const memberDiet = await gymOwnerService.getMemberDietById(gymId, req.params.id);
+      successResponse(res, memberDiet, 'Member diet retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Update a member diet
+  async updateMemberDiet(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const memberDiet = await gymOwnerService.updateMemberDiet(gymId, req.params.id, req.body);
+      successResponse(res, memberDiet, 'Member diet updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Deactivate a member diet
+  async deactivateMemberDiet(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { reason } = req.body;
+      const memberDiet = await gymOwnerService.deactivateMemberDiet(gymId, req.params.id, reason);
+      successResponse(res, memberDiet, 'Member diet deactivated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new GymOwnerController();

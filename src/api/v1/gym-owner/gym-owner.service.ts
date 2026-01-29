@@ -78,6 +78,15 @@ import {
   PaymentFor,
   // Membership Details
   MemberMembershipDetailsResponse,
+  // Diet Template & Member Diet Types
+  DietTemplate,
+  DietMeal,
+  CreateDietTemplateRequest,
+  UpdateDietTemplateRequest,
+  MemberDiet,
+  MemberDietMeal,
+  CreateMemberDietRequest,
+  UpdateMemberDietRequest,
 } from './gym-owner.types';
 
 class GymOwnerService {
@@ -4856,6 +4865,665 @@ class GymOwnerService {
     }
 
     return response;
+  }
+
+  // =============================================
+  // Diet Template Methods
+  // =============================================
+
+  // Create a new diet template
+  async createDietTemplate(gymId: string, userId: string, data: CreateDietTemplateRequest): Promise<DietTemplate> {
+    // Create the diet template with meals in a transaction
+    const template = await prisma.dietTemplate.create({
+      data: {
+        name: data.name,
+        description: data.description,
+        gymId,
+        createdBy: userId,
+        meals: {
+          create: data.meals.map(meal => ({
+            mealNo: meal.mealNo,
+            title: meal.title,
+            description: meal.description,
+            time: meal.time,
+          })),
+        },
+      },
+      include: {
+        meals: {
+          orderBy: { mealNo: 'asc' },
+        },
+        creator: {
+          select: { name: true },
+        },
+      },
+    });
+
+    return {
+      id: template.id,
+      name: template.name,
+      description: template.description || undefined,
+      gymId: template.gymId,
+      createdBy: template.createdBy,
+      creatorName: template.creator.name,
+      isActive: template.isActive,
+      meals: template.meals.map(meal => ({
+        id: meal.id,
+        mealNo: meal.mealNo,
+        title: meal.title,
+        description: meal.description,
+        time: meal.time,
+      })),
+      createdAt: template.createdAt,
+      updatedAt: template.updatedAt,
+    };
+  }
+
+  // Get all diet templates for a gym
+  async getDietTemplates(gymId: string, params: any): Promise<{ templates: DietTemplate[]; total: number }> {
+    const { page, limit, search, sortBy = 'createdAt', sortOrder = 'desc', mealsPerDay, isActive } = params;
+    const skip = (page - 1) * limit;
+
+    // Build the where clause
+    const where: any = {
+      gymId,
+      // Filter by active status if provided
+      ...(isActive !== undefined && { isActive }),
+    };
+
+    // If search is provided, search in template name, description, and meal titles/descriptions
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+        // Search in meals (title and description)
+        {
+          meals: {
+            some: {
+              OR: [
+                { title: { contains: search, mode: 'insensitive' } },
+                { description: { contains: search, mode: 'insensitive' } },
+              ],
+            },
+          },
+        },
+      ];
+    }
+
+    // First, get all templates matching the basic criteria
+    let [templates, total] = await Promise.all([
+      prisma.dietTemplate.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          meals: {
+            orderBy: { mealNo: 'asc' },
+          },
+          creator: {
+            select: { name: true },
+          },
+          _count: {
+            select: { meals: true },
+          },
+        },
+      }),
+      prisma.dietTemplate.count({ where }),
+    ]);
+
+    // Filter by mealsPerDay if provided (post-query filter since Prisma doesn't support count filter directly)
+    if (mealsPerDay !== undefined) {
+      templates = templates.filter(t => t._count.meals === mealsPerDay);
+      // Adjust total count for mealsPerDay filter
+      const allTemplatesWithMealCount = await prisma.dietTemplate.findMany({
+        where,
+        include: {
+          _count: {
+            select: { meals: true },
+          },
+        },
+      });
+      total = allTemplatesWithMealCount.filter(t => t._count.meals === mealsPerDay).length;
+    }
+
+    return {
+      templates: templates.map(template => ({
+        id: template.id,
+        name: template.name,
+        description: template.description || undefined,
+        gymId: template.gymId,
+        createdBy: template.createdBy,
+        creatorName: template.creator.name,
+        isActive: template.isActive,
+        mealsPerDay: template._count.meals,
+        meals: template.meals.map(meal => ({
+          id: meal.id,
+          mealNo: meal.mealNo,
+          title: meal.title,
+          description: meal.description,
+          time: meal.time,
+        })),
+        createdAt: template.createdAt,
+        updatedAt: template.updatedAt,
+      })),
+      total,
+    };
+  }
+
+  // Get a single diet template by ID
+  async getDietTemplateById(gymId: string, templateId: string): Promise<DietTemplate> {
+    const template = await prisma.dietTemplate.findFirst({
+      where: {
+        id: templateId,
+        gymId,
+      },
+      include: {
+        meals: {
+          orderBy: { mealNo: 'asc' },
+        },
+        creator: {
+          select: { name: true },
+        },
+      },
+    });
+
+    if (!template) {
+      throw new NotFoundException('Diet template not found');
+    }
+
+    return {
+      id: template.id,
+      name: template.name,
+      description: template.description || undefined,
+      gymId: template.gymId,
+      createdBy: template.createdBy,
+      creatorName: template.creator.name,
+      isActive: template.isActive,
+      meals: template.meals.map(meal => ({
+        id: meal.id,
+        mealNo: meal.mealNo,
+        title: meal.title,
+        description: meal.description,
+        time: meal.time,
+      })),
+      createdAt: template.createdAt,
+      updatedAt: template.updatedAt,
+    };
+  }
+
+  // Update a diet template
+  async updateDietTemplate(gymId: string, templateId: string, data: UpdateDietTemplateRequest): Promise<DietTemplate> {
+    // Check if template exists
+    const existing = await prisma.dietTemplate.findFirst({
+      where: { id: templateId, gymId },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Diet template not found');
+    }
+
+    // Update in a transaction
+    const template = await prisma.$transaction(async (tx) => {
+      // If meals are provided, delete existing and create new ones
+      if (data.meals) {
+        await tx.dietMeal.deleteMany({
+          where: { dietTemplateId: templateId },
+        });
+      }
+
+      return tx.dietTemplate.update({
+        where: { id: templateId },
+        data: {
+          ...(data.name && { name: data.name }),
+          ...(data.description !== undefined && { description: data.description }),
+          ...(data.meals && {
+            meals: {
+              create: data.meals.map(meal => ({
+                mealNo: meal.mealNo,
+                title: meal.title,
+                description: meal.description,
+                time: meal.time,
+              })),
+            },
+          }),
+        },
+        include: {
+          meals: {
+            orderBy: { mealNo: 'asc' },
+          },
+          creator: {
+            select: { name: true },
+          },
+        },
+      });
+    });
+
+    return {
+      id: template.id,
+      name: template.name,
+      description: template.description || undefined,
+      gymId: template.gymId,
+      createdBy: template.createdBy,
+      creatorName: template.creator.name,
+      isActive: template.isActive,
+      meals: template.meals.map(meal => ({
+        id: meal.id,
+        mealNo: meal.mealNo,
+        title: meal.title,
+        description: meal.description,
+        time: meal.time,
+      })),
+      createdAt: template.createdAt,
+      updatedAt: template.updatedAt,
+    };
+  }
+
+  // Toggle diet template active status
+  async toggleDietTemplateActive(gymId: string, templateId: string, isActive: boolean): Promise<DietTemplate> {
+    const existing = await prisma.dietTemplate.findFirst({
+      where: { id: templateId, gymId },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Diet template not found');
+    }
+
+    const template = await prisma.dietTemplate.update({
+      where: { id: templateId },
+      data: { isActive },
+      include: {
+        meals: {
+          orderBy: { mealNo: 'asc' },
+        },
+        creator: {
+          select: { name: true },
+        },
+      },
+    });
+
+    return {
+      id: template.id,
+      name: template.name,
+      description: template.description || undefined,
+      gymId: template.gymId,
+      createdBy: template.createdBy,
+      creatorName: template.creator.name,
+      isActive: template.isActive,
+      meals: template.meals.map(meal => ({
+        id: meal.id,
+        mealNo: meal.mealNo,
+        title: meal.title,
+        description: meal.description,
+        time: meal.time,
+      })),
+      createdAt: template.createdAt,
+      updatedAt: template.updatedAt,
+    };
+  }
+
+  // =============================================
+  // Member Diet Methods
+  // =============================================
+
+  // Assign a diet to a member
+  async createMemberDiet(gymId: string, userId: string, data: CreateMemberDietRequest): Promise<MemberDiet> {
+    // Verify member exists and belongs to gym
+    const member = await prisma.member.findFirst({
+      where: { id: data.memberId, gymId },
+      include: { user: { select: { name: true, email: true } } },
+    });
+
+    if (!member) {
+      throw new NotFoundException('Member not found');
+    }
+
+    // Verify diet template exists and belongs to gym
+    const template = await prisma.dietTemplate.findFirst({
+      where: { id: data.dietTemplateId, gymId },
+      include: { meals: { orderBy: { mealNo: 'asc' } } },
+    });
+
+    if (!template) {
+      throw new NotFoundException('Diet template not found');
+    }
+
+    // Deactivate any existing active diet for this member
+    await prisma.memberDiet.updateMany({
+      where: {
+        memberId: data.memberId,
+        gymId,
+        isActive: true,
+      },
+      data: { isActive: false },
+    });
+
+    // Determine meals to use (custom or from template)
+    const mealsToCreate = data.customMeals && data.customMeals.length > 0
+      ? data.customMeals
+      : template.meals;
+
+    // Create the member diet assignment with meals
+    const memberDiet = await prisma.memberDiet.create({
+      data: {
+        memberId: data.memberId,
+        dietTemplateId: data.dietTemplateId,
+        gymId,
+        startDate: new Date(data.startDate),
+        endDate: data.endDate ? new Date(data.endDate) : null,
+        assignedBy: userId,
+        notes: data.notes,
+        meals: {
+          create: mealsToCreate.map(meal => ({
+            mealNo: meal.mealNo,
+            title: meal.title,
+            description: meal.description,
+            time: meal.time,
+          })),
+        },
+      },
+      include: {
+        meals: {
+          orderBy: { mealNo: 'asc' },
+        },
+        member: {
+          include: { user: { select: { name: true, email: true } } },
+        },
+        dietTemplate: {
+          select: { name: true },
+        },
+        assigner: {
+          select: { name: true },
+        },
+      },
+    });
+
+    return {
+      id: memberDiet.id,
+      memberId: memberDiet.memberId,
+      memberName: memberDiet.member.user.name,
+      memberEmail: memberDiet.member.user.email,
+      dietTemplateId: memberDiet.dietTemplateId,
+      dietTemplateName: memberDiet.dietTemplate.name,
+      gymId: memberDiet.gymId,
+      startDate: memberDiet.startDate,
+      endDate: memberDiet.endDate || undefined,
+      assignedBy: memberDiet.assignedBy,
+      assignerName: memberDiet.assigner.name,
+      isActive: memberDiet.isActive,
+      notes: memberDiet.notes || undefined,
+      meals: memberDiet.meals.map(meal => ({
+        id: meal.id,
+        mealNo: meal.mealNo,
+        title: meal.title,
+        description: meal.description,
+        time: meal.time,
+      })),
+      createdAt: memberDiet.createdAt,
+      updatedAt: memberDiet.updatedAt,
+    };
+  }
+
+  // Get all diets for a member
+  async getMemberDiets(gymId: string, memberId: string, params: PaginationParams): Promise<{ diets: MemberDiet[]; total: number }> {
+    const { page, limit, sortBy = 'createdAt', sortOrder = 'desc' } = params;
+    const skip = (page - 1) * limit;
+
+    // Verify member exists and belongs to gym
+    const member = await prisma.member.findFirst({
+      where: { id: memberId, gymId },
+    });
+
+    if (!member) {
+      throw new NotFoundException('Member not found');
+    }
+
+    const where = {
+      memberId,
+      gymId,
+    };
+
+    const [diets, total] = await Promise.all([
+      prisma.memberDiet.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          meals: {
+            orderBy: { mealNo: 'asc' },
+          },
+          member: {
+            include: { user: { select: { name: true, email: true } } },
+          },
+          dietTemplate: {
+            select: { name: true },
+          },
+          assigner: {
+            select: { name: true },
+          },
+        },
+      }),
+      prisma.memberDiet.count({ where }),
+    ]);
+
+    return {
+      diets: diets.map(diet => ({
+        id: diet.id,
+        memberId: diet.memberId,
+        memberName: diet.member.user.name,
+        memberEmail: diet.member.user.email,
+        dietTemplateId: diet.dietTemplateId,
+        dietTemplateName: diet.dietTemplate.name,
+        gymId: diet.gymId,
+        startDate: diet.startDate,
+        endDate: diet.endDate || undefined,
+        assignedBy: diet.assignedBy,
+        assignerName: diet.assigner.name,
+        isActive: diet.isActive,
+        notes: diet.notes || undefined,
+        meals: diet.meals.map(meal => ({
+          id: meal.id,
+          mealNo: meal.mealNo,
+          title: meal.title,
+          description: meal.description,
+          time: meal.time,
+        })),
+        createdAt: diet.createdAt,
+        updatedAt: diet.updatedAt,
+      })),
+      total,
+    };
+  }
+
+  // Get a single member diet by ID
+  async getMemberDietById(gymId: string, memberDietId: string): Promise<MemberDiet> {
+    const diet = await prisma.memberDiet.findFirst({
+      where: {
+        id: memberDietId,
+        gymId,
+      },
+      include: {
+        meals: {
+          orderBy: { mealNo: 'asc' },
+        },
+        member: {
+          include: { user: { select: { name: true, email: true } } },
+        },
+        dietTemplate: {
+          select: { name: true },
+        },
+        assigner: {
+          select: { name: true },
+        },
+      },
+    });
+
+    if (!diet) {
+      throw new NotFoundException('Member diet not found');
+    }
+
+    return {
+      id: diet.id,
+      memberId: diet.memberId,
+      memberName: diet.member.user.name,
+      memberEmail: diet.member.user.email,
+      dietTemplateId: diet.dietTemplateId,
+      dietTemplateName: diet.dietTemplate.name,
+      gymId: diet.gymId,
+      startDate: diet.startDate,
+      endDate: diet.endDate || undefined,
+      assignedBy: diet.assignedBy,
+      assignerName: diet.assigner.name,
+      isActive: diet.isActive,
+      notes: diet.notes || undefined,
+      meals: diet.meals.map(meal => ({
+        id: meal.id,
+        mealNo: meal.mealNo,
+        title: meal.title,
+        description: meal.description,
+        time: meal.time,
+      })),
+      createdAt: diet.createdAt,
+      updatedAt: diet.updatedAt,
+    };
+  }
+
+  // Update a member diet
+  async updateMemberDiet(gymId: string, memberDietId: string, data: UpdateMemberDietRequest): Promise<MemberDiet> {
+    const existing = await prisma.memberDiet.findFirst({
+      where: { id: memberDietId, gymId },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Member diet not found');
+    }
+
+    // Update in a transaction
+    const diet = await prisma.$transaction(async (tx) => {
+      // If meals are provided, delete existing and create new ones
+      if (data.meals && data.meals.length > 0) {
+        await tx.memberDietMeal.deleteMany({
+          where: { memberDietId },
+        });
+      }
+
+      return tx.memberDiet.update({
+        where: { id: memberDietId },
+        data: {
+          ...(data.startDate && { startDate: new Date(data.startDate) }),
+          ...(data.endDate !== undefined && { endDate: data.endDate ? new Date(data.endDate) : null }),
+          ...(data.notes !== undefined && { notes: data.notes }),
+          ...(data.meals && data.meals.length > 0 && {
+            meals: {
+              create: data.meals.map(meal => ({
+                mealNo: meal.mealNo,
+                title: meal.title,
+                description: meal.description,
+                time: meal.time,
+              })),
+            },
+          }),
+        },
+        include: {
+          meals: {
+            orderBy: { mealNo: 'asc' },
+          },
+          member: {
+            include: { user: { select: { name: true, email: true } } },
+          },
+          dietTemplate: {
+            select: { name: true },
+          },
+          assigner: {
+            select: { name: true },
+          },
+        },
+      });
+    });
+
+    return {
+      id: diet.id,
+      memberId: diet.memberId,
+      memberName: diet.member.user.name,
+      memberEmail: diet.member.user.email,
+      dietTemplateId: diet.dietTemplateId,
+      dietTemplateName: diet.dietTemplate.name,
+      gymId: diet.gymId,
+      startDate: diet.startDate,
+      endDate: diet.endDate || undefined,
+      assignedBy: diet.assignedBy,
+      assignerName: diet.assigner.name,
+      isActive: diet.isActive,
+      notes: diet.notes || undefined,
+      meals: diet.meals.map(meal => ({
+        id: meal.id,
+        mealNo: meal.mealNo,
+        title: meal.title,
+        description: meal.description,
+        time: meal.time,
+      })),
+      createdAt: diet.createdAt,
+      updatedAt: diet.updatedAt,
+    };
+  }
+
+  // Deactivate a member diet
+  async deactivateMemberDiet(gymId: string, memberDietId: string, reason?: string): Promise<MemberDiet> {
+    const existing = await prisma.memberDiet.findFirst({
+      where: { id: memberDietId, gymId },
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Member diet not found');
+    }
+
+    const diet = await prisma.memberDiet.update({
+      where: { id: memberDietId },
+      data: {
+        isActive: false,
+        notes: reason ? `${existing.notes || ''}\nDeactivated: ${reason}`.trim() : existing.notes,
+      },
+      include: {
+        meals: {
+          orderBy: { mealNo: 'asc' },
+        },
+        member: {
+          include: { user: { select: { name: true, email: true } } },
+        },
+        dietTemplate: {
+          select: { name: true },
+        },
+        assigner: {
+          select: { name: true },
+        },
+      },
+    });
+
+    return {
+      id: diet.id,
+      memberId: diet.memberId,
+      memberName: diet.member.user.name,
+      memberEmail: diet.member.user.email,
+      dietTemplateId: diet.dietTemplateId,
+      dietTemplateName: diet.dietTemplate.name,
+      gymId: diet.gymId,
+      startDate: diet.startDate,
+      endDate: diet.endDate || undefined,
+      assignedBy: diet.assignedBy,
+      assignerName: diet.assigner.name,
+      isActive: diet.isActive,
+      notes: diet.notes || undefined,
+      meals: diet.meals.map(meal => ({
+        id: meal.id,
+        mealNo: meal.mealNo,
+        title: meal.title,
+        description: meal.description,
+        time: meal.time,
+      })),
+      createdAt: diet.createdAt,
+      updatedAt: diet.updatedAt,
+    };
   }
 }
 
