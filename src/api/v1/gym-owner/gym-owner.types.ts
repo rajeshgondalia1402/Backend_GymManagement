@@ -1080,6 +1080,18 @@ export interface DietMeal {
   time: string;         // e.g., "07:30 AM"
 }
 
+export interface AssignedMemberInfo {
+  memberDietId: string;
+  memberId: string;
+  memberCode: string | null;
+  memberName: string;
+  mobileNo: string | null;
+  memberType: string;
+  hasPTAddon: boolean;
+  startDate: Date;
+  endDate: Date | null;
+}
+
 export interface DietTemplate {
   id: string;
   name: string;
@@ -1090,6 +1102,8 @@ export interface DietTemplate {
   isActive: boolean;
   mealsPerDay?: number; // Number of meals in the template
   meals: DietMeal[];
+  assignedMembers?: AssignedMemberInfo[];
+  assignedMemberCount?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -1148,7 +1162,7 @@ export interface MemberDiet {
 }
 
 export interface CreateMemberDietRequest {
-  memberId: string;
+  memberIds: string[];
   dietTemplateId: string;
   startDate: string;
   endDate?: string;

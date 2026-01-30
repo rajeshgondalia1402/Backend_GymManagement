@@ -1386,13 +1386,14 @@ class GymOwnerController {
   // Member Diet Methods
   // =============================================
 
-  // Assign diet to a member
+  // Assign diet to multiple members
   async createMemberDiet(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const gymId = this.getGymId(req);
       const userId = req.user!.id;
-      const memberDiet = await gymOwnerService.createMemberDiet(gymId, userId, req.body);
-      successResponse(res, memberDiet, 'Diet assigned to member successfully', 201);
+      const memberDiets = await gymOwnerService.createMemberDiet(gymId, userId, req.body);
+      const memberCount = memberDiets.length;
+      successResponse(res, memberDiets, `Diet assigned to ${memberCount} member${memberCount > 1 ? 's' : ''} successfully`, 201);
     } catch (error) {
       next(error);
     }
@@ -1444,6 +1445,18 @@ class GymOwnerController {
       const { reason } = req.body;
       const memberDiet = await gymOwnerService.deactivateMemberDiet(gymId, req.params.id, reason);
       successResponse(res, memberDiet, 'Member diet deactivated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Remove multiple assigned members from diet templates (bulk delete)
+  async removeAssignedMembers(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { memberDietIds } = req.body;
+      const result = await gymOwnerService.removeAssignedMembers(gymId, memberDietIds);
+      successResponse(res, result, `${result.deletedCount} assigned member(s) removed successfully`);
     } catch (error) {
       next(error);
     }

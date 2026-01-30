@@ -749,9 +749,9 @@ const memberDietMealSchema = z.object({
   { message: 'time or mealTime is required', path: ['time'] }
 );
 
-// Create Member Diet schema (assign diet to member)
+// Create Member Diet schema (assign diet to multiple members)
 export const createMemberDietSchema = z.object({
-  memberId: z.string().uuid('Invalid member ID'),
+  memberIds: z.array(z.string().uuid('Invalid member ID')).min(1, 'At least one member ID is required'),
   dietTemplateId: z.string().uuid('Invalid diet template ID'),
   startDate: z.string().min(1, 'Start date is required'),
   endDate: z.string().optional(),
@@ -790,6 +790,11 @@ export const updateMemberDietSchema = z.object({
 // Deactivate Member Diet schema
 export const deactivateMemberDietSchema = z.object({
   reason: z.string().optional(),
+});
+
+// Remove Assigned Members schema (bulk delete member diets)
+export const removeAssignedMembersSchema = z.object({
+  memberDietIds: z.array(z.string().uuid('Invalid member diet ID')).min(1, 'At least one member diet ID is required'),
 });
 
 // Member UUID param schema
