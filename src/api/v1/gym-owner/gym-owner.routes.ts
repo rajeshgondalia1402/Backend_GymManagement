@@ -60,6 +60,7 @@ import {
   createMemberDietSchema,
   updateMemberDietSchema,
   deactivateMemberDietSchema,
+  removeAssignedMembersSchema,
   memberUuidParamSchema,
   dietTemplatePaginationSchema,
 } from '../../../common/middleware';
@@ -3540,7 +3541,7 @@ router.patch('/diet-templates/:id/toggle-status', validate(idParamSchema, 'param
  * @swagger
  * /api/v1/gym-owner/member-diets:
  *   post:
- *     summary: Assign a diet to a member
+ *     summary: Assign a diet to multiple members
  *     tags: [Gym Owner - Member Diets]
  *     security:
  *       - bearerAuth: []
@@ -3551,14 +3552,16 @@ router.patch('/diet-templates/:id/toggle-status', validate(idParamSchema, 'param
  *           schema:
  *             type: object
  *             required:
- *               - memberId
+ *               - memberIds
  *               - dietTemplateId
  *               - startDate
  *             properties:
- *               memberId:
- *                 type: string
- *                 format: uuid
- *                 description: Member UUID
+ *               memberIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *                 description: Array of Member UUIDs to assign diet to
  *               dietTemplateId:
  *                 type: string
  *                 format: uuid
@@ -3590,7 +3593,7 @@ router.patch('/diet-templates/:id/toggle-status', validate(idParamSchema, 'param
  *                       type: string
  *     responses:
  *       201:
- *         description: Diet assigned to member successfully
+ *         description: Diet assigned to members successfully
  */
 router.post('/member-diets', validate(createMemberDietSchema), gymOwnerController.createMemberDiet.bind(gymOwnerController));
 
@@ -3732,5 +3735,57 @@ router.put('/member-diets/:id', validate(idParamSchema, 'params'), validate(upda
  *         description: Member diet deactivated successfully
  */
 router.patch('/member-diets/:id/deactivate', validate(idParamSchema, 'params'), validate(deactivateMemberDietSchema), gymOwnerController.deactivateMemberDiet.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/member-diets/bulk-remove:
+ *   delete:
+ *     summary: Remove multiple assigned members from diet templates
+ *     tags: [Gym Owner - Member Diets]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - memberDietIds
+ *             properties:
+ *               memberDietIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *                 description: Array of member diet IDs to remove
+ *                 example: ["uuid-1", "uuid-2", "uuid-3"]
+ *     responses:
+ *       200:
+ *         description: Assigned members removed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 message:
+ *                   type: string
+ *                   example: 3 assigned member(s) removed successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     deletedCount:
+ *                       type: number
+ *                       example: 3
+ *                     deletedIds:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       example: ["uuid-1", "uuid-2", "uuid-3"]
+ */
+router.delete('/member-diets/bulk-remove', validate(removeAssignedMembersSchema), gymOwnerController.removeAssignedMembers.bind(gymOwnerController));
 
 export default router;
