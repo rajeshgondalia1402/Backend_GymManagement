@@ -267,6 +267,22 @@ export interface AddPTAddonRequest {
   notes?: string;
 }
 
+// Update PT addon request (all fields optional for partial updates)
+export interface UpdatePTAddonRequest {
+  ptPackageName?: string;
+  trainerId?: string;
+  sessionsTotal?: number;
+  sessionDuration?: number;
+  ptPackageFees?: number;
+  ptMaxDiscount?: number;
+  ptExtraDiscount?: number;
+  ptFinalFees?: number;
+  startDate?: string;
+  endDate?: string;
+  goals?: string;
+  notes?: string;
+}
+
 // Remove PT addon request
 export interface RemovePTAddonRequest {
   action: PTRemovalAction; // COMPLETE, FORFEIT, CARRY_FORWARD
@@ -1185,4 +1201,224 @@ export interface UpdateMemberDietRequest {
     description: string;
     time: string;
   }[];
+}
+
+// =============================================
+// Trainer Salary Settlement Types
+// =============================================
+
+export type IncentiveType = 'PT' | 'PROTEIN' | 'MEMBER_REFERENCE' | 'OTHERS';
+
+// Trainer dropdown response for salary settlement
+export interface TrainerDropdownItem {
+  trainerId: string;
+  name: string;
+  mobileNumber?: string;
+  joiningDate?: Date;
+  monthlySalary?: number;
+}
+
+// Salary calculation request
+export interface SalaryCalculationRequest {
+  trainerId: string;
+  salaryMonth: string; // YYYY-MM format
+  presentDays: number;
+  discountDays?: number;
+  incentiveAmount?: number;
+  incentiveType?: IncentiveType;
+}
+
+// Salary calculation response
+export interface SalaryCalculationResponse {
+  trainerId: string;
+  trainerName: string;
+  mobileNumber?: string;
+  joiningDate?: Date;
+  monthlySalary: number;
+  salaryMonth: string;
+  totalDaysInMonth: number;
+  presentDays: number;
+  absentDays: number;
+  discountDays: number;
+  payableDays: number;
+  calculatedSalary: number;
+  incentiveAmount: number;
+  incentiveType?: IncentiveType;
+  finalPayableAmount: number;
+}
+
+// Trainer salary settlement record
+export interface TrainerSalarySettlement {
+  id: string;
+  trainerId: string;
+  trainerName: string;
+  mobileNumber?: string;
+  joiningDate?: Date;
+  monthlySalary: number;
+  salaryMonth: string;
+  salarySentDate?: Date;
+  totalDaysInMonth: number;
+  presentDays: number;
+  absentDays: number;
+  discountDays: number;
+  payableDays: number;
+  calculatedSalary: number;
+  incentiveAmount: number;
+  incentiveType?: IncentiveType;
+  paymentMode: PaymentMode;
+  finalPayableAmount: number;
+  remarks?: string;
+  gymId: string;
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Create salary settlement request
+export interface CreateSalarySettlementRequest {
+  trainerId: string;
+  salaryMonth: string; // YYYY-MM format
+  salarySentDate?: string; // ISO date string
+  presentDays: number;
+  discountDays?: number;
+  incentiveAmount?: number;
+  incentiveType?: IncentiveType;
+  paymentMode: PaymentMode;
+  remarks?: string;
+}
+
+// Update salary settlement request
+export interface UpdateSalarySettlementRequest {
+  salarySentDate?: string;
+  presentDays?: number;
+  discountDays?: number;
+  incentiveAmount?: number;
+  incentiveType?: IncentiveType;
+  paymentMode?: PaymentMode;
+  remarks?: string;
+}
+
+// Salary settlement list params
+export interface SalarySettlementListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  // Filters
+  trainerId?: string;
+  paymentMode?: PaymentMode;
+  fromDate?: string; // Date string (YYYY-MM-DD or ISO)
+  toDate?: string; // Date string (YYYY-MM-DD or ISO)
+}
+
+// Salary settlement list response
+export interface SalarySettlementListResponse {
+  settlements: TrainerSalarySettlement[];
+  total: number;
+  page: number;
+  limit: number;
+  totalAmount: number; // Sum of all settlements matching the filter
+}
+
+// =============================================
+// Trainer Salary Slip Types
+// =============================================
+
+// Gym details for salary slip header
+export interface SalarySlipGymDetails {
+  gymId: string;
+  gymName: string;
+  address1?: string;
+  address2?: string;
+  city?: string;
+  state?: string;
+  zipcode?: string;
+  fullAddress: string; // Combined address
+  mobileNo?: string;
+  phoneNo?: string;
+  email?: string;
+  gstRegNo?: string;
+  gymLogo?: string;
+}
+
+// Trainer/Employee details for salary slip
+export interface SalarySlipTrainerDetails {
+  trainerId: string;
+  trainerName: string;
+  email: string;
+  mobileNumber?: string;
+  gender?: string;
+  designation?: string; // Specialization
+  joiningDate?: Date;
+  employeeCode?: string; // Trainer ID as employee code
+}
+
+// Earnings breakdown
+export interface SalarySlipEarnings {
+  basicSalary: number; // Monthly salary
+  calculatedSalary: number; // Pro-rated based on attendance
+  incentiveAmount: number;
+  incentiveType?: IncentiveType;
+  grossEarnings: number; // calculatedSalary + incentiveAmount
+}
+
+// Attendance summary
+export interface SalarySlipAttendance {
+  totalDaysInMonth: number;
+  presentDays: number;
+  absentDays: number;
+  discountDays: number; // Leave adjustments
+  payableDays: number;
+  attendancePercentage: number;
+}
+
+// Payment details
+export interface SalarySlipPaymentDetails {
+  paymentMode: PaymentMode;
+  paymentDate?: Date;
+  transactionRef?: string; // Future scope
+}
+
+// Complete Salary Slip
+export interface TrainerSalarySlip {
+  // Slip metadata
+  slipId: string; // Settlement ID
+  slipNumber: string; // Formatted slip number
+  generatedDate: Date;
+
+  // Period
+  salaryMonth: string; // YYYY-MM
+  salaryPeriod: string; // e.g., "January 2025"
+  periodStartDate: Date;
+  periodEndDate: Date;
+
+  // Gym details
+  gymDetails: SalarySlipGymDetails;
+
+  // Trainer details
+  trainerDetails: SalarySlipTrainerDetails;
+
+  // Attendance
+  attendance: SalarySlipAttendance;
+
+  // Earnings
+  earnings: SalarySlipEarnings;
+
+  // Deductions (future scope)
+  deductions: {
+    totalDeductions: number;
+    items: { name: string; amount: number }[];
+  };
+
+  // Net payable
+  netPayableAmount: number;
+  netPayableInWords: string;
+
+  // Payment details
+  paymentDetails: SalarySlipPaymentDetails;
+
+  // Additional
+  remarks?: string;
+  createdAt: Date;
 }

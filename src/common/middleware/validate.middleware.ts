@@ -565,6 +565,22 @@ export const removePTAddonSchema = z.object({
   notes: z.string().optional(),
 });
 
+// Update PT Addon validation schema (all fields optional for partial updates)
+export const updatePTAddonSchema = z.object({
+  ptPackageName: z.string().min(2, 'PT package name is required').optional(),
+  trainerId: z.string().uuid('Invalid trainer ID').optional(),
+  sessionsTotal: z.union([z.number().int().positive('Sessions must be positive'), z.string().transform(val => parseInt(val, 10))]).optional(),
+  sessionDuration: z.union([z.number().int().positive(), z.string().transform(val => parseInt(val, 10))]).optional(),
+  ptPackageFees: z.union([z.number().positive('PT fees must be positive'), z.string().transform(val => parseFloat(val))]).optional(),
+  ptMaxDiscount: z.union([z.number().min(0), z.string().transform(val => parseFloat(val))]).optional(),
+  ptExtraDiscount: z.union([z.number().min(0), z.string().transform(val => parseFloat(val))]).optional(),
+  ptFinalFees: z.union([z.number().positive('Final PT fees is required'), z.string().transform(val => parseFloat(val))]).optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  goals: z.string().optional(),
+  notes: z.string().optional(),
+});
+
 // Membership Renewal validation schemas
 export const createMembershipRenewalSchema = z.object({
   memberId: z.string().uuid('Invalid member ID'),
@@ -800,6 +816,131 @@ export const removeAssignedMembersSchema = z.object({
 // Member UUID param schema
 export const memberUuidParamSchema = z.object({
   memberUuid: z.string().uuid('Invalid member UUID format'),
+});
+
+// =============================================
+// Trainer Salary Settlement Validation Schemas
+// =============================================
+
+// Incentive type enum
+const incentiveTypeEnum = z.enum(['PT', 'PROTEIN', 'MEMBER_REFERENCE', 'OTHERS']);
+
+// Salary month format validation (YYYY-MM)
+const salaryMonthRegex = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+// Salary calculation schema
+export const salaryCalculationSchema = z.object({
+  trainerId: z.string().uuid('Invalid trainer ID'),
+  salaryMonth: z.string().regex(salaryMonthRegex, 'Salary month must be in YYYY-MM format'),
+  presentDays: z.union([
+    z.number().int().min(0, 'Present days cannot be negative'),
+    z.string().transform((val) => {
+      const num = parseInt(val, 10);
+      if (isNaN(num) || num < 0) throw new Error('Present days must be a non-negative integer');
+      return num;
+    }),
+  ]),
+  discountDays: z.union([
+    z.number().int().min(0, 'Discount days cannot be negative'),
+    z.string().transform((val) => {
+      const num = parseInt(val, 10);
+      if (isNaN(num) || num < 0) throw new Error('Discount days must be a non-negative integer');
+      return num;
+    }),
+  ]).optional().default(0),
+  incentiveAmount: z.union([
+    z.number().min(0, 'Incentive amount cannot be negative'),
+    z.string().transform((val) => {
+      const num = parseFloat(val);
+      if (isNaN(num) || num < 0) throw new Error('Incentive amount must be a non-negative number');
+      return num;
+    }),
+  ]).optional().default(0),
+  incentiveType: incentiveTypeEnum.optional(),
+});
+
+// Create salary settlement schema
+export const createSalarySettlementSchema = z.object({
+  trainerId: z.string().uuid('Invalid trainer ID'),
+  salaryMonth: z.string().regex(salaryMonthRegex, 'Salary month must be in YYYY-MM format'),
+  salarySentDate: z.string().optional(),
+  presentDays: z.union([
+    z.number().int().min(0, 'Present days cannot be negative'),
+    z.string().transform((val) => {
+      const num = parseInt(val, 10);
+      if (isNaN(num) || num < 0) throw new Error('Present days must be a non-negative integer');
+      return num;
+    }),
+  ]),
+  discountDays: z.union([
+    z.number().int().min(0, 'Discount days cannot be negative'),
+    z.string().transform((val) => {
+      const num = parseInt(val, 10);
+      if (isNaN(num) || num < 0) throw new Error('Discount days must be a non-negative integer');
+      return num;
+    }),
+  ]).optional().default(0),
+  incentiveAmount: z.union([
+    z.number().min(0, 'Incentive amount cannot be negative'),
+    z.string().transform((val) => {
+      const num = parseFloat(val);
+      if (isNaN(num) || num < 0) throw new Error('Incentive amount must be a non-negative number');
+      return num;
+    }),
+  ]).optional().default(0),
+  incentiveType: incentiveTypeEnum.optional(),
+  paymentMode: z.enum(['CASH', 'CARD', 'UPI', 'BANK_TRANSFER', 'CHEQUE', 'NET_BANKING', 'OTHER'], {
+    errorMap: () => ({ message: 'Invalid payment mode' }),
+  }),
+  remarks: z.string().optional(),
+});
+
+// Update salary settlement schema
+export const updateSalarySettlementSchema = z.object({
+  salarySentDate: z.string().optional(),
+  presentDays: z.union([
+    z.number().int().min(0, 'Present days cannot be negative'),
+    z.string().transform((val) => {
+      const num = parseInt(val, 10);
+      if (isNaN(num) || num < 0) throw new Error('Present days must be a non-negative integer');
+      return num;
+    }),
+  ]).optional(),
+  discountDays: z.union([
+    z.number().int().min(0, 'Discount days cannot be negative'),
+    z.string().transform((val) => {
+      const num = parseInt(val, 10);
+      if (isNaN(num) || num < 0) throw new Error('Discount days must be a non-negative integer');
+      return num;
+    }),
+  ]).optional(),
+  incentiveAmount: z.union([
+    z.number().min(0, 'Incentive amount cannot be negative'),
+    z.string().transform((val) => {
+      const num = parseFloat(val);
+      if (isNaN(num) || num < 0) throw new Error('Incentive amount must be a non-negative number');
+      return num;
+    }),
+  ]).optional(),
+  incentiveType: incentiveTypeEnum.optional(),
+  paymentMode: z.enum(['CASH', 'CARD', 'UPI', 'BANK_TRANSFER', 'CHEQUE', 'NET_BANKING', 'OTHER'], {
+    errorMap: () => ({ message: 'Invalid payment mode' }),
+  }).optional(),
+  remarks: z.string().optional(),
+});
+
+// Salary settlement pagination/filter schema
+export const salarySettlementPaginationSchema = z.object({
+  page: z.string().optional().transform((val) => parseInt(val || '1', 10)),
+  limit: z.string().optional().transform((val) => parseInt(val || '10', 10)),
+  search: z.string().optional(),
+  sortBy: z.string().optional(),
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+  // Filters
+  trainerId: z.string().uuid().optional(),
+  paymentMode: z.enum(['CASH', 'CARD', 'UPI', 'BANK_TRANSFER', 'CHEQUE', 'NET_BANKING', 'OTHER']).optional(),
+  fromDate: z.string().optional(),
+  toDate: z.string().optional(),
 });
 
 // Validation middleware factory
