@@ -98,6 +98,7 @@ model Gym {
   coursePackages     CoursePackage[]
   dietTemplates      DietTemplate[]
   memberDiets        MemberDiet[]
+  salarySettlements  TrainerSalarySettlement[]
 
   @@index([ownerId])
   @@index([city])
@@ -128,6 +129,7 @@ model Trainer {
   gymId           String
   members         MemberTrainerAssignment[]
   ptMembers       PTMember[]
+  salarySettlements TrainerSalarySettlement[]
   gym             Gym                       @relation(fields: [gymId], references: [id], onDelete: Cascade)
   user            User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -835,4 +837,58 @@ model MemberDietMeal {
   @@unique([memberDietId, mealNo])
   @@map("memberdietmeal")
   @@index([memberDietId])
+}
+
+// ============================================
+// Trainer Salary Settlement
+// ============================================
+
+// Incentive type for trainer salary
+enum IncentiveType {
+  PT               // Personal Training
+  PROTEIN          // Protein/Supplement sales
+  MEMBER_REFERENCE // Member referral bonus
+  OTHERS           // Other incentives
+}
+
+// Trainer Salary Settlement - Monthly salary records
+model TrainerSalarySettlement {
+  id                  String        @id @default(uuid())
+  trainerId           String        // Reference to Trainer
+  trainerName         String        // Denormalized for reporting
+  mobileNumber        String?       // Trainer's mobile number
+  joiningDate         DateTime?     // Trainer's joining date
+  monthlySalary       Decimal       @db.Decimal(10, 2) // Base monthly salary
+  salaryMonth         String        // YYYY-MM format (e.g., "2025-01")
+  salarySentDate      DateTime?     // Date when salary was settled
+  totalDaysInMonth    Int           // Total days in the salary month
+  presentDays         Int           // Days present
+  absentDays          Int           // Days absent (totalDaysInMonth - presentDays)
+  discountDays        Int           @default(0) // Days to discount from absent days
+  payableDays         Int           // presentDays + discountDays
+  calculatedSalary    Decimal       @db.Decimal(10, 2) // (monthlySalary / totalDaysInMonth) * payableDays
+  incentiveAmount     Decimal       @default(0) @db.Decimal(10, 2) // Incentive amount
+  incentiveType       IncentiveType? // Type of incentive
+  paymentMode         PaymentMode   // CASH, UPI, BANK_TRANSFER, CARD, etc.
+  finalPayableAmount  Decimal       @db.Decimal(10, 2) // calculatedSalary + incentiveAmount
+  remarks             String?       // Additional notes
+
+  // Audit fields
+  gymId               String        // Reference to Gym
+  createdBy           String        // Gym Owner who created this record
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  // Relations
+  trainer             Trainer       @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  gym                 Gym           @relation(fields: [gymId], references: [id], onDelete: Cascade)
+
+  // Unique constraint: One settlement per trainer per month per gym
+  @@unique([trainerId, salaryMonth, gymId])
+  @@map("trainersalarysettlement")
+  @@index([gymId])
+  @@index([trainerId])
+  @@index([salaryMonth])
+  @@index([createdAt])
+  @@index([paymentMode])
 }

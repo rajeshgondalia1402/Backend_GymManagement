@@ -589,4 +589,189 @@ router.get('/pt-members/:ptMemberId/diet-plans', trainerController.getDietPlanFo
  */
 router.get('/pt-members/:ptMemberId/supplements', trainerController.getSupplementsForPTMember.bind(trainerController));
 
+// =============================================
+// Salary Settlement Routes (Read-Only)
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/trainer/salary-settlements:
+ *   get:
+ *     summary: Get trainer's own salary settlements
+ *     description: Trainers can view their salary settlements sent by gym owner. Read-only access.
+ *     tags: [Trainer - Salary Settlement]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Items per page
+ *       - in: query
+ *         name: fromDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *           example: "2025-01-01"
+ *         description: Filter from date (YYYY-MM-DD)
+ *       - in: query
+ *         name: toDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *           example: "2025-12-31"
+ *         description: Filter to date (YYYY-MM-DD)
+ *     responses:
+ *       200:
+ *         description: Salary settlements retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     items:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           salaryMonth:
+ *                             type: string
+ *                           monthlySalary:
+ *                             type: number
+ *                           presentDays:
+ *                             type: integer
+ *                           absentDays:
+ *                             type: integer
+ *                           calculatedSalary:
+ *                             type: number
+ *                           incentiveAmount:
+ *                             type: number
+ *                           finalPayableAmount:
+ *                             type: number
+ *                           paymentMode:
+ *                             type: string
+ *                           salarySentDate:
+ *                             type: string
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         page:
+ *                           type: integer
+ *                         limit:
+ *                           type: integer
+ *                         total:
+ *                           type: integer
+ *                         totalPages:
+ *                           type: integer
+ *                     summary:
+ *                       type: object
+ *                       properties:
+ *                         totalSettlements:
+ *                           type: integer
+ *                         totalEarnings:
+ *                           type: number
+ *                         totalIncentives:
+ *                           type: number
+ */
+router.get('/salary-settlements', trainerController.getMySalarySettlements.bind(trainerController));
+
+/**
+ * @swagger
+ * /api/v1/trainer/salary-settlements/{id}:
+ *   get:
+ *     summary: Get salary settlement by ID
+ *     description: Get detailed view of a specific salary settlement
+ *     tags: [Trainer - Salary Settlement]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Settlement ID
+ *     responses:
+ *       200:
+ *         description: Salary settlement retrieved successfully
+ *       404:
+ *         description: Salary settlement not found
+ */
+router.get('/salary-settlements/:id', trainerController.getMySalarySettlementById.bind(trainerController));
+
+/**
+ * @swagger
+ * /api/v1/trainer/salary-settlements/{id}/slip:
+ *   get:
+ *     summary: Generate salary slip for own settlement
+ *     description: |
+ *       Returns complete salary slip data for PDF generation.
+ *       Trainer can only access their own salary slips.
+ *     tags: [Trainer - Salary Settlement]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Settlement ID
+ *     responses:
+ *       200:
+ *         description: Salary slip generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     slipId:
+ *                       type: string
+ *                     slipNumber:
+ *                       type: string
+ *                     salaryPeriod:
+ *                       type: string
+ *                     gymDetails:
+ *                       type: object
+ *                     trainerDetails:
+ *                       type: object
+ *                     attendance:
+ *                       type: object
+ *                     earnings:
+ *                       type: object
+ *                     netPayableAmount:
+ *                       type: number
+ *                     netPayableInWords:
+ *                       type: string
+ *                     paymentDetails:
+ *                       type: object
+ *       404:
+ *         description: Salary settlement not found
+ */
+router.get('/salary-settlements/:id/slip', trainerController.getMySalarySlip.bind(trainerController));
+
 export default router;

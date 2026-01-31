@@ -1271,6 +1271,18 @@ class GymOwnerController {
     }
   }
 
+  // Update PT addon for existing member
+  async updatePTAddon(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const userId = req.user!.id;
+      const member = await gymOwnerService.updatePTAddon(gymId, userId, req.params.memberId, req.body);
+      successResponse(res, member, 'PT addon updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // Remove PT addon from member
   async removePTAddon(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -1457,6 +1469,105 @@ class GymOwnerController {
       const { memberDietIds } = req.body;
       const result = await gymOwnerService.removeAssignedMembers(gymId, memberDietIds);
       successResponse(res, result, `${result.deletedCount} assigned member(s) removed successfully`);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // =============================================
+  // Trainer Salary Settlement Methods
+  // =============================================
+
+  // Get trainers dropdown for salary settlement
+  async getTrainersDropdown(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const trainers = await gymOwnerService.getTrainersDropdown(gymId);
+      successResponse(res, trainers, 'Trainers retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Calculate salary for a trainer
+  async calculateSalary(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const calculation = await gymOwnerService.calculateSalary(gymId, req.body);
+      successResponse(res, calculation, 'Salary calculated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Create salary settlement
+  async createSalarySettlement(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const createdBy = req.user?.id;
+      if (!createdBy) {
+        throw new BadRequestException('User ID not found');
+      }
+      const settlement = await gymOwnerService.createSalarySettlement(gymId, createdBy, req.body);
+      successResponse(res, settlement, 'Salary settlement created successfully', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Get salary settlements list
+  async getSalarySettlements(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const result = await gymOwnerService.getSalarySettlements(gymId, req.query as any);
+      // Using successResponse with custom structure since we need to include totalAmount
+      res.status(200).json({
+        success: true,
+        message: 'Salary settlements retrieved successfully',
+        data: {
+          items: result.settlements,
+          pagination: {
+            page: result.page,
+            limit: result.limit,
+            total: result.total,
+            totalPages: Math.ceil(result.total / result.limit),
+          },
+          totalAmount: result.totalAmount,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Get salary settlement by ID
+  async getSalarySettlementById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const settlement = await gymOwnerService.getSalarySettlementById(gymId, req.params.id);
+      successResponse(res, settlement, 'Salary settlement retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Update salary settlement
+  async updateSalarySettlement(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const settlement = await gymOwnerService.updateSalarySettlement(gymId, req.params.id, req.body);
+      successResponse(res, settlement, 'Salary settlement updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Generate salary slip (accessible by GYM_OWNER for any trainer)
+  async generateSalarySlip(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const salarySlip = await gymOwnerService.generateSalarySlip(gymId, req.params.id);
+      successResponse(res, salarySlip, 'Salary slip generated successfully');
     } catch (error) {
       next(error);
     }
