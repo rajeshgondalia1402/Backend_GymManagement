@@ -4511,9 +4511,6 @@ class GymOwnerService {
           data: {
             trainerId: data.trainerId,
             packageName: data.ptPackageName,
-            sessionsTotal: data.sessionsTotal,
-            sessionsUsed: 0, // Reset sessions used for new PT package
-            sessionDuration: data.sessionDuration || 60,
             startDate: data.startDate ? new Date(data.startDate) : new Date(),
             endDate: data.endDate ? new Date(data.endDate) : null,
             goals: data.goals,
@@ -4530,8 +4527,6 @@ class GymOwnerService {
             trainerId: data.trainerId,
             gymId,
             packageName: data.ptPackageName,
-            sessionsTotal: data.sessionsTotal,
-            sessionDuration: data.sessionDuration || 60,
             startDate: data.startDate ? new Date(data.startDate) : new Date(),
             endDate: data.endDate ? new Date(data.endDate) : undefined,
             goals: data.goals,
@@ -4627,8 +4622,6 @@ class GymOwnerService {
       const ptMemberUpdateData: any = { updatedBy: userId };
       if (data.trainerId) ptMemberUpdateData.trainerId = data.trainerId;
       if (data.ptPackageName) ptMemberUpdateData.packageName = data.ptPackageName;
-      if (data.sessionsTotal !== undefined) ptMemberUpdateData.sessionsTotal = data.sessionsTotal;
-      if (data.sessionDuration !== undefined) ptMemberUpdateData.sessionDuration = data.sessionDuration;
       if (data.startDate) ptMemberUpdateData.startDate = new Date(data.startDate);
       if (data.endDate) ptMemberUpdateData.endDate = new Date(data.endDate);
       if (data.goals !== undefined) ptMemberUpdateData.goals = data.goals;

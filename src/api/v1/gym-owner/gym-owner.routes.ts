@@ -3232,7 +3232,6 @@ router.get('/reports/renewal-rate', gymOwnerController.getRenewalRateReport.bind
  *             required:
  *               - ptPackageName
  *               - trainerId
- *               - sessionsTotal
  *               - ptPackageFees
  *               - ptFinalFees
  *             properties:
@@ -3240,11 +3239,6 @@ router.get('/reports/renewal-rate', gymOwnerController.getRenewalRateReport.bind
  *                 type: string
  *               trainerId:
  *                 type: string
- *               sessionsTotal:
- *                 type: integer
- *               sessionDuration:
- *                 type: integer
- *                 default: 60
  *               ptPackageFees:
  *                 type: number
  *               ptMaxDiscount:
@@ -3296,10 +3290,6 @@ router.post('/members/:memberId/add-pt', validate(memberIdParamSchema, 'params')
  *                 type: string
  *               trainerId:
  *                 type: string
- *               sessionsTotal:
- *                 type: integer
- *               sessionDuration:
- *                 type: integer
  *               ptPackageFees:
  *                 type: number
  *               ptMaxDiscount:
