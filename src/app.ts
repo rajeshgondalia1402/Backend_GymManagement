@@ -15,7 +15,7 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allow serving images from different origins
 }));
 app.use(cors({
-  origin: [config.env.FRONTEND_URL, 'http://localhost:5000'],
+  origin: [config.env.FRONTEND_URL, 'http://localhost:5000', 'http://localhost:3005'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],

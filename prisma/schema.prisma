@@ -235,7 +235,7 @@ model PTMember {
   memberId        String       @unique
   trainerId       String
   packageName     String
-  sessionsTotal   Int
+  sessionsTotal   Int          @default(0)
   sessionsUsed    Int          @default(0)
   sessionDuration Int          @default(60)
   startDate       DateTime     @default(now())

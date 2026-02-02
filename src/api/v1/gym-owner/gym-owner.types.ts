@@ -253,8 +253,6 @@ export type PTRemovalAction = 'COMPLETE' | 'FORFEIT' | 'CARRY_FORWARD';
 export interface AddPTAddonRequest {
   ptPackageName: string;
   trainerId: string;
-  sessionsTotal: number;
-  sessionDuration?: number;
   ptPackageFees: number;
   ptMaxDiscount?: number;
   ptExtraDiscount?: number;
@@ -271,8 +269,6 @@ export interface AddPTAddonRequest {
 export interface UpdatePTAddonRequest {
   ptPackageName?: string;
   trainerId?: string;
-  sessionsTotal?: number;
-  sessionDuration?: number;
   ptPackageFees?: number;
   ptMaxDiscount?: number;
   ptExtraDiscount?: number;

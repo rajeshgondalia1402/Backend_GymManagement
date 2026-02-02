@@ -530,7 +530,6 @@ export const updateCoursePackageSchema = z.object({
 export const createMemberBalancePaymentSchema = z.object({
   paymentFor: z.enum(['REGULAR', 'PT']).optional().default('REGULAR'),
   paymentDate: z.string().optional(),
-  contactNo: z.string().min(10, 'Contact number must be at least 10 characters').optional(),
   paidFees: z.union([z.number().positive('Paid fees must be positive'), z.string().transform(val => parseFloat(val))]),
   payMode: z.string().min(1, 'Payment mode is required'),
   nextPaymentDate: z.string().optional(),
@@ -545,8 +544,6 @@ export const updateMemberBalancePaymentSchema = createMemberBalancePaymentSchema
 export const addPTAddonSchema = z.object({
   ptPackageName: z.string().min(2, 'PT package name is required'),
   trainerId: z.string().uuid('Invalid trainer ID'),
-  sessionsTotal: z.union([z.number().int().positive('Sessions must be positive'), z.string().transform(val => parseInt(val, 10))]),
-  sessionDuration: z.union([z.number().int().positive(), z.string().transform(val => parseInt(val, 10))]).optional().default(60),
   ptPackageFees: z.union([z.number().positive('PT fees must be positive'), z.string().transform(val => parseFloat(val))]),
   ptMaxDiscount: z.union([z.number().min(0), z.string().transform(val => parseFloat(val))]).optional(),
   ptExtraDiscount: z.union([z.number().min(0), z.string().transform(val => parseFloat(val))]).optional(),
@@ -569,8 +566,6 @@ export const removePTAddonSchema = z.object({
 export const updatePTAddonSchema = z.object({
   ptPackageName: z.string().min(2, 'PT package name is required').optional(),
   trainerId: z.string().uuid('Invalid trainer ID').optional(),
-  sessionsTotal: z.union([z.number().int().positive('Sessions must be positive'), z.string().transform(val => parseInt(val, 10))]).optional(),
-  sessionDuration: z.union([z.number().int().positive(), z.string().transform(val => parseInt(val, 10))]).optional(),
   ptPackageFees: z.union([z.number().positive('PT fees must be positive'), z.string().transform(val => parseFloat(val))]).optional(),
   ptMaxDiscount: z.union([z.number().min(0), z.string().transform(val => parseFloat(val))]).optional(),
   ptExtraDiscount: z.union([z.number().min(0), z.string().transform(val => parseFloat(val))]).optional(),
