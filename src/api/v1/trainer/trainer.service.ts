@@ -15,6 +15,11 @@ import {
   UpdateExercisePlanRequest,
   MemberDietAssignment,
   MemberExerciseAssignment,
+  TrainerSalarySettlement,
+  SalarySettlementListParams,
+  SalarySettlementSummary,
+  IncentiveType,
+  PaymentMode,
 } from './trainer.types';
 
 export class TrainerService {
@@ -739,6 +744,289 @@ export class TrainerService {
       isActive: s.isActive,
       createdAt: s.createdAt.toISOString(),
     }));
+  }
+
+  // =============================================
+  // Salary Settlement Methods (Read-Only for Trainer)
+  // =============================================
+
+  /**
+   * Get trainer's own salary settlements with pagination and filters
+   */
+  async getMySalarySettlements(
+    trainerId: string,
+    params: SalarySettlementListParams
+  ): Promise<{ settlements: TrainerSalarySettlement[]; total: number; page: number; limit: number; summary: SalarySettlementSummary }> {
+    const { page = 1, limit = 10, fromDate, toDate } = params;
+    const skip = (page - 1) * limit;
+
+    // Build where clause
+    const where: any = { trainerId };
+
+    // Filter by date range
+    if (fromDate || toDate) {
+      where.createdAt = {};
+      if (fromDate) {
+        where.createdAt.gte = new Date(fromDate);
+      }
+      if (toDate) {
+        // Set to end of the day for inclusive filtering
+        const endDate = new Date(toDate);
+        endDate.setHours(23, 59, 59, 999);
+        where.createdAt.lte = endDate;
+      }
+    }
+
+    // Get settlements, count, and summary in parallel
+    const [settlements, total, summaryResult] = await Promise.all([
+      prisma.trainerSalarySettlement.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { salaryMonth: 'desc' },
+      }),
+      prisma.trainerSalarySettlement.count({ where }),
+      prisma.trainerSalarySettlement.aggregate({
+        where: { trainerId }, // Summary for all time
+        _sum: {
+          finalPayableAmount: true,
+          incentiveAmount: true,
+        },
+        _count: true,
+      }),
+    ]);
+
+    const summary: SalarySettlementSummary = {
+      totalSettlements: summaryResult._count,
+      totalEarnings: Number(summaryResult._sum.finalPayableAmount || 0),
+      totalIncentives: Number(summaryResult._sum.incentiveAmount || 0),
+    };
+
+    return {
+      settlements: settlements.map(this.mapSettlementToResponse),
+      total,
+      page,
+      limit,
+      summary,
+    };
+  }
+
+  /**
+   * Get a specific salary settlement by ID (only if it belongs to the trainer)
+   */
+  async getMySalarySettlementById(trainerId: string, settlementId: string): Promise<TrainerSalarySettlement> {
+    const settlement = await prisma.trainerSalarySettlement.findFirst({
+      where: {
+        id: settlementId,
+        trainerId,
+      },
+    });
+
+    if (!settlement) {
+      throw new NotFoundException('Salary settlement not found');
+    }
+
+    return this.mapSettlementToResponse(settlement);
+  }
+
+  /**
+   * Helper to map Prisma settlement to response type
+   */
+  private mapSettlementToResponse(settlement: any): TrainerSalarySettlement {
+    return {
+      id: settlement.id,
+      trainerId: settlement.trainerId,
+      trainerName: settlement.trainerName,
+      mobileNumber: settlement.mobileNumber || undefined,
+      joiningDate: settlement.joiningDate?.toISOString(),
+      monthlySalary: Number(settlement.monthlySalary),
+      salaryMonth: settlement.salaryMonth,
+      salarySentDate: settlement.salarySentDate?.toISOString(),
+      totalDaysInMonth: settlement.totalDaysInMonth,
+      presentDays: settlement.presentDays,
+      absentDays: settlement.absentDays,
+      discountDays: settlement.discountDays,
+      payableDays: settlement.payableDays,
+      calculatedSalary: Number(settlement.calculatedSalary),
+      incentiveAmount: Number(settlement.incentiveAmount),
+      incentiveType: settlement.incentiveType as IncentiveType | undefined,
+      paymentMode: settlement.paymentMode as PaymentMode,
+      finalPayableAmount: Number(settlement.finalPayableAmount),
+      remarks: settlement.remarks || undefined,
+      createdAt: settlement.createdAt.toISOString(),
+    };
+  }
+
+  /**
+   * Generate salary slip for trainer's own settlement
+   */
+  async getMySalarySlip(trainerId: string, settlementId: string): Promise<any> {
+    // First verify the settlement belongs to this trainer
+    const settlement = await prisma.trainerSalarySettlement.findFirst({
+      where: {
+        id: settlementId,
+        trainerId,
+      },
+      include: {
+        gym: true,
+        trainer: {
+          include: {
+            user: { select: { email: true } },
+          },
+        },
+      },
+    });
+
+    if (!settlement) {
+      throw new NotFoundException('Salary settlement not found');
+    }
+
+    // Parse salary month for period dates
+    const [year, month] = settlement.salaryMonth.split('-').map(Number);
+    const periodStartDate = new Date(year, month - 1, 1);
+    const periodEndDate = new Date(year, month, 0);
+
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    const salaryPeriod = `${monthNames[month - 1]} ${year}`;
+
+    // Build gym details
+    const gym = settlement.gym;
+    const fullAddress = [
+      gym.address1,
+      gym.address2,
+      gym.city,
+      gym.state,
+      gym.zipcode,
+    ].filter(Boolean).join(', ');
+
+    const gymDetails = {
+      gymId: gym.id,
+      gymName: gym.name,
+      address1: gym.address1 || undefined,
+      address2: gym.address2 || undefined,
+      city: gym.city || undefined,
+      state: gym.state || undefined,
+      zipcode: gym.zipcode || undefined,
+      fullAddress: fullAddress || 'N/A',
+      mobileNo: gym.mobileNo || undefined,
+      phoneNo: gym.phoneNo || undefined,
+      email: gym.email || undefined,
+      gstRegNo: gym.gstRegNo || undefined,
+      gymLogo: gym.gymLogo || undefined,
+    };
+
+    // Build trainer details
+    const trainer = settlement.trainer;
+    const trainerDetails = {
+      trainerId: trainer.id,
+      trainerName: settlement.trainerName,
+      email: trainer.user.email,
+      mobileNumber: settlement.mobileNumber || trainer.phone || undefined,
+      gender: trainer.gender || undefined,
+      designation: trainer.specialization || 'Trainer',
+      joiningDate: settlement.joiningDate || trainer.joiningDate || undefined,
+      employeeCode: trainer.id.substring(0, 8).toUpperCase(),
+    };
+
+    // Attendance
+    const attendancePercentage = Math.round(
+      (settlement.presentDays / settlement.totalDaysInMonth) * 100 * 100
+    ) / 100;
+
+    const attendance = {
+      totalDaysInMonth: settlement.totalDaysInMonth,
+      presentDays: settlement.presentDays,
+      absentDays: settlement.absentDays,
+      discountDays: settlement.discountDays,
+      payableDays: settlement.payableDays,
+      attendancePercentage,
+    };
+
+    // Earnings
+    const calculatedSalary = Number(settlement.calculatedSalary);
+    const incentiveAmount = Number(settlement.incentiveAmount);
+
+    const earnings = {
+      basicSalary: Number(settlement.monthlySalary),
+      calculatedSalary,
+      incentiveAmount,
+      incentiveType: settlement.incentiveType || undefined,
+      grossEarnings: calculatedSalary + incentiveAmount,
+    };
+
+    // Deductions
+    const deductions = {
+      totalDeductions: 0,
+      items: [] as { name: string; amount: number }[],
+    };
+
+    // Net payable
+    const netPayableAmount = Number(settlement.finalPayableAmount);
+    const netPayableInWords = this.numberToWords(netPayableAmount);
+
+    // Payment details
+    const paymentDetails = {
+      paymentMode: settlement.paymentMode,
+      paymentDate: settlement.salarySentDate || undefined,
+      transactionRef: undefined,
+    };
+
+    // Slip number
+    const slipNumber = `SAL-${settlement.salaryMonth.replace('-', '')}-${settlement.id.substring(0, 6).toUpperCase()}`;
+
+    return {
+      slipId: settlement.id,
+      slipNumber,
+      generatedDate: new Date(),
+      salaryMonth: settlement.salaryMonth,
+      salaryPeriod,
+      periodStartDate,
+      periodEndDate,
+      gymDetails,
+      trainerDetails,
+      attendance,
+      earnings,
+      deductions,
+      netPayableAmount,
+      netPayableInWords,
+      paymentDetails,
+      remarks: settlement.remarks || undefined,
+      createdAt: settlement.createdAt,
+    };
+  }
+
+  /**
+   * Convert number to words (Indian format)
+   */
+  private numberToWords(num: number): string {
+    if (num === 0) return 'Zero Rupees Only';
+
+    const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+      'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+    const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+    const numToWords = (n: number): string => {
+      if (n < 20) return ones[n];
+      if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : '');
+      if (n < 1000) return ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 ? ' ' + numToWords(n % 100) : '');
+      if (n < 100000) return numToWords(Math.floor(n / 1000)) + ' Thousand' + (n % 1000 ? ' ' + numToWords(n % 1000) : '');
+      if (n < 10000000) return numToWords(Math.floor(n / 100000)) + ' Lakh' + (n % 100000 ? ' ' + numToWords(n % 100000) : '');
+      return numToWords(Math.floor(n / 10000000)) + ' Crore' + (n % 10000000 ? ' ' + numToWords(n % 10000000) : '');
+    };
+
+    const rupees = Math.floor(num);
+    const paise = Math.round((num - rupees) * 100);
+
+    let result = numToWords(rupees) + ' Rupees';
+    if (paise > 0) {
+      result += ' and ' + numToWords(paise) + ' Paise';
+    }
+    result += ' Only';
+
+    return result;
   }
 }
 

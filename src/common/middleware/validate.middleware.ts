@@ -133,6 +133,58 @@ export const updateExpenseGroupSchema = z.object({
   expenseGroupName: z.string().min(2, 'Expense group name must be at least 2 characters'),
 });
 
+// Expense Management validation schemas
+export const createExpenseSchema = z.object({
+  expenseDate: z.string().datetime().optional(),
+  name: z.string().min(2, 'Expense name must be at least 2 characters'),
+  expenseGroupId: z.string().uuid('Invalid expense group ID'),
+  description: z.string().optional(),
+  paymentMode: z.enum(['CASH', 'CARD', 'UPI', 'BANK_TRANSFER', 'CHEQUE', 'NET_BANKING', 'OTHER'], {
+    errorMap: () => ({ message: 'Invalid payment mode' }),
+  }),
+  amount: z.union([
+    z.number().positive('Amount must be positive'),
+    z.string().transform((val) => {
+      const num = parseFloat(val);
+      if (isNaN(num) || num <= 0) throw new Error('Amount must be a positive number');
+      return num;
+    })
+  ]),
+});
+
+export const updateExpenseSchema = z.object({
+  expenseDate: z.string().datetime().optional(),
+  name: z.string().min(2, 'Expense name must be at least 2 characters').optional(),
+  expenseGroupId: z.string().uuid('Invalid expense group ID').optional(),
+  description: z.string().optional(),
+  paymentMode: z.enum(['CASH', 'CARD', 'UPI', 'BANK_TRANSFER', 'CHEQUE', 'NET_BANKING', 'OTHER'], {
+    errorMap: () => ({ message: 'Invalid payment mode' }),
+  }).optional(),
+  amount: z.union([
+    z.number().positive('Amount must be positive'),
+    z.string().transform((val) => {
+      const num = parseFloat(val);
+      if (isNaN(num) || num <= 0) throw new Error('Amount must be a positive number');
+      return num;
+    })
+  ]).optional(),
+  isActive: z.union([z.boolean(), z.string().transform((val) => val === 'true')]).optional(),
+});
+
+export const expenseReportSchema = z.object({
+  page: z.string().optional().transform((val) => parseInt(val || '1', 10)),
+  limit: z.string().optional().transform((val) => parseInt(val || '10', 10)),
+  search: z.string().optional(),
+  sortBy: z.string().optional().default('expenseDate'),
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+  // Filters
+  year: z.string().optional().transform((val) => val ? parseInt(val, 10) : undefined),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
+  expenseGroupId: z.string().uuid('Invalid expense group ID').optional(),
+  paymentMode: z.enum(['CASH', 'CARD', 'UPI', 'BANK_TRANSFER', 'CHEQUE', 'NET_BANKING', 'OTHER']).optional(),
+});
+
 // Designation Master validation schemas
 export const createDesignationSchema = z.object({
   designationName: z.string().min(2, 'Designation name must be at least 2 characters'),
@@ -478,7 +530,6 @@ export const updateCoursePackageSchema = z.object({
 export const createMemberBalancePaymentSchema = z.object({
   paymentFor: z.enum(['REGULAR', 'PT']).optional().default('REGULAR'),
   paymentDate: z.string().optional(),
-  contactNo: z.string().min(10, 'Contact number must be at least 10 characters').optional(),
   paidFees: z.union([z.number().positive('Paid fees must be positive'), z.string().transform(val => parseFloat(val))]),
   payMode: z.string().min(1, 'Payment mode is required'),
   nextPaymentDate: z.string().optional(),
@@ -493,8 +544,6 @@ export const updateMemberBalancePaymentSchema = createMemberBalancePaymentSchema
 export const addPTAddonSchema = z.object({
   ptPackageName: z.string().min(2, 'PT package name is required'),
   trainerId: z.string().uuid('Invalid trainer ID'),
-  sessionsTotal: z.union([z.number().int().positive('Sessions must be positive'), z.string().transform(val => parseInt(val, 10))]),
-  sessionDuration: z.union([z.number().int().positive(), z.string().transform(val => parseInt(val, 10))]).optional().default(60),
   ptPackageFees: z.union([z.number().positive('PT fees must be positive'), z.string().transform(val => parseFloat(val))]),
   ptMaxDiscount: z.union([z.number().min(0), z.string().transform(val => parseFloat(val))]).optional(),
   ptExtraDiscount: z.union([z.number().min(0), z.string().transform(val => parseFloat(val))]).optional(),
@@ -510,6 +559,20 @@ export const addPTAddonSchema = z.object({
 // Remove PT Addon validation schema
 export const removePTAddonSchema = z.object({
   action: z.enum(['COMPLETE', 'FORFEIT', 'CARRY_FORWARD']),
+  notes: z.string().optional(),
+});
+
+// Update PT Addon validation schema (all fields optional for partial updates)
+export const updatePTAddonSchema = z.object({
+  ptPackageName: z.string().min(2, 'PT package name is required').optional(),
+  trainerId: z.string().uuid('Invalid trainer ID').optional(),
+  ptPackageFees: z.union([z.number().positive('PT fees must be positive'), z.string().transform(val => parseFloat(val))]).optional(),
+  ptMaxDiscount: z.union([z.number().min(0), z.string().transform(val => parseFloat(val))]).optional(),
+  ptExtraDiscount: z.union([z.number().min(0), z.string().transform(val => parseFloat(val))]).optional(),
+  ptFinalFees: z.union([z.number().positive('Final PT fees is required'), z.string().transform(val => parseFloat(val))]).optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  goals: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -563,6 +626,316 @@ export const renewalPaginationSchema = z.object({
   // Date range filters
   renewalDateFrom: z.string().optional(),
   renewalDateTo: z.string().optional(),
+});
+
+// Diet Template List/Search Pagination Schema
+export const dietTemplatePaginationSchema = z.object({
+  page: z.string().optional().transform((val) => parseInt(val || '1', 10)),
+  limit: z.string().optional().transform((val) => parseInt(val || '10', 10)),
+  search: z.string().optional(), // Search in template name, meal titles, meal descriptions
+  sortBy: z.string().optional().default('createdAt'),
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+  // Filter by meals per day (number of meals)
+  mealsPerDay: z.string().optional().transform((val) => val ? parseInt(val, 10) : undefined),
+  // Filter by active status
+  isActive: z.string().optional().transform((val) => val === 'true' ? true : val === 'false' ? false : undefined),
+});
+
+// ============================================
+// Diet Template Validation Schemas
+// ============================================
+
+// Diet Meal schema - for 6 meals per day
+// Supports both frontend naming (mealNumber, mealTitle, mealTime) and backend naming (mealNo, title, time)
+const dietMealSchema = z.object({
+  mealNo: z.number().int().min(1).max(6, 'Meal number must be between 1 and 6').optional(),
+  mealNumber: z.number().int().min(1).max(6, 'Meal number must be between 1 and 6').optional(),
+  title: z.string().min(2, 'Meal title must be at least 2 characters').optional(),
+  mealTitle: z.string().min(2, 'Meal title must be at least 2 characters').optional(),
+  description: z.string().min(1, 'Meal description is required'),
+  time: z.string().optional(),
+  mealTime: z.string().optional(),
+}).transform((data) => ({
+  mealNo: data.mealNo ?? data.mealNumber,
+  title: data.title ?? data.mealTitle,
+  description: data.description,
+  time: data.time ?? data.mealTime,
+})).refine(
+  (data) => data.mealNo !== undefined,
+  { message: 'mealNo or mealNumber is required', path: ['mealNo'] }
+).refine(
+  (data) => data.title !== undefined,
+  { message: 'title or mealTitle is required', path: ['title'] }
+).refine(
+  (data) => data.time !== undefined,
+  { message: 'time or mealTime is required', path: ['time'] }
+);
+
+// Create Diet Template schema
+// Supports both frontend naming (templateName) and backend naming (name)
+export const createDietTemplateSchema = z.object({
+  name: z.string().min(2, 'Template name must be at least 2 characters').optional(),
+  templateName: z.string().min(2, 'Template name must be at least 2 characters').optional(),
+  description: z.string().optional(),
+  mealsPerDay: z.number().int().min(1).max(6).optional(),
+  meals: z.array(dietMealSchema)
+    .min(1, 'At least one meal is required')
+    .max(6, 'Maximum 6 meals allowed'),
+}).transform((data) => ({
+  name: data.name ?? data.templateName,
+  description: data.description,
+  meals: data.meals,
+})).refine(
+  (data) => data.name !== undefined,
+  { message: 'name or templateName is required', path: ['name'] }
+).refine(
+  (data) => {
+    const mealNos = data.meals.map(m => m.mealNo);
+    return new Set(mealNos).size === mealNos.length;
+  },
+  { message: 'Meal numbers must be unique', path: ['meals'] }
+);
+
+// Update Diet Template schema
+export const updateDietTemplateSchema = z.object({
+  name: z.string().min(2, 'Template name must be at least 2 characters').optional(),
+  templateName: z.string().min(2, 'Template name must be at least 2 characters').optional(),
+  description: z.string().optional(),
+  mealsPerDay: z.number().int().min(1).max(6).optional(),
+  meals: z.array(dietMealSchema)
+    .min(1, 'At least one meal is required')
+    .max(6, 'Maximum 6 meals allowed')
+    .optional(),
+}).transform((data) => ({
+  name: data.name ?? data.templateName,
+  description: data.description,
+  meals: data.meals,
+})).refine(
+  (data) => {
+    if (data.meals) {
+      const mealNos = data.meals.map(m => m.mealNo);
+      return new Set(mealNos).size === mealNos.length;
+    }
+    return true;
+  },
+  { message: 'Meal numbers must be unique', path: ['meals'] }
+);
+
+// Toggle Diet Template Active Status schema
+// Accepts isActive boolean or empty body (will toggle current status)
+export const toggleDietTemplateActiveSchema = z.object({
+  isActive: z.union([z.boolean(), z.string().transform(val => val === 'true')]).optional(),
+  status: z.union([z.boolean(), z.string().transform(val => val === 'true' || val === 'active')]).optional(),
+}).transform((data) => ({
+  isActive: data.isActive ?? data.status,
+}));
+
+// ============================================
+// Member Diet Validation Schemas
+// ============================================
+
+// Member Diet Meal schema - for customized meals per member
+// Supports both frontend naming (mealNumber, mealTitle, mealTime) and backend naming (mealNo, title, time)
+const memberDietMealSchema = z.object({
+  mealNo: z.number().int().min(1).max(6, 'Meal number must be between 1 and 6').optional(),
+  mealNumber: z.number().int().min(1).max(6, 'Meal number must be between 1 and 6').optional(),
+  title: z.string().min(2, 'Meal title must be at least 2 characters').optional(),
+  mealTitle: z.string().min(2, 'Meal title must be at least 2 characters').optional(),
+  description: z.string().min(1, 'Meal description is required'),
+  time: z.string().optional(),
+  mealTime: z.string().optional(),
+}).transform((data) => ({
+  mealNo: data.mealNo ?? data.mealNumber,
+  title: data.title ?? data.mealTitle,
+  description: data.description,
+  time: data.time ?? data.mealTime,
+})).refine(
+  (data) => data.mealNo !== undefined,
+  { message: 'mealNo or mealNumber is required', path: ['mealNo'] }
+).refine(
+  (data) => data.title !== undefined,
+  { message: 'title or mealTitle is required', path: ['title'] }
+).refine(
+  (data) => data.time !== undefined,
+  { message: 'time or mealTime is required', path: ['time'] }
+);
+
+// Create Member Diet schema (assign diet to multiple members)
+export const createMemberDietSchema = z.object({
+  memberIds: z.array(z.string().uuid('Invalid member ID')).min(1, 'At least one member ID is required'),
+  dietTemplateId: z.string().uuid('Invalid diet template ID'),
+  startDate: z.string().min(1, 'Start date is required'),
+  endDate: z.string().optional(),
+  notes: z.string().optional(),
+  // Optional: Allow customizing meals during assignment
+  customMeals: z.array(memberDietMealSchema)
+    .max(6, 'Maximum 6 meals allowed')
+    .refine(
+      (meals) => {
+        const mealNos = meals.map(m => m.mealNo);
+        return new Set(mealNos).size === mealNos.length;
+      },
+      { message: 'Meal numbers must be unique' }
+    )
+    .optional(),
+});
+
+// Update Member Diet schema
+export const updateMemberDietSchema = z.object({
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  notes: z.string().optional(),
+  // Allow updating individual meals
+  meals: z.array(memberDietMealSchema)
+    .max(6, 'Maximum 6 meals allowed')
+    .refine(
+      (meals) => {
+        const mealNos = meals.map(m => m.mealNo);
+        return new Set(mealNos).size === mealNos.length;
+      },
+      { message: 'Meal numbers must be unique' }
+    )
+    .optional(),
+});
+
+// Deactivate Member Diet schema
+export const deactivateMemberDietSchema = z.object({
+  reason: z.string().optional(),
+});
+
+// Remove Assigned Members schema (bulk delete member diets)
+export const removeAssignedMembersSchema = z.object({
+  memberDietIds: z.array(z.string().uuid('Invalid member diet ID')).min(1, 'At least one member diet ID is required'),
+});
+
+// Member UUID param schema
+export const memberUuidParamSchema = z.object({
+  memberUuid: z.string().uuid('Invalid member UUID format'),
+});
+
+// =============================================
+// Trainer Salary Settlement Validation Schemas
+// =============================================
+
+// Incentive type enum
+const incentiveTypeEnum = z.enum(['PT', 'PROTEIN', 'MEMBER_REFERENCE', 'OTHERS']);
+
+// Salary month format validation (YYYY-MM)
+const salaryMonthRegex = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+// Salary calculation schema
+export const salaryCalculationSchema = z.object({
+  trainerId: z.string().uuid('Invalid trainer ID'),
+  salaryMonth: z.string().regex(salaryMonthRegex, 'Salary month must be in YYYY-MM format'),
+  presentDays: z.union([
+    z.number().int().min(0, 'Present days cannot be negative'),
+    z.string().transform((val) => {
+      const num = parseInt(val, 10);
+      if (isNaN(num) || num < 0) throw new Error('Present days must be a non-negative integer');
+      return num;
+    }),
+  ]),
+  discountDays: z.union([
+    z.number().int().min(0, 'Discount days cannot be negative'),
+    z.string().transform((val) => {
+      const num = parseInt(val, 10);
+      if (isNaN(num) || num < 0) throw new Error('Discount days must be a non-negative integer');
+      return num;
+    }),
+  ]).optional().default(0),
+  incentiveAmount: z.union([
+    z.number().min(0, 'Incentive amount cannot be negative'),
+    z.string().transform((val) => {
+      const num = parseFloat(val);
+      if (isNaN(num) || num < 0) throw new Error('Incentive amount must be a non-negative number');
+      return num;
+    }),
+  ]).optional().default(0),
+  incentiveType: incentiveTypeEnum.optional(),
+});
+
+// Create salary settlement schema
+export const createSalarySettlementSchema = z.object({
+  trainerId: z.string().uuid('Invalid trainer ID'),
+  salaryMonth: z.string().regex(salaryMonthRegex, 'Salary month must be in YYYY-MM format'),
+  salarySentDate: z.string().optional(),
+  presentDays: z.union([
+    z.number().int().min(0, 'Present days cannot be negative'),
+    z.string().transform((val) => {
+      const num = parseInt(val, 10);
+      if (isNaN(num) || num < 0) throw new Error('Present days must be a non-negative integer');
+      return num;
+    }),
+  ]),
+  discountDays: z.union([
+    z.number().int().min(0, 'Discount days cannot be negative'),
+    z.string().transform((val) => {
+      const num = parseInt(val, 10);
+      if (isNaN(num) || num < 0) throw new Error('Discount days must be a non-negative integer');
+      return num;
+    }),
+  ]).optional().default(0),
+  incentiveAmount: z.union([
+    z.number().min(0, 'Incentive amount cannot be negative'),
+    z.string().transform((val) => {
+      const num = parseFloat(val);
+      if (isNaN(num) || num < 0) throw new Error('Incentive amount must be a non-negative number');
+      return num;
+    }),
+  ]).optional().default(0),
+  incentiveType: incentiveTypeEnum.optional(),
+  paymentMode: z.enum(['CASH', 'CARD', 'UPI', 'BANK_TRANSFER', 'CHEQUE', 'NET_BANKING', 'OTHER'], {
+    errorMap: () => ({ message: 'Invalid payment mode' }),
+  }),
+  remarks: z.string().optional(),
+});
+
+// Update salary settlement schema
+export const updateSalarySettlementSchema = z.object({
+  salarySentDate: z.string().optional(),
+  presentDays: z.union([
+    z.number().int().min(0, 'Present days cannot be negative'),
+    z.string().transform((val) => {
+      const num = parseInt(val, 10);
+      if (isNaN(num) || num < 0) throw new Error('Present days must be a non-negative integer');
+      return num;
+    }),
+  ]).optional(),
+  discountDays: z.union([
+    z.number().int().min(0, 'Discount days cannot be negative'),
+    z.string().transform((val) => {
+      const num = parseInt(val, 10);
+      if (isNaN(num) || num < 0) throw new Error('Discount days must be a non-negative integer');
+      return num;
+    }),
+  ]).optional(),
+  incentiveAmount: z.union([
+    z.number().min(0, 'Incentive amount cannot be negative'),
+    z.string().transform((val) => {
+      const num = parseFloat(val);
+      if (isNaN(num) || num < 0) throw new Error('Incentive amount must be a non-negative number');
+      return num;
+    }),
+  ]).optional(),
+  incentiveType: incentiveTypeEnum.optional(),
+  paymentMode: z.enum(['CASH', 'CARD', 'UPI', 'BANK_TRANSFER', 'CHEQUE', 'NET_BANKING', 'OTHER'], {
+    errorMap: () => ({ message: 'Invalid payment mode' }),
+  }).optional(),
+  remarks: z.string().optional(),
+});
+
+// Salary settlement pagination/filter schema
+export const salarySettlementPaginationSchema = z.object({
+  page: z.string().optional().transform((val) => parseInt(val || '1', 10)),
+  limit: z.string().optional().transform((val) => parseInt(val || '10', 10)),
+  search: z.string().optional(),
+  sortBy: z.string().optional(),
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+  // Filters
+  trainerId: z.string().uuid().optional(),
+  paymentMode: z.enum(['CASH', 'CARD', 'UPI', 'BANK_TRANSFER', 'CHEQUE', 'NET_BANKING', 'OTHER']).optional(),
+  fromDate: z.string().optional(),
+  toDate: z.string().optional(),
 });
 
 // Validation middleware factory

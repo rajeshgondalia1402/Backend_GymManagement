@@ -8,20 +8,22 @@ datasource db {
 }
 
 model User {
-  id              String          @id @default(uuid())
-  email           String          @unique
-  password        String
-  name            String
-  isActive        Boolean         @default(true)
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  roleId          String?
-  ownedGym        Gym?            @relation("GymOwner")
-  memberProfile   Member?
-  refreshTokens   RefreshToken[]
-  trainerProfile  Trainer?
-  role            Rolemaster?     @relation(fields: [roleId], references: [Id])
-  memberInquiries MemberInquiry[]
+  id                      String          @id @default(uuid())
+  email                   String          @unique
+  password                String
+  name                    String
+  isActive                Boolean         @default(true)
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+  roleId                  String?
+  ownedGym                Gym?            @relation("GymOwner")
+  memberProfile           Member?
+  refreshTokens           RefreshToken[]
+  trainerProfile          Trainer?
+  role                    Rolemaster?     @relation(fields: [roleId], references: [Id])
+  memberInquiries         MemberInquiry[]
+  createdDietTemplates    DietTemplate[]  @relation("DietTemplateCreator")
+  assignedMemberDiets     MemberDiet[]    @relation("MemberDietAssigner")
 
   @@index([email])
   @@index([roleId])
@@ -88,11 +90,15 @@ model Gym {
   members            Member[]
   trainers           Trainer[]
   expenseGroups      ExpenseGroupMaster[]
+  expenses           ExpenseMaster[]
   designations       DesignationMaster[]
   bodyParts          BodyPartMaster[]
   workoutExercises   WorkoutExerciseMaster[]
   memberInquiries    MemberInquiry[]
   coursePackages     CoursePackage[]
+  dietTemplates      DietTemplate[]
+  memberDiets        MemberDiet[]
+  salarySettlements  TrainerSalarySettlement[]
 
   @@index([ownerId])
   @@index([city])
@@ -123,6 +129,7 @@ model Trainer {
   gymId           String
   members         MemberTrainerAssignment[]
   ptMembers       PTMember[]
+  salarySettlements TrainerSalarySettlement[]
   gym             Gym                       @relation(fields: [gymId], references: [id], onDelete: Cascade)
   user            User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -185,6 +192,7 @@ model Member {
   balancePayments     MemberBalancePayment[]     // Balance payment records
   membershipRenewals  MembershipRenewal[]        // Membership renewal history
   ptSessionCredits    PTSessionCredit[]          // PT session credits for carry forward
+  assignedDiets       MemberDiet[]               @relation("MemberDietAssignments") // Diet assignments
 
   @@index([gymId])
   @@index([membershipStatus])
@@ -227,7 +235,7 @@ model PTMember {
   memberId        String       @unique
   trainerId       String
   packageName     String
-  sessionsTotal   Int
+  sessionsTotal   Int          @default(0)
   sessionsUsed    Int          @default(0)
   sessionDuration Int          @default(60)
   startDate       DateTime     @default(now())
@@ -501,17 +509,43 @@ model PaymentTypeMaster {
 }
 
 model ExpenseGroupMaster {
-  id               String   @id @default(uuid())
+  id               String          @id @default(uuid())
   expenseGroupName String
   gymId            String
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  gym              Gym      @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  gym              Gym             @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  expenses         ExpenseMaster[]
 
   @@unique([expenseGroupName, gymId])
   @@map("expensegroupmaster")
   @@index([gymId])
   @@index([expenseGroupName])
+}
+
+model ExpenseMaster {
+  id              String           @id @default(uuid())
+  expenseDate     DateTime         @default(now())
+  name            String
+  expenseGroupId  String
+  description     String?
+  paymentMode     PaymentMode
+  amount          Decimal          @db.Decimal(10, 2)
+  attachments     String[]         @default([])
+  createdBy       String
+  gymId           String
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  expenseGroup    ExpenseGroupMaster @relation(fields: [expenseGroupId], references: [id], onDelete: Restrict)
+  gym             Gym              @relation(fields: [gymId], references: [id], onDelete: Cascade)
+
+  @@map("expensemaster")
+  @@index([gymId])
+  @@index([expenseGroupId])
+  @@index([expenseDate])
+  @@index([isActive])
+  @@index([createdBy])
 }
 
 model DesignationMaster {
@@ -701,4 +735,160 @@ enum PaymentStatus {
   PAID
   PENDING
   PARTIAL
+}
+
+enum PaymentMode {
+  CASH
+  CARD
+  UPI
+  BANK_TRANSFER
+  CHEQUE
+  NET_BANKING
+  OTHER
+}
+// ============================================
+// Diet Template & Member Diet Models
+// ============================================
+
+// Diet Template - Reusable diet plans created by gym owners
+model DietTemplate {
+  id          String     @id @default(uuid())
+  name        String
+  description String?
+  gymId       String     // Reference to Gym for ownership
+  createdBy   String     // userId (UUID) who created this template
+  isActive    Boolean    @default(true)
+  meals       DietMeal[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  
+  gym         Gym        @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  creator     User       @relation("DietTemplateCreator", fields: [createdBy], references: [id])
+  memberDiets MemberDiet[]
+
+  @@map("diettemplate")
+  @@index([gymId])
+  @@index([createdBy])
+  @@index([isActive])
+}
+
+// Diet Meal - Individual meals within a diet template (6 meals per day)
+model DietMeal {
+  id             String       @id @default(uuid())
+  dietTemplateId String
+  mealNo         Int          // 1 to 6 (Meal 1, Meal 2, etc.)
+  title          String       // e.g., "Breakfast", "Mid-Morning Snack", "Lunch", etc.
+  description    String       // What to eat
+  time           String       // e.g., "07:30 AM", "10:00 AM", etc.
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  dietTemplate   DietTemplate @relation(fields: [dietTemplateId], references: [id], onDelete: Cascade)
+
+  @@unique([dietTemplateId, mealNo])
+  @@map("dietmeal")
+  @@index([dietTemplateId])
+}
+
+// Member Diet - Diet assignment to a member
+model MemberDiet {
+  id             String           @id @default(uuid())
+  memberId       String           // Reference to Member
+  dietTemplateId String           // Reference to original DietTemplate
+  gymId          String           // Reference to Gym for ownership
+  startDate      DateTime
+  endDate        DateTime?
+  assignedBy     String           // userId (UUID) who assigned this diet
+  isActive       Boolean          @default(true)
+  notes          String?          // Optional notes about the diet assignment
+
+  meals          MemberDietMeal[]
+
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  member         Member           @relation("MemberDietAssignments", fields: [memberId], references: [id], onDelete: Cascade)
+  dietTemplate   DietTemplate     @relation(fields: [dietTemplateId], references: [id])
+  gym            Gym              @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  assigner       User             @relation("MemberDietAssigner", fields: [assignedBy], references: [id])
+
+  @@map("memberdiet")
+  @@index([memberId])
+  @@index([gymId])
+  @@index([dietTemplateId])
+  @@index([assignedBy])
+  @@index([isActive])
+  @@index([startDate])
+}
+
+// Member Diet Meal - Copied meals from template (can be customized per member)
+model MemberDietMeal {
+  id           String     @id @default(uuid())
+  memberDietId String
+  mealNo       Int        // 1 to 6
+  title        String     // e.g., "Breakfast"
+  description  String     // What to eat (can be customized)
+  time         String     // e.g., "07:30 AM"
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  memberDiet   MemberDiet @relation(fields: [memberDietId], references: [id], onDelete: Cascade)
+
+  @@unique([memberDietId, mealNo])
+  @@map("memberdietmeal")
+  @@index([memberDietId])
+}
+
+// ============================================
+// Trainer Salary Settlement
+// ============================================
+
+// Incentive type for trainer salary
+enum IncentiveType {
+  PT               // Personal Training
+  PROTEIN          // Protein/Supplement sales
+  MEMBER_REFERENCE // Member referral bonus
+  OTHERS           // Other incentives
+}
+
+// Trainer Salary Settlement - Monthly salary records
+model TrainerSalarySettlement {
+  id                  String        @id @default(uuid())
+  trainerId           String        // Reference to Trainer
+  trainerName         String        // Denormalized for reporting
+  mobileNumber        String?       // Trainer's mobile number
+  joiningDate         DateTime?     // Trainer's joining date
+  monthlySalary       Decimal       @db.Decimal(10, 2) // Base monthly salary
+  salaryMonth         String        // YYYY-MM format (e.g., "2025-01")
+  salarySentDate      DateTime?     // Date when salary was settled
+  totalDaysInMonth    Int           // Total days in the salary month
+  presentDays         Int           // Days present
+  absentDays          Int           // Days absent (totalDaysInMonth - presentDays)
+  discountDays        Int           @default(0) // Days to discount from absent days
+  payableDays         Int           // presentDays + discountDays
+  calculatedSalary    Decimal       @db.Decimal(10, 2) // (monthlySalary / totalDaysInMonth) * payableDays
+  incentiveAmount     Decimal       @default(0) @db.Decimal(10, 2) // Incentive amount
+  incentiveType       IncentiveType? // Type of incentive
+  paymentMode         PaymentMode   // CASH, UPI, BANK_TRANSFER, CARD, etc.
+  finalPayableAmount  Decimal       @db.Decimal(10, 2) // calculatedSalary + incentiveAmount
+  remarks             String?       // Additional notes
+
+  // Audit fields
+  gymId               String        // Reference to Gym
+  createdBy           String        // Gym Owner who created this record
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  // Relations
+  trainer             Trainer       @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  gym                 Gym           @relation(fields: [gymId], references: [id], onDelete: Cascade)
+
+  // Unique constraint: One settlement per trainer per month per gym
+  @@unique([trainerId, salaryMonth, gymId])
+  @@map("trainersalarysettlement")
+  @@index([gymId])
+  @@index([trainerId])
+  @@index([salaryMonth])
+  @@index([createdAt])
+  @@index([paymentMode])
 }

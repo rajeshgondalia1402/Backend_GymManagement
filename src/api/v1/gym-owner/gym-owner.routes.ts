@@ -27,6 +27,9 @@ import {
   ptMemberIdParamSchema,
   createExpenseGroupSchema,
   updateExpenseGroupSchema,
+  createExpenseSchema,
+  updateExpenseSchema,
+  expenseReportSchema,
   createDesignationSchema,
   updateDesignationSchema,
   createBodyPartSchema,
@@ -45,10 +48,27 @@ import {
   renewalPaginationSchema,
   // New PT Addon schemas
   addPTAddonSchema,
+  updatePTAddonSchema,
   removePTAddonSchema,
   uploadMemberFiles,
   uploadTrainerFiles,
+  uploadExpenseAttachments,
   handleUploadError,
+  // Diet Template & Member Diet schemas
+  createDietTemplateSchema,
+  updateDietTemplateSchema,
+  toggleDietTemplateActiveSchema,
+  createMemberDietSchema,
+  updateMemberDietSchema,
+  deactivateMemberDietSchema,
+  removeAssignedMembersSchema,
+  memberUuidParamSchema,
+  dietTemplatePaginationSchema,
+  // Trainer Salary Settlement schemas
+  salaryCalculationSchema,
+  createSalarySettlementSchema,
+  updateSalarySettlementSchema,
+  salarySettlementPaginationSchema,
 } from '../../../common/middleware';
 
 const router = Router();
@@ -84,6 +104,21 @@ router.get('/dashboard', gymOwnerController.getDashboard.bind(gymOwnerController
  *         description: Trainers retrieved successfully
  */
 router.get('/trainers', validate(paginationSchema, 'query'), gymOwnerController.getTrainers.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/trainers/dropdown:
+ *   get:
+ *     summary: Get trainers dropdown for salary settlement
+ *     description: Returns a list of active trainers with basic info for dropdown selection
+ *     tags: [Gym Owner - Salary Settlement]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Trainers retrieved successfully
+ */
+router.get('/trainers/dropdown', gymOwnerController.getTrainersDropdown.bind(gymOwnerController));
 
 router.get('/trainers/:id', validate(idParamSchema, 'params'), gymOwnerController.getTrainerById.bind(gymOwnerController));
 
@@ -1183,6 +1218,219 @@ router.put('/expense-groups/:id', validate(idParamSchema, 'params'), validate(up
  *         description: Expense group not found
  */
 router.delete('/expense-groups/:id', validate(idParamSchema, 'params'), gymOwnerController.deleteExpenseGroup.bind(gymOwnerController));
+
+// =============================================
+// Expense Management CRUD
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/expenses:
+ *   get:
+ *     summary: Get expenses with filters (Report API)
+ *     tags: [Gym Owner - Expenses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Items per page
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search in expense name, description, or expense group name
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           default: expenseDate
+ *         description: Field to sort by
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           default: desc
+ *       - in: query
+ *         name: year
+ *         schema:
+ *           type: integer
+ *         description: Filter by year (e.g., 2024)
+ *       - in: query
+ *         name: fromDate
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Filter from date (ISO format)
+ *       - in: query
+ *         name: toDate
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Filter to date (ISO format)
+ *       - in: query
+ *         name: expenseGroupId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filter by expense group
+ *       - in: query
+ *         name: paymentMode
+ *         schema:
+ *           type: string
+ *           enum: [CASH, CARD, UPI, BANK_TRANSFER, CHEQUE, NET_BANKING, OTHER]
+ *         description: Filter by payment mode
+ *     responses:
+ *       200:
+ *         description: Expenses retrieved successfully with summary
+ *       401:
+ *         description: Unauthorized
+ */
+router.get('/expenses', validate(expenseReportSchema, 'query'), gymOwnerController.getExpenses.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/expenses/{id}:
+ *   get:
+ *     summary: Get expense by ID
+ *     tags: [Gym Owner - Expenses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Expense retrieved successfully
+ *       404:
+ *         description: Expense not found
+ */
+router.get('/expenses/:id', validate(idParamSchema, 'params'), gymOwnerController.getExpenseById.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/expenses:
+ *   post:
+ *     summary: Create a new expense
+ *     tags: [Gym Owner - Expenses]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - expenseGroupId
+ *               - paymentMode
+ *               - amount
+ *             properties:
+ *               expenseDate:
+ *                 type: string
+ *                 format: date-time
+ *               name:
+ *                 type: string
+ *               expenseGroupId:
+ *                 type: string
+ *                 format: uuid
+ *               description:
+ *                 type: string
+ *               paymentMode:
+ *                 type: string
+ *                 enum: [CASH, CARD, UPI, BANK_TRANSFER, CHEQUE, NET_BANKING, OTHER]
+ *               amount:
+ *                 type: number
+ *     responses:
+ *       201:
+ *         description: Expense created successfully
+ *       404:
+ *         description: Expense group not found
+ */
+router.post('/expenses', uploadExpenseAttachments, handleUploadError, validate(createExpenseSchema), gymOwnerController.createExpense.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/expenses/{id}:
+ *   put:
+ *     summary: Update an expense
+ *     tags: [Gym Owner - Expenses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               expenseDate:
+ *                 type: string
+ *                 format: date-time
+ *               name:
+ *                 type: string
+ *               expenseGroupId:
+ *                 type: string
+ *                 format: uuid
+ *               description:
+ *                 type: string
+ *               paymentMode:
+ *                 type: string
+ *                 enum: [CASH, CARD, UPI, BANK_TRANSFER, CHEQUE, NET_BANKING, OTHER]
+ *               amount:
+ *                 type: number
+ *               isActive:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Expense updated successfully
+ *       404:
+ *         description: Expense not found
+ */
+router.put('/expenses/:id', uploadExpenseAttachments, handleUploadError, validate(idParamSchema, 'params'), validate(updateExpenseSchema), gymOwnerController.updateExpense.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/expenses/{id}:
+ *   delete:
+ *     summary: Soft delete an expense
+ *     tags: [Gym Owner - Expenses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Expense deleted successfully
+ *       404:
+ *         description: Expense not found
+ */
+router.delete('/expenses/:id', validate(idParamSchema, 'params'), gymOwnerController.deleteExpense.bind(gymOwnerController));
 
 // Designation Master CRUD
 /**
@@ -2984,7 +3232,6 @@ router.get('/reports/renewal-rate', gymOwnerController.getRenewalRateReport.bind
  *             required:
  *               - ptPackageName
  *               - trainerId
- *               - sessionsTotal
  *               - ptPackageFees
  *               - ptFinalFees
  *             properties:
@@ -2992,11 +3239,6 @@ router.get('/reports/renewal-rate', gymOwnerController.getRenewalRateReport.bind
  *                 type: string
  *               trainerId:
  *                 type: string
- *               sessionsTotal:
- *                 type: integer
- *               sessionDuration:
- *                 type: integer
- *                 default: 60
  *               ptPackageFees:
  *                 type: number
  *               ptMaxDiscount:
@@ -3022,6 +3264,53 @@ router.get('/reports/renewal-rate', gymOwnerController.getRenewalRateReport.bind
  *         description: PT addon added successfully
  */
 router.post('/members/:memberId/add-pt', validate(memberIdParamSchema, 'params'), validate(addPTAddonSchema), gymOwnerController.addPTAddon.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/members/{memberId}/update-pt:
+ *   put:
+ *     summary: Update PT addon for member
+ *     tags: [Gym Owner - PT Addon]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: memberId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               ptPackageName:
+ *                 type: string
+ *               trainerId:
+ *                 type: string
+ *               ptPackageFees:
+ *                 type: number
+ *               ptMaxDiscount:
+ *                 type: number
+ *               ptExtraDiscount:
+ *                 type: number
+ *               ptFinalFees:
+ *                 type: number
+ *               startDate:
+ *                 type: string
+ *               endDate:
+ *                 type: string
+ *               goals:
+ *                 type: string
+ *               notes:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: PT addon updated successfully
+ */
+router.put('/members/:memberId/update-pt', validate(memberIdParamSchema, 'params'), validate(updatePTAddonSchema), gymOwnerController.updatePTAddon.bind(gymOwnerController));
 
 /**
  * @swagger
@@ -3097,5 +3386,916 @@ router.get('/members/:memberId/payment-summary', validate(memberIdParamSchema, '
  *         description: Session credits retrieved successfully
  */
 router.get('/members/:memberId/session-credits', validate(memberIdParamSchema, 'params'), gymOwnerController.getMemberSessionCredits.bind(gymOwnerController));
+
+// =============================================
+// Diet Template Routes
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/diet-templates:
+ *   post:
+ *     summary: Create a new diet template
+ *     tags: [Gym Owner - Diet Templates]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - meals
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Template name
+ *               description:
+ *                 type: string
+ *                 description: Template description
+ *               meals:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - mealNo
+ *                     - title
+ *                     - description
+ *                     - time
+ *                   properties:
+ *                     mealNo:
+ *                       type: integer
+ *                       minimum: 1
+ *                       maximum: 6
+ *                       description: Meal number (1-6)
+ *                     title:
+ *                       type: string
+ *                       description: Meal title (e.g., Breakfast)
+ *                     description:
+ *                       type: string
+ *                       description: What to eat
+ *                     time:
+ *                       type: string
+ *                       description: Time (e.g., 07:30 AM)
+ *     responses:
+ *       201:
+ *         description: Diet template created successfully
+ */
+router.post('/diet-templates', validate(createDietTemplateSchema), gymOwnerController.createDietTemplate.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/diet-templates:
+ *   get:
+ *     summary: Get all diet templates
+ *     tags: [Gym Owner - Diet Templates]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search in template name, meal titles, and meal descriptions
+ *       - in: query
+ *         name: mealsPerDay
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 6
+ *         description: Filter by number of meals per day
+ *       - in: query
+ *         name: isActive
+ *         schema:
+ *           type: boolean
+ *         description: Filter by active status
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *     responses:
+ *       200:
+ *         description: Diet templates retrieved successfully
+ */
+router.get('/diet-templates', validate(dietTemplatePaginationSchema, 'query'), gymOwnerController.getDietTemplates.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/diet-templates/{id}:
+ *   get:
+ *     summary: Get a diet template by ID
+ *     tags: [Gym Owner - Diet Templates]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Diet template retrieved successfully
+ */
+router.get('/diet-templates/:id', validate(idParamSchema, 'params'), gymOwnerController.getDietTemplateById.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/diet-templates/{id}:
+ *   put:
+ *     summary: Update a diet template
+ *     tags: [Gym Owner - Diet Templates]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               meals:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     mealNo:
+ *                       type: integer
+ *                     title:
+ *                       type: string
+ *                     description:
+ *                       type: string
+ *                     time:
+ *                       type: string
+ *     responses:
+ *       200:
+ *         description: Diet template updated successfully
+ */
+router.put('/diet-templates/:id', validate(idParamSchema, 'params'), validate(updateDietTemplateSchema), gymOwnerController.updateDietTemplate.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/diet-templates/{id}/active:
+ *   patch:
+ *     summary: Toggle diet template active status
+ *     tags: [Gym Owner - Diet Templates]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - isActive
+ *             properties:
+ *               isActive:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Diet template status updated successfully
+ */
+router.patch('/diet-templates/:id/active', validate(idParamSchema, 'params'), validate(toggleDietTemplateActiveSchema), gymOwnerController.toggleDietTemplateActive.bind(gymOwnerController));
+
+// Alias route for toggle-status (frontend compatibility)
+router.patch('/diet-templates/:id/toggle-status', validate(idParamSchema, 'params'), validate(toggleDietTemplateActiveSchema), gymOwnerController.toggleDietTemplateActive.bind(gymOwnerController));
+
+// =============================================
+// Member Diet Routes
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/member-diets:
+ *   post:
+ *     summary: Assign a diet to multiple members
+ *     tags: [Gym Owner - Member Diets]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - memberIds
+ *               - dietTemplateId
+ *               - startDate
+ *             properties:
+ *               memberIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *                 description: Array of Member UUIDs to assign diet to
+ *               dietTemplateId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Diet template UUID
+ *               startDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Diet start date
+ *               endDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Diet end date (optional)
+ *               notes:
+ *                 type: string
+ *                 description: Notes about the diet assignment
+ *               customMeals:
+ *                 type: array
+ *                 description: Optional custom meals to override template meals
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     mealNo:
+ *                       type: integer
+ *                     title:
+ *                       type: string
+ *                     description:
+ *                       type: string
+ *                     time:
+ *                       type: string
+ *     responses:
+ *       201:
+ *         description: Diet assigned to members successfully
+ */
+router.post('/member-diets', validate(createMemberDietSchema), gymOwnerController.createMemberDiet.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/member-diets/member/{memberUuid}:
+ *   get:
+ *     summary: Get all diets for a member
+ *     tags: [Gym Owner - Member Diets]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: memberUuid
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *     responses:
+ *       200:
+ *         description: Member diets retrieved successfully
+ */
+router.get('/member-diets/member/:memberUuid', validate(memberUuidParamSchema, 'params'), validate(paginationSchema, 'query'), gymOwnerController.getMemberDiets.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/member-diets/{id}:
+ *   get:
+ *     summary: Get a member diet by ID
+ *     tags: [Gym Owner - Member Diets]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Member diet retrieved successfully
+ */
+router.get('/member-diets/:id', validate(idParamSchema, 'params'), gymOwnerController.getMemberDietById.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/member-diets/{id}:
+ *   put:
+ *     summary: Update a member diet
+ *     tags: [Gym Owner - Member Diets]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               startDate:
+ *                 type: string
+ *                 format: date
+ *               endDate:
+ *                 type: string
+ *                 format: date
+ *               notes:
+ *                 type: string
+ *               meals:
+ *                 type: array
+ *                 description: Updated meals (replaces all existing meals)
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     mealNo:
+ *                       type: integer
+ *                     title:
+ *                       type: string
+ *                     description:
+ *                       type: string
+ *                     time:
+ *                       type: string
+ *     responses:
+ *       200:
+ *         description: Member diet updated successfully
+ */
+router.put('/member-diets/:id', validate(idParamSchema, 'params'), validate(updateMemberDietSchema), gymOwnerController.updateMemberDiet.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/member-diets/{id}/deactivate:
+ *   patch:
+ *     summary: Deactivate a member diet
+ *     tags: [Gym Owner - Member Diets]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               reason:
+ *                 type: string
+ *                 description: Reason for deactivation
+ *     responses:
+ *       200:
+ *         description: Member diet deactivated successfully
+ */
+router.patch('/member-diets/:id/deactivate', validate(idParamSchema, 'params'), validate(deactivateMemberDietSchema), gymOwnerController.deactivateMemberDiet.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/member-diets/bulk-remove:
+ *   delete:
+ *     summary: Remove multiple assigned members from diet templates
+ *     tags: [Gym Owner - Member Diets]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - memberDietIds
+ *             properties:
+ *               memberDietIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: uuid
+ *                 description: Array of member diet IDs to remove
+ *                 example: ["uuid-1", "uuid-2", "uuid-3"]
+ *     responses:
+ *       200:
+ *         description: Assigned members removed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 message:
+ *                   type: string
+ *                   example: 3 assigned member(s) removed successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     deletedCount:
+ *                       type: number
+ *                       example: 3
+ *                     deletedIds:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       example: ["uuid-1", "uuid-2", "uuid-3"]
+ */
+router.delete('/member-diets/bulk-remove', validate(removeAssignedMembersSchema), gymOwnerController.removeAssignedMembers.bind(gymOwnerController));
+
+// =============================================
+// Trainer Salary Settlement Routes
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/salary-settlement/calculate:
+ *   post:
+ *     summary: Calculate salary for a trainer
+ *     description: Calculates salary breakdown based on present days, discount days, and incentives
+ *     tags: [Gym Owner - Salary Settlement]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - trainerId
+ *               - salaryMonth
+ *               - presentDays
+ *             properties:
+ *               trainerId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Trainer ID
+ *               salaryMonth:
+ *                 type: string
+ *                 pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+ *                 example: "2025-01"
+ *                 description: Salary month in YYYY-MM format
+ *               presentDays:
+ *                 type: integer
+ *                 minimum: 0
+ *                 description: Number of present days
+ *               discountDays:
+ *                 type: integer
+ *                 minimum: 0
+ *                 default: 0
+ *                 description: Days to discount from absent days
+ *               incentiveAmount:
+ *                 type: number
+ *                 minimum: 0
+ *                 default: 0
+ *                 description: Incentive amount to add
+ *               incentiveType:
+ *                 type: string
+ *                 enum: [PT, PROTEIN, MEMBER_REFERENCE, OTHERS]
+ *                 description: Type of incentive
+ *     responses:
+ *       200:
+ *         description: Salary calculated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     trainerId:
+ *                       type: string
+ *                     trainerName:
+ *                       type: string
+ *                     mobileNumber:
+ *                       type: string
+ *                     monthlySalary:
+ *                       type: number
+ *                     salaryMonth:
+ *                       type: string
+ *                     totalDaysInMonth:
+ *                       type: integer
+ *                     presentDays:
+ *                       type: integer
+ *                     absentDays:
+ *                       type: integer
+ *                     discountDays:
+ *                       type: integer
+ *                     payableDays:
+ *                       type: integer
+ *                     calculatedSalary:
+ *                       type: number
+ *                     incentiveAmount:
+ *                       type: number
+ *                     incentiveType:
+ *                       type: string
+ *                     finalPayableAmount:
+ *                       type: number
+ */
+router.post('/salary-settlement/calculate', validate(salaryCalculationSchema), gymOwnerController.calculateSalary.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/salary-settlement:
+ *   post:
+ *     summary: Create a salary settlement
+ *     description: Creates a new salary settlement record for a trainer. Prevents duplicate settlement for same trainer and month.
+ *     tags: [Gym Owner - Salary Settlement]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - trainerId
+ *               - salaryMonth
+ *               - presentDays
+ *               - paymentMode
+ *             properties:
+ *               trainerId:
+ *                 type: string
+ *                 format: uuid
+ *               salaryMonth:
+ *                 type: string
+ *                 pattern: '^\d{4}-(0[1-9]|1[0-2])$'
+ *                 example: "2025-01"
+ *               salarySentDate:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Date when salary was sent (defaults to now)
+ *               presentDays:
+ *                 type: integer
+ *                 minimum: 0
+ *               discountDays:
+ *                 type: integer
+ *                 minimum: 0
+ *                 default: 0
+ *               incentiveAmount:
+ *                 type: number
+ *                 minimum: 0
+ *                 default: 0
+ *               incentiveType:
+ *                 type: string
+ *                 enum: [PT, PROTEIN, MEMBER_REFERENCE, OTHERS]
+ *               paymentMode:
+ *                 type: string
+ *                 enum: [CASH, CARD, UPI, BANK_TRANSFER, CHEQUE, NET_BANKING, OTHER]
+ *               remarks:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Salary settlement created successfully
+ *       409:
+ *         description: Salary settlement already exists for this trainer and month
+ */
+router.post('/salary-settlement', validate(createSalarySettlementSchema), gymOwnerController.createSalarySettlement.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/salary-settlement:
+ *   get:
+ *     summary: Get salary settlements list
+ *     description: Returns paginated list of salary settlements with filters
+ *     tags: [Gym Owner - Salary Settlement]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search by trainer name, mobile number, or remarks
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           default: createdAt
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           default: desc
+ *       - in: query
+ *         name: trainerId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filter by trainer ID
+ *       - in: query
+ *         name: paymentMode
+ *         schema:
+ *           type: string
+ *           enum: [CASH, CARD, UPI, BANK_TRANSFER, CHEQUE, NET_BANKING, OTHER]
+ *       - in: query
+ *         name: fromDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter by salary sent date from (YYYY-MM-DD)
+ *       - in: query
+ *         name: toDate
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter by salary sent date to (YYYY-MM-DD)
+ *     responses:
+ *       200:
+ *         description: Salary settlements retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: success
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/TrainerSalarySettlement'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *                     total:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *                 totalAmount:
+ *                   type: number
+ *                   description: Sum of all final payable amounts matching the filter
+ */
+router.get('/salary-settlement', validate(salarySettlementPaginationSchema, 'query'), gymOwnerController.getSalarySettlements.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/salary-settlement/{id}:
+ *   get:
+ *     summary: Get salary settlement by ID
+ *     description: Returns a single salary settlement record
+ *     tags: [Gym Owner - Salary Settlement]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Salary settlement retrieved successfully
+ *       404:
+ *         description: Salary settlement not found
+ */
+router.get('/salary-settlement/:id', validate(idParamSchema, 'params'), gymOwnerController.getSalarySettlementById.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/salary-settlement/{id}:
+ *   put:
+ *     summary: Update a salary settlement
+ *     description: Updates an existing salary settlement. If presentDays, discountDays, or incentiveAmount are changed, salary is recalculated.
+ *     tags: [Gym Owner - Salary Settlement]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               salarySentDate:
+ *                 type: string
+ *                 format: date-time
+ *               presentDays:
+ *                 type: integer
+ *                 minimum: 0
+ *               discountDays:
+ *                 type: integer
+ *                 minimum: 0
+ *               incentiveAmount:
+ *                 type: number
+ *                 minimum: 0
+ *               incentiveType:
+ *                 type: string
+ *                 enum: [PT, PROTEIN, MEMBER_REFERENCE, OTHERS]
+ *               paymentMode:
+ *                 type: string
+ *                 enum: [CASH, CARD, UPI, BANK_TRANSFER, CHEQUE, NET_BANKING, OTHER]
+ *               remarks:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Salary settlement updated successfully
+ *       404:
+ *         description: Salary settlement not found
+ */
+router.put('/salary-settlement/:id', validate(idParamSchema, 'params'), validate(updateSalarySettlementSchema), gymOwnerController.updateSalarySettlement.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/salary-settlement/{id}/slip:
+ *   get:
+ *     summary: Generate salary slip for a settlement
+ *     description: |
+ *       Returns complete salary slip data for PDF generation.
+ *       Includes gym details, trainer details, attendance, earnings, and payment info.
+ *     tags: [Gym Owner - Salary Settlement]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Settlement ID
+ *     responses:
+ *       200:
+ *         description: Salary slip generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     slipId:
+ *                       type: string
+ *                     slipNumber:
+ *                       type: string
+ *                       example: "SAL-202501-A1B2C3"
+ *                     salaryMonth:
+ *                       type: string
+ *                       example: "2025-01"
+ *                     salaryPeriod:
+ *                       type: string
+ *                       example: "January 2025"
+ *                     gymDetails:
+ *                       type: object
+ *                       properties:
+ *                         gymName:
+ *                           type: string
+ *                         fullAddress:
+ *                           type: string
+ *                         mobileNo:
+ *                           type: string
+ *                         email:
+ *                           type: string
+ *                         gstRegNo:
+ *                           type: string
+ *                         gymLogo:
+ *                           type: string
+ *                     trainerDetails:
+ *                       type: object
+ *                       properties:
+ *                         trainerId:
+ *                           type: string
+ *                         trainerName:
+ *                           type: string
+ *                         email:
+ *                           type: string
+ *                         mobileNumber:
+ *                           type: string
+ *                         designation:
+ *                           type: string
+ *                         joiningDate:
+ *                           type: string
+ *                         employeeCode:
+ *                           type: string
+ *                     attendance:
+ *                       type: object
+ *                       properties:
+ *                         totalDaysInMonth:
+ *                           type: integer
+ *                         presentDays:
+ *                           type: integer
+ *                         absentDays:
+ *                           type: integer
+ *                         discountDays:
+ *                           type: integer
+ *                         payableDays:
+ *                           type: integer
+ *                         attendancePercentage:
+ *                           type: number
+ *                     earnings:
+ *                       type: object
+ *                       properties:
+ *                         basicSalary:
+ *                           type: number
+ *                         calculatedSalary:
+ *                           type: number
+ *                         incentiveAmount:
+ *                           type: number
+ *                         incentiveType:
+ *                           type: string
+ *                         grossEarnings:
+ *                           type: number
+ *                     deductions:
+ *                       type: object
+ *                       properties:
+ *                         totalDeductions:
+ *                           type: number
+ *                         items:
+ *                           type: array
+ *                     netPayableAmount:
+ *                       type: number
+ *                     netPayableInWords:
+ *                       type: string
+ *                       example: "Twenty Three Thousand Seven Hundred Seventy Four Rupees and Nineteen Paise Only"
+ *                     paymentDetails:
+ *                       type: object
+ *                       properties:
+ *                         paymentMode:
+ *                           type: string
+ *                         paymentDate:
+ *                           type: string
+ *       404:
+ *         description: Salary settlement not found
+ */
+router.get('/salary-settlement/:id/slip', validate(idParamSchema, 'params'), gymOwnerController.generateSalarySlip.bind(gymOwnerController));
 
 export default router;

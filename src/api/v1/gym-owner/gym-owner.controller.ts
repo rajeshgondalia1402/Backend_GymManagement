@@ -666,6 +666,100 @@ class GymOwnerController {
     }
   }
 
+  // =============================================
+  // Expense Management CRUD
+  // =============================================
+
+  async createExpense(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const userId = req.user!.id;
+
+      // Handle file uploads
+      let attachmentPaths: string[] = [];
+      if (req.files && Array.isArray(req.files)) {
+        attachmentPaths = req.files.map((file: Express.Multer.File) =>
+          `/uploads/expense-attachments/${file.filename}`
+        );
+      }
+
+      const expense = await gymOwnerService.createExpense(gymId, userId, req.body, attachmentPaths);
+      successResponse(res, expense, 'Expense created successfully', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateExpense(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+
+      // Handle new file uploads
+      let newAttachmentPaths: string[] = [];
+      if (req.files && Array.isArray(req.files)) {
+        newAttachmentPaths = req.files.map((file: Express.Multer.File) =>
+          `/uploads/expense-attachments/${file.filename}`
+        );
+      }
+
+      const expense = await gymOwnerService.updateExpense(
+        gymId,
+        req.params.id,
+        req.body,
+        newAttachmentPaths.length > 0 ? newAttachmentPaths : undefined
+      );
+      successResponse(res, expense, 'Expense updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteExpense(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      await gymOwnerService.softDeleteExpense(gymId, req.params.id);
+      successResponse(res, null, 'Expense deleted successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getExpenseById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const expense = await gymOwnerService.getExpenseById(gymId, req.params.id);
+      successResponse(res, expense, 'Expense retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getExpenses(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const params = req.query as any;
+      const result = await gymOwnerService.getExpenses(gymId, params);
+
+      // Return paginated response with summary
+      res.status(200).json({
+        status: 'success',
+        message: 'Expenses retrieved successfully',
+        data: result.expenses,
+        pagination: {
+          page: result.page,
+          limit: result.limit,
+          total: result.total,
+          totalPages: Math.ceil(result.total / result.limit),
+        },
+        summary: {
+          totalAmount: result.totalAmount,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // Designation Master CRUD
   async getDesignations(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -1177,6 +1271,18 @@ class GymOwnerController {
     }
   }
 
+  // Update PT addon for existing member
+  async updatePTAddon(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const userId = req.user!.id;
+      const member = await gymOwnerService.updatePTAddon(gymId, userId, req.params.memberId, req.body);
+      successResponse(res, member, 'PT addon updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // Remove PT addon from member
   async removePTAddon(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -1206,6 +1312,262 @@ class GymOwnerController {
       const gymId = this.getGymId(req);
       const credits = await gymOwnerService.getMemberSessionCredits(gymId, req.params.memberId);
       successResponse(res, credits, 'Member session credits retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // =============================================
+  // Diet Template Methods
+  // =============================================
+
+  // Create a new diet template
+  async createDietTemplate(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const userId = req.user!.id;
+      const template = await gymOwnerService.createDietTemplate(gymId, userId, req.body);
+      successResponse(res, template, 'Diet template created successfully', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Get all diet templates
+  async getDietTemplates(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { page = 1, limit = 10, search, sortBy, sortOrder, mealsPerDay, isActive } = req.query as any;
+      const { templates, total } = await gymOwnerService.getDietTemplates(gymId, {
+        page: Number(page),
+        limit: Number(limit),
+        search,
+        sortBy,
+        sortOrder,
+        mealsPerDay,
+        isActive,
+      });
+      paginatedResponse(res, templates, Number(page), Number(limit), total, 'Diet templates retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Get a single diet template by ID
+  async getDietTemplateById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const template = await gymOwnerService.getDietTemplateById(gymId, req.params.id);
+      successResponse(res, template, 'Diet template retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Update a diet template
+  async updateDietTemplate(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const template = await gymOwnerService.updateDietTemplate(gymId, req.params.id, req.body);
+      successResponse(res, template, 'Diet template updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Toggle diet template active status
+  async toggleDietTemplateActive(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      let { isActive } = req.body;
+      
+      // If isActive is not provided, fetch current status and toggle it
+      if (isActive === undefined || isActive === null) {
+        const currentTemplate = await gymOwnerService.getDietTemplateById(gymId, req.params.id);
+        isActive = !currentTemplate.isActive;
+      }
+      
+      const template = await gymOwnerService.toggleDietTemplateActive(gymId, req.params.id, isActive);
+      successResponse(res, template, `Diet template ${template.isActive ? 'activated' : 'deactivated'} successfully`);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // =============================================
+  // Member Diet Methods
+  // =============================================
+
+  // Assign diet to multiple members
+  async createMemberDiet(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const userId = req.user!.id;
+      const memberDiets = await gymOwnerService.createMemberDiet(gymId, userId, req.body);
+      const memberCount = memberDiets.length;
+      successResponse(res, memberDiets, `Diet assigned to ${memberCount} member${memberCount > 1 ? 's' : ''} successfully`, 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Get all diets for a member
+  async getMemberDiets(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { page = 1, limit = 10, sortBy, sortOrder } = req.query as any;
+      const { diets, total } = await gymOwnerService.getMemberDiets(gymId, req.params.memberUuid, {
+        page: Number(page),
+        limit: Number(limit),
+        sortBy,
+        sortOrder,
+      });
+      paginatedResponse(res, diets, Number(page), Number(limit), total, 'Member diets retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Get a single member diet by ID
+  async getMemberDietById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const memberDiet = await gymOwnerService.getMemberDietById(gymId, req.params.id);
+      successResponse(res, memberDiet, 'Member diet retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Update a member diet
+  async updateMemberDiet(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const memberDiet = await gymOwnerService.updateMemberDiet(gymId, req.params.id, req.body);
+      successResponse(res, memberDiet, 'Member diet updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Deactivate a member diet
+  async deactivateMemberDiet(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { reason } = req.body;
+      const memberDiet = await gymOwnerService.deactivateMemberDiet(gymId, req.params.id, reason);
+      successResponse(res, memberDiet, 'Member diet deactivated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Remove multiple assigned members from diet templates (bulk delete)
+  async removeAssignedMembers(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { memberDietIds } = req.body;
+      const result = await gymOwnerService.removeAssignedMembers(gymId, memberDietIds);
+      successResponse(res, result, `${result.deletedCount} assigned member(s) removed successfully`);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // =============================================
+  // Trainer Salary Settlement Methods
+  // =============================================
+
+  // Get trainers dropdown for salary settlement
+  async getTrainersDropdown(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const trainers = await gymOwnerService.getTrainersDropdown(gymId);
+      successResponse(res, trainers, 'Trainers retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Calculate salary for a trainer
+  async calculateSalary(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const calculation = await gymOwnerService.calculateSalary(gymId, req.body);
+      successResponse(res, calculation, 'Salary calculated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Create salary settlement
+  async createSalarySettlement(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const createdBy = req.user?.id;
+      if (!createdBy) {
+        throw new BadRequestException('User ID not found');
+      }
+      const settlement = await gymOwnerService.createSalarySettlement(gymId, createdBy, req.body);
+      successResponse(res, settlement, 'Salary settlement created successfully', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Get salary settlements list
+  async getSalarySettlements(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const result = await gymOwnerService.getSalarySettlements(gymId, req.query as any);
+      // Using successResponse with custom structure since we need to include totalAmount
+      res.status(200).json({
+        success: true,
+        message: 'Salary settlements retrieved successfully',
+        data: {
+          items: result.settlements,
+          pagination: {
+            page: result.page,
+            limit: result.limit,
+            total: result.total,
+            totalPages: Math.ceil(result.total / result.limit),
+          },
+          totalAmount: result.totalAmount,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Get salary settlement by ID
+  async getSalarySettlementById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const settlement = await gymOwnerService.getSalarySettlementById(gymId, req.params.id);
+      successResponse(res, settlement, 'Salary settlement retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Update salary settlement
+  async updateSalarySettlement(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const settlement = await gymOwnerService.updateSalarySettlement(gymId, req.params.id, req.body);
+      successResponse(res, settlement, 'Salary settlement updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Generate salary slip (accessible by GYM_OWNER for any trainer)
+  async generateSalarySlip(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const salarySlip = await gymOwnerService.generateSalarySlip(gymId, req.params.id);
+      successResponse(res, salarySlip, 'Salary slip generated successfully');
     } catch (error) {
       next(error);
     }

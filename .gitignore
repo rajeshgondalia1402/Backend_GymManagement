@@ -7,3 +7,7 @@ logs/
 uploads/**/*
 !uploads/.gitkeep
 !uploads/gym-logos/.gitkeep
+package-lock.json
+.DS_Store
+.vscode/
+.idea/

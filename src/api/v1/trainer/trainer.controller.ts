@@ -386,6 +386,87 @@ export class TrainerController {
       next(error);
     }
   }
+
+  // =============================================
+  // Salary Settlement Methods (Read-Only)
+  // =============================================
+
+  /**
+   * GET /trainer/salary-settlements
+   * Get trainer's own salary settlements with pagination and filters
+   */
+  async getMySalarySettlements(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user?.trainerId) {
+        throw new BadRequestException('Trainer profile not found');
+      }
+
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const fromDate = req.query.fromDate as string;
+      const toDate = req.query.toDate as string;
+
+      const result = await trainerService.getMySalarySettlements(req.user.trainerId, {
+        page,
+        limit,
+        fromDate,
+        toDate,
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'Salary settlements retrieved successfully',
+        data: {
+          items: result.settlements,
+          pagination: {
+            page: result.page,
+            limit: result.limit,
+            total: result.total,
+            totalPages: Math.ceil(result.total / result.limit),
+          },
+          summary: result.summary,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /trainer/salary-settlements/:id
+   * Get a specific salary settlement by ID
+   */
+  async getMySalarySettlementById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user?.trainerId) {
+        throw new BadRequestException('Trainer profile not found');
+      }
+
+      const { id } = req.params;
+      const settlement = await trainerService.getMySalarySettlementById(req.user.trainerId, id);
+      successResponse(res, settlement, 'Salary settlement retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /trainer/salary-settlements/:id/slip
+   * Generate salary slip for trainer's own settlement
+   */
+  async getMySalarySlip(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user?.trainerId) {
+        throw new BadRequestException('Trainer profile not found');
+      }
+
+      const { id } = req.params;
+      const salarySlip = await trainerService.getMySalarySlip(req.user.trainerId, id);
+      successResponse(res, salarySlip, 'Salary slip generated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const trainerController = new TrainerController();

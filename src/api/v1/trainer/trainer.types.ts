@@ -126,3 +126,46 @@ export interface TrainerProfile {
   isActive: boolean;
   createdAt: string;
 }
+
+// =============================================
+// Trainer Salary Settlement Types
+// =============================================
+
+export type IncentiveType = 'PT' | 'PROTEIN' | 'MEMBER_REFERENCE' | 'OTHERS';
+export type PaymentMode = 'CASH' | 'CARD' | 'UPI' | 'BANK_TRANSFER' | 'CHEQUE' | 'NET_BANKING' | 'OTHER';
+
+export interface TrainerSalarySettlement {
+  id: string;
+  trainerId: string;
+  trainerName: string;
+  mobileNumber?: string;
+  joiningDate?: string;
+  monthlySalary: number;
+  salaryMonth: string;
+  salarySentDate?: string;
+  totalDaysInMonth: number;
+  presentDays: number;
+  absentDays: number;
+  discountDays: number;
+  payableDays: number;
+  calculatedSalary: number;
+  incentiveAmount: number;
+  incentiveType?: IncentiveType;
+  paymentMode: PaymentMode;
+  finalPayableAmount: number;
+  remarks?: string;
+  createdAt: string;
+}
+
+export interface SalarySettlementListParams {
+  page?: number;
+  limit?: number;
+  fromDate?: string;
+  toDate?: string;
+}
+
+export interface SalarySettlementSummary {
+  totalSettlements: number;
+  totalEarnings: number;
+  totalIncentives: number;
+}

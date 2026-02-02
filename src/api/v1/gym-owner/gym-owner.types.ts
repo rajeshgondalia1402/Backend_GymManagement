@@ -253,14 +253,26 @@ export type PTRemovalAction = 'COMPLETE' | 'FORFEIT' | 'CARRY_FORWARD';
 export interface AddPTAddonRequest {
   ptPackageName: string;
   trainerId: string;
-  sessionsTotal: number;
-  sessionDuration?: number;
   ptPackageFees: number;
   ptMaxDiscount?: number;
   ptExtraDiscount?: number;
   ptFinalFees: number;
   initialPayment?: number;
   paymentMode?: string;
+  startDate?: string;
+  endDate?: string;
+  goals?: string;
+  notes?: string;
+}
+
+// Update PT addon request (all fields optional for partial updates)
+export interface UpdatePTAddonRequest {
+  ptPackageName?: string;
+  trainerId?: string;
+  ptPackageFees?: number;
+  ptMaxDiscount?: number;
+  ptExtraDiscount?: number;
+  ptFinalFees?: number;
   startDate?: string;
   endDate?: string;
   goals?: string;
@@ -573,6 +585,74 @@ export interface CreateExpenseGroupRequest {
 
 export interface UpdateExpenseGroupRequest {
   expenseGroupName: string;
+}
+
+// =============================================
+// Expense Management Types
+// =============================================
+
+export type PaymentMode = 'CASH' | 'CARD' | 'UPI' | 'BANK_TRANSFER' | 'CHEQUE' | 'NET_BANKING' | 'OTHER';
+
+export interface Expense {
+  id: string;
+  expenseDate: Date;
+  name: string;
+  expenseGroupId: string;
+  expenseGroupName?: string;
+  description?: string;
+  paymentMode: PaymentMode;
+  amount: number;
+  attachments?: string[]; // Array of file paths
+  createdBy: string;
+  gymId: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateExpenseRequest {
+  expenseDate?: string; // ISO date string
+  name: string;
+  expenseGroupId: string;
+  description?: string;
+  paymentMode: PaymentMode;
+  amount: number;
+  // attachments will be uploaded via multipart/form-data (req.files)
+}
+
+export interface UpdateExpenseRequest {
+  expenseDate?: string; // ISO date string
+  name?: string;
+  expenseGroupId?: string;
+  description?: string;
+  paymentMode?: PaymentMode;
+  amount?: number;
+  isActive?: boolean;
+  // attachments will be uploaded via multipart/form-data (req.files)
+  // existing attachments to keep (comma-separated paths or array)
+  keepAttachments?: string;
+}
+
+export interface ExpenseListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  // Filters
+  year?: number;
+  dateFrom?: string; // Date string (YYYY-MM-DD or ISO)
+  dateTo?: string; // Date string (YYYY-MM-DD or ISO)
+  expenseGroupId?: string;
+  paymentMode?: PaymentMode;
+}
+
+export interface ExpenseListResponse {
+  expenses: Expense[];
+  total: number;
+  page: number;
+  limit: number;
+  totalAmount: number; // Sum of all expenses matching the filter
 }
 
 // Designation Master Types
@@ -1000,4 +1080,341 @@ export interface MemberMembershipDetailsResponse {
   ptMembershipDetails?: PTMembershipDetails;
 }
 
+// =============================================
+// Diet Template Types
+// =============================================
 
+export interface DietMeal {
+  id?: string;
+  mealNo: number;       // 1-6 (Meal 1 to Meal 6)
+  title: string;        // e.g., "Breakfast", "Mid-Morning Snack", "Lunch", etc.
+  description: string;  // What to eat
+  time: string;         // e.g., "07:30 AM"
+}
+
+export interface AssignedMemberInfo {
+  memberDietId: string;
+  memberId: string;
+  memberCode: string | null;
+  memberName: string;
+  mobileNo: string | null;
+  memberType: string;
+  hasPTAddon: boolean;
+  startDate: Date;
+  endDate: Date | null;
+}
+
+export interface DietTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  gymId: string;
+  createdBy: string;
+  creatorName?: string;
+  isActive: boolean;
+  mealsPerDay?: number; // Number of meals in the template
+  meals: DietMeal[];
+  assignedMembers?: AssignedMemberInfo[];
+  assignedMemberCount?: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateDietTemplateRequest {
+  name: string;
+  description?: string;
+  meals: {
+    mealNo: number;
+    title: string;
+    description: string;
+    time: string;
+  }[];
+}
+
+export interface UpdateDietTemplateRequest {
+  name?: string;
+  description?: string;
+  meals?: {
+    mealNo: number;
+    title: string;
+    description: string;
+    time: string;
+  }[];
+}
+
+// =============================================
+// Member Diet Types
+// =============================================
+
+export interface MemberDietMeal {
+  id?: string;
+  mealNo: number;
+  title: string;
+  description: string;
+  time: string;
+}
+
+export interface MemberDiet {
+  id: string;
+  memberId: string;
+  memberName?: string;
+  memberEmail?: string;
+  dietTemplateId: string;
+  dietTemplateName?: string;
+  gymId: string;
+  startDate: Date;
+  endDate?: Date;
+  assignedBy: string;
+  assignerName?: string;
+  isActive: boolean;
+  notes?: string;
+  meals: MemberDietMeal[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateMemberDietRequest {
+  memberIds: string[];
+  dietTemplateId: string;
+  startDate: string;
+  endDate?: string;
+  notes?: string;
+  customMeals?: {
+    mealNo: number;
+    title: string;
+    description: string;
+    time: string;
+  }[];
+}
+
+export interface UpdateMemberDietRequest {
+  startDate?: string;
+  endDate?: string;
+  notes?: string;
+  meals?: {
+    mealNo: number;
+    title: string;
+    description: string;
+    time: string;
+  }[];
+}
+
+// =============================================
+// Trainer Salary Settlement Types
+// =============================================
+
+export type IncentiveType = 'PT' | 'PROTEIN' | 'MEMBER_REFERENCE' | 'OTHERS';
+
+// Trainer dropdown response for salary settlement
+export interface TrainerDropdownItem {
+  trainerId: string;
+  name: string;
+  mobileNumber?: string;
+  joiningDate?: Date;
+  monthlySalary?: number;
+}
+
+// Salary calculation request
+export interface SalaryCalculationRequest {
+  trainerId: string;
+  salaryMonth: string; // YYYY-MM format
+  presentDays: number;
+  discountDays?: number;
+  incentiveAmount?: number;
+  incentiveType?: IncentiveType;
+}
+
+// Salary calculation response
+export interface SalaryCalculationResponse {
+  trainerId: string;
+  trainerName: string;
+  mobileNumber?: string;
+  joiningDate?: Date;
+  monthlySalary: number;
+  salaryMonth: string;
+  totalDaysInMonth: number;
+  presentDays: number;
+  absentDays: number;
+  discountDays: number;
+  payableDays: number;
+  calculatedSalary: number;
+  incentiveAmount: number;
+  incentiveType?: IncentiveType;
+  finalPayableAmount: number;
+}
+
+// Trainer salary settlement record
+export interface TrainerSalarySettlement {
+  id: string;
+  trainerId: string;
+  trainerName: string;
+  mobileNumber?: string;
+  joiningDate?: Date;
+  monthlySalary: number;
+  salaryMonth: string;
+  salarySentDate?: Date;
+  totalDaysInMonth: number;
+  presentDays: number;
+  absentDays: number;
+  discountDays: number;
+  payableDays: number;
+  calculatedSalary: number;
+  incentiveAmount: number;
+  incentiveType?: IncentiveType;
+  paymentMode: PaymentMode;
+  finalPayableAmount: number;
+  remarks?: string;
+  gymId: string;
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Create salary settlement request
+export interface CreateSalarySettlementRequest {
+  trainerId: string;
+  salaryMonth: string; // YYYY-MM format
+  salarySentDate?: string; // ISO date string
+  presentDays: number;
+  discountDays?: number;
+  incentiveAmount?: number;
+  incentiveType?: IncentiveType;
+  paymentMode: PaymentMode;
+  remarks?: string;
+}
+
+// Update salary settlement request
+export interface UpdateSalarySettlementRequest {
+  salarySentDate?: string;
+  presentDays?: number;
+  discountDays?: number;
+  incentiveAmount?: number;
+  incentiveType?: IncentiveType;
+  paymentMode?: PaymentMode;
+  remarks?: string;
+}
+
+// Salary settlement list params
+export interface SalarySettlementListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  // Filters
+  trainerId?: string;
+  paymentMode?: PaymentMode;
+  fromDate?: string; // Date string (YYYY-MM-DD or ISO)
+  toDate?: string; // Date string (YYYY-MM-DD or ISO)
+}
+
+// Salary settlement list response
+export interface SalarySettlementListResponse {
+  settlements: TrainerSalarySettlement[];
+  total: number;
+  page: number;
+  limit: number;
+  totalAmount: number; // Sum of all settlements matching the filter
+}
+
+// =============================================
+// Trainer Salary Slip Types
+// =============================================
+
+// Gym details for salary slip header
+export interface SalarySlipGymDetails {
+  gymId: string;
+  gymName: string;
+  address1?: string;
+  address2?: string;
+  city?: string;
+  state?: string;
+  zipcode?: string;
+  fullAddress: string; // Combined address
+  mobileNo?: string;
+  phoneNo?: string;
+  email?: string;
+  gstRegNo?: string;
+  gymLogo?: string;
+}
+
+// Trainer/Employee details for salary slip
+export interface SalarySlipTrainerDetails {
+  trainerId: string;
+  trainerName: string;
+  email: string;
+  mobileNumber?: string;
+  gender?: string;
+  designation?: string; // Specialization
+  joiningDate?: Date;
+  employeeCode?: string; // Trainer ID as employee code
+}
+
+// Earnings breakdown
+export interface SalarySlipEarnings {
+  basicSalary: number; // Monthly salary
+  calculatedSalary: number; // Pro-rated based on attendance
+  incentiveAmount: number;
+  incentiveType?: IncentiveType;
+  grossEarnings: number; // calculatedSalary + incentiveAmount
+}
+
+// Attendance summary
+export interface SalarySlipAttendance {
+  totalDaysInMonth: number;
+  presentDays: number;
+  absentDays: number;
+  discountDays: number; // Leave adjustments
+  payableDays: number;
+  attendancePercentage: number;
+}
+
+// Payment details
+export interface SalarySlipPaymentDetails {
+  paymentMode: PaymentMode;
+  paymentDate?: Date;
+  transactionRef?: string; // Future scope
+}
+
+// Complete Salary Slip
+export interface TrainerSalarySlip {
+  // Slip metadata
+  slipId: string; // Settlement ID
+  slipNumber: string; // Formatted slip number
+  generatedDate: Date;
+
+  // Period
+  salaryMonth: string; // YYYY-MM
+  salaryPeriod: string; // e.g., "January 2025"
+  periodStartDate: Date;
+  periodEndDate: Date;
+
+  // Gym details
+  gymDetails: SalarySlipGymDetails;
+
+  // Trainer details
+  trainerDetails: SalarySlipTrainerDetails;
+
+  // Attendance
+  attendance: SalarySlipAttendance;
+
+  // Earnings
+  earnings: SalarySlipEarnings;
+
+  // Deductions (future scope)
+  deductions: {
+    totalDeductions: number;
+    items: { name: string; amount: number }[];
+  };
+
+  // Net payable
+  netPayableAmount: number;
+  netPayableInWords: string;
+
+  // Payment details
+  paymentDetails: SalarySlipPaymentDetails;
+
+  // Additional
+  remarks?: string;
+  createdAt: Date;
+}
