@@ -9,6 +9,7 @@ import {
   DietPlan,
   ExercisePlan,
   TrainerProfile,
+  TrainerProfileDetails,
   CreateDietPlanRequest,
   CreateExercisePlanRequest,
   UpdateDietPlanRequest,
@@ -20,6 +21,8 @@ import {
   SalarySettlementSummary,
   IncentiveType,
   PaymentMode,
+  TrainerDashboardStats,
+  CurrentMonthPTMember,
 } from './trainer.types';
 
 export class TrainerService {
@@ -50,6 +53,158 @@ export class TrainerService {
       gymName: trainer.gym.name,
       isActive: trainer.isActive,
       createdAt: trainer.createdAt.toISOString(),
+    };
+  }
+
+  /**
+   * Get trainer's complete profile details
+   * Returns all trainer information including gym details
+   */
+  async getProfileDetails(trainerId: string): Promise<TrainerProfileDetails> {
+    const trainer = await prisma.trainer.findUnique({
+      where: { id: trainerId },
+      include: {
+        user: { select: { name: true, email: true } },
+        gym: {
+          select: {
+            id: true,
+            name: true,
+            gymLogo: true,
+            address1: true,
+            address2: true,
+            city: true,
+            state: true,
+            zipcode: true,
+            mobileNo: true,
+            phoneNo: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    if (!trainer) {
+      throw new NotFoundException('Trainer not found');
+    }
+
+    return {
+      id: trainer.id,
+      name: trainer.user.name,
+      email: trainer.user.email,
+      phone: trainer.phone || undefined,
+      gender: trainer.gender || undefined,
+      dateOfBirth: trainer.dateOfBirth?.toISOString(),
+      specialization: trainer.specialization || undefined,
+      experience: trainer.experience || undefined,
+      joiningDate: trainer.joiningDate?.toISOString(),
+      salary: trainer.salary ? Number(trainer.salary) : undefined,
+      trainerPhoto: trainer.trainerPhoto || undefined,
+      idProofType: trainer.idProofType || undefined,
+      idProofDocument: trainer.idProofDocument || undefined,
+      isActive: trainer.isActive,
+      createdAt: trainer.createdAt.toISOString(),
+      updatedAt: trainer.updatedAt.toISOString(),
+      gym: {
+        id: trainer.gym.id,
+        name: trainer.gym.name,
+        logo: trainer.gym.gymLogo || undefined,
+        address1: trainer.gym.address1 || undefined,
+        address2: trainer.gym.address2 || undefined,
+        city: trainer.gym.city || undefined,
+        state: trainer.gym.state || undefined,
+        zipcode: trainer.gym.zipcode || undefined,
+        mobileNo: trainer.gym.mobileNo || undefined,
+        phoneNo: trainer.gym.phoneNo || undefined,
+        email: trainer.gym.email || undefined,
+      },
+    };
+  }
+
+  /**
+   * Get trainer dashboard stats
+   * Returns: totalSalary, totalIncentive, totalAssignedPTMembers, currentMonthPTMembers list with diet plans
+   */
+  async getDashboardStats(trainerId: string): Promise<TrainerDashboardStats> {
+    // Get current month start and end dates
+    const now = new Date();
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    // Execute all queries in parallel for performance
+    const [salaryAggregation, totalPTMembers, currentMonthPTMembers] = await Promise.all([
+      // Get total salary and total incentive from all salary settlements
+      prisma.trainerSalarySettlement.aggregate({
+        where: { trainerId },
+        _sum: {
+          calculatedSalary: true,
+          incentiveAmount: true,
+        },
+      }),
+      // Get total PT members count (all time)
+      prisma.pTMember.count({
+        where: { trainerId },
+      }),
+      // Get current month PT members list with diet plans
+      prisma.pTMember.findMany({
+        where: {
+          trainerId,
+          createdAt: {
+            gte: currentMonthStart,
+            lte: currentMonthEnd,
+          },
+        },
+        include: {
+          member: {
+            include: {
+              user: { select: { name: true, email: true } },
+              memberDietPlans: {
+                where: { isActive: true },
+                orderBy: { createdAt: 'desc' },
+                take: 1,
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
+
+    // Map current month PT members to response format with diet plan details
+    const mappedCurrentMonthPTMembers: CurrentMonthPTMember[] = currentMonthPTMembers.map((pt) => {
+      const activeDietPlan = pt.member.memberDietPlans[0];
+
+      return {
+        id: pt.id,
+        memberId: pt.memberId,
+        memberName: pt.member.user.name,
+        memberEmail: pt.member.user.email,
+        memberPhone: pt.member.phone || '',
+        memberGender: pt.member.gender || '',
+        packageName: pt.packageName,
+        startDate: pt.startDate.toISOString(),
+        endDate: pt.endDate?.toISOString(),
+        goals: pt.goals || undefined,
+        notes: pt.notes || undefined,
+        isActive: pt.isActive,
+        createdAt: pt.createdAt.toISOString(),
+        dietPlan: activeDietPlan ? {
+          id: activeDietPlan.id,
+          planName: activeDietPlan.planName,
+          description: activeDietPlan.description || undefined,
+          calories: activeDietPlan.calories || undefined,
+          meals: activeDietPlan.meals as object,
+          startDate: activeDietPlan.startDate.toISOString(),
+          endDate: activeDietPlan.endDate?.toISOString(),
+          isActive: activeDietPlan.isActive,
+        } : undefined,
+      };
+    });
+
+    return {
+      totalSalary: Number(salaryAggregation._sum.calculatedSalary || 0),
+      totalIncentive: Number(salaryAggregation._sum.incentiveAmount || 0),
+      totalAssignedPTMembers: totalPTMembers,
+      currentMonthPTMembers: mappedCurrentMonthPTMembers,
     };
   }
 
@@ -599,10 +754,6 @@ export class TrainerService {
         memberName: pt.member.user.name,
         memberEmail: pt.member.user.email,
         packageName: pt.packageName,
-        sessionsTotal: pt.sessionsTotal,
-        sessionsUsed: pt.sessionsUsed,
-        sessionsRemaining: pt.sessionsTotal - pt.sessionsUsed,
-        sessionDuration: pt.sessionDuration,
         startDate: pt.startDate.toISOString(),
         endDate: pt.endDate?.toISOString(),
         goals: pt.goals,
@@ -617,10 +768,17 @@ export class TrainerService {
 
   /**
    * Get PT member by ID (only if assigned to trainer)
+   * Accepts either PT Member ID or Member ID
    */
   async getPTMemberById(trainerId: string, ptMemberId: string): Promise<any> {
     const pt = await prisma.pTMember.findFirst({
-      where: { id: ptMemberId, trainerId },
+      where: { 
+        trainerId,
+        OR: [
+          { id: ptMemberId },
+          { memberId: ptMemberId }
+        ]
+      },
       include: {
         member: { 
           include: { 

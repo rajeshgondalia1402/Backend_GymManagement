@@ -433,6 +433,43 @@ class GymOwnerController {
     }
   }
 
+  /**
+   * GET /gym-owner/trainers/:trainerId/pt-members
+   * Get all PT members assigned to a specific trainer
+   */
+  async getPTMembersByTrainerId(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { trainerId } = req.params;
+      const { page = 1, limit = 10, search, sortBy, sortOrder } = req.query as any;
+
+      const { ptMembers, total, trainer } = await gymOwnerService.getPTMembersByTrainerId(gymId, trainerId, {
+        page: Number(page),
+        limit: Number(limit),
+        search,
+        sortBy,
+        sortOrder,
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'PT Members retrieved successfully',
+        data: {
+          trainer,
+          items: ptMembers,
+          pagination: {
+            page: Number(page),
+            limit: Number(limit),
+            total,
+            totalPages: Math.ceil(total / Number(limit)),
+          },
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async createPTMember(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const gymId = this.getGymId(req);

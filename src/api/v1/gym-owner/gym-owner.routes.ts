@@ -288,6 +288,128 @@ router.delete('/trainers/:id', validate(idParamSchema, 'params'), gymOwnerContro
  */
 router.patch('/trainers/:id/toggle-status', validate(idParamSchema, 'params'), gymOwnerController.toggleTrainerStatus.bind(gymOwnerController));
 
+/**
+ * @swagger
+ * /api/v1/gym-owner/trainers/{trainerId}/pt-members:
+ *   get:
+ *     summary: Get all PT members assigned to a specific trainer
+ *     description: |
+ *       Returns a paginated list of PT members assigned to the specified trainer.
+ *       Supports search by member name, email, phone number, and member ID.
+ *     tags: [Gym Owner - Trainers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: trainerId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The trainer ID
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Items per page
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search by member name, email, phone, or member ID
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           default: createdAt
+ *         description: Field to sort by
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           default: desc
+ *         description: Sort order
+ *     responses:
+ *       200:
+ *         description: PT Members retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     trainer:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         name:
+ *                           type: string
+ *                     items:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           memberId:
+ *                             type: string
+ *                           memberMemberId:
+ *                             type: string
+ *                             description: Auto-generated member ID (e.g., "1413")
+ *                           memberName:
+ *                             type: string
+ *                           memberEmail:
+ *                             type: string
+ *                           memberPhone:
+ *                             type: string
+ *                           packageName:
+ *                             type: string
+ *                           startDate:
+ *                             type: string
+ *                             format: date-time
+ *                           endDate:
+ *                             type: string
+ *                             format: date-time
+ *                           goals:
+ *                             type: string
+ *                           notes:
+ *                             type: string
+ *                           isActive:
+ *                             type: boolean
+ *                           createdAt:
+ *                             type: string
+ *                             format: date-time
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         page:
+ *                           type: integer
+ *                         limit:
+ *                           type: integer
+ *                         total:
+ *                           type: integer
+ *                         totalPages:
+ *                           type: integer
+ *       404:
+ *         description: Trainer not found
+ */
+router.get('/trainers/:trainerId/pt-members', validate(paginationSchema, 'query'), gymOwnerController.getPTMembersByTrainerId.bind(gymOwnerController));
+
 
 // Members
 /**

@@ -20,6 +20,7 @@ import {
   GymOwnerDashboardStats,
   PaginationParams,
   PTMember,
+  TrainerPTMemberSummary,
   CreatePTMemberRequest,
   UpdatePTMemberRequest,
   Supplement,
@@ -179,7 +180,8 @@ class GymOwnerService {
         take: limit,
         orderBy: { [sortBy]: sortOrder },
         include: {
-          user: { select: { id: true, name: true, email: true, isActive: true } }
+          user: { select: { id: true, name: true, email: true, isActive: true } },
+          _count: { select: { ptMembers: true } }
         }
       }),
       prisma.trainer.count({ where }),
@@ -204,6 +206,7 @@ class GymOwnerService {
       isActive: t.isActive && t.user.isActive,
       gymId: t.gymId,
       createdAt: t.createdAt,
+      ptMemberCount: t._count.ptMembers,
     }));
 
     return { trainers, total };
@@ -1315,6 +1318,9 @@ class GymOwnerService {
     if (search) {
       where.OR = [
         { member: { user: { name: { contains: search, mode: 'insensitive' } } } },
+        { member: { user: { email: { contains: search, mode: 'insensitive' } } } },
+        { member: { phone: { contains: search, mode: 'insensitive' } } },
+        { member: { memberId: { contains: search, mode: 'insensitive' } } },
         { trainer: { user: { name: { contains: search, mode: 'insensitive' } } } },
         { packageName: { contains: search, mode: 'insensitive' } },
       ];
@@ -1337,8 +1343,10 @@ class GymOwnerService {
     const ptMembers: PTMember[] = ptMemberRecords.map((pt) => ({
       id: pt.id,
       memberId: pt.memberId,
+      memberMemberId: pt.member.memberId || undefined,
       memberName: pt.member.user.name,
       memberEmail: pt.member.user.email,
+      memberPhone: pt.member.phone || undefined,
       trainerId: pt.trainerId,
       trainerName: pt.trainer.user.name,
       packageName: pt.packageName,
@@ -1374,8 +1382,10 @@ class GymOwnerService {
     return {
       id: pt.id,
       memberId: pt.memberId,
+      memberMemberId: pt.member.memberId || undefined,
       memberName: pt.member.user.name,
       memberEmail: pt.member.user.email,
+      memberPhone: pt.member.phone || undefined,
       trainerId: pt.trainerId,
       trainerName: pt.trainer.user.name,
       packageName: pt.packageName,
@@ -1392,6 +1402,93 @@ class GymOwnerService {
       createdAt: pt.createdAt,
       createdBy: pt.createdBy || undefined,
       updatedBy: pt.updatedBy || undefined,
+    };
+  }
+
+  /**
+   * Get all PT members assigned to a specific trainer
+   * Search by member name, email, phone, or memberId
+   */
+  async getPTMembersByTrainerId(
+    gymId: string,
+    trainerId: string,
+    params: PaginationParams
+  ): Promise<{ ptMembers: TrainerPTMemberSummary[]; total: number; trainer: { id: string; name: string } }> {
+    const { page, limit, search, sortBy = 'createdAt', sortOrder = 'desc' } = params;
+    const skip = (page - 1) * limit;
+
+    // Verify trainer exists and belongs to gym
+    const trainer = await prisma.trainer.findFirst({
+      where: { id: trainerId, gymId },
+      include: { user: { select: { name: true } } },
+    });
+
+    if (!trainer) {
+      throw new NotFoundException('Trainer not found');
+    }
+
+    // Build where clause
+    const where: any = {
+      gymId,
+      trainerId,
+      isActive: true,
+    };
+
+    // Add search conditions if search term provided
+    if (search) {
+      where.OR = [
+        { member: { user: { name: { contains: search, mode: 'insensitive' } } } },
+        { member: { user: { email: { contains: search, mode: 'insensitive' } } } },
+        { member: { phone: { contains: search, mode: 'insensitive' } } },
+        { member: { memberId: { contains: search, mode: 'insensitive' } } },
+        { packageName: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [ptMemberRecords, total] = await Promise.all([
+      prisma.pTMember.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          member: {
+            include: {
+              user: { select: { name: true, email: true } },
+            },
+          },
+          trainer: { include: { user: { select: { name: true } } } },
+        },
+      }),
+      prisma.pTMember.count({ where }),
+    ]);
+
+    const ptMembers = ptMemberRecords.map((pt) => ({
+      id: pt.id,
+      memberId: pt.memberId,
+      memberMemberId: pt.member.memberId || undefined,
+      memberName: pt.member.user.name,
+      memberEmail: pt.member.user.email,
+      memberPhone: pt.member.phone || undefined,
+      trainerId: pt.trainerId,
+      trainerName: pt.trainer.user.name,
+      packageName: pt.packageName,
+      startDate: pt.startDate,
+      endDate: pt.endDate || undefined,
+      goals: pt.goals || undefined,
+      notes: pt.notes || undefined,
+      isActive: pt.isActive,
+      gymId: pt.gymId,
+      createdAt: pt.createdAt,
+    }));
+
+    return {
+      ptMembers,
+      total,
+      trainer: {
+        id: trainer.id,
+        name: trainer.user.name,
+      },
     };
   }
 

@@ -226,6 +226,10 @@ class AuthService {
   async changePassword(userId: string, data: ChangePasswordRequest): Promise<void> {
     const user = await prisma.user.findUnique({
       where: { id: userId },
+      include: {
+        trainerProfile: true,
+        memberProfile: true,
+      },
     });
 
     if (!user) {
@@ -238,10 +242,20 @@ class AuthService {
     }
 
     const hashedPassword = await bcrypt.hash(data.newPassword, 10);
+
+    // Update password in User table (hashed for authentication)
     await prisma.user.update({
       where: { id: userId },
       data: { password: hashedPassword },
     });
+
+    // If user is a trainer, also update plain text password in Trainer table (for display)
+    if (user.trainerProfile) {
+      await prisma.trainer.update({
+        where: { id: user.trainerProfile.id },
+        data: { password: data.newPassword },
+      });
+    }
 
     // Invalidate all refresh tokens
     await this.logoutAll(userId);

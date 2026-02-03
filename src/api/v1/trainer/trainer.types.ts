@@ -127,6 +127,40 @@ export interface TrainerProfile {
   createdAt: string;
 }
 
+export interface TrainerGymDetails {
+  id: string;
+  name: string;
+  logo?: string;
+  address1?: string;
+  address2?: string;
+  city?: string;
+  state?: string;
+  zipcode?: string;
+  mobileNo?: string;
+  phoneNo?: string;
+  email?: string;
+}
+
+export interface TrainerProfileDetails {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  specialization?: string;
+  experience?: number;
+  joiningDate?: string;
+  salary?: number;
+  trainerPhoto?: string;
+  idProofType?: string;
+  idProofDocument?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  gym: TrainerGymDetails;
+}
+
 // =============================================
 // Trainer Salary Settlement Types
 // =============================================
@@ -168,4 +202,43 @@ export interface SalarySettlementSummary {
   totalSettlements: number;
   totalEarnings: number;
   totalIncentives: number;
+}
+
+// =============================================
+// Trainer Dashboard Types
+// =============================================
+
+export interface PTMemberDietPlan {
+  id: string;
+  planName: string;
+  description?: string;
+  calories?: number;
+  meals: object;
+  startDate: string;
+  endDate?: string;
+  isActive: boolean;
+}
+
+export interface CurrentMonthPTMember {
+  id: string;
+  memberId: string;
+  memberName: string;
+  memberEmail: string;
+  memberPhone: string;
+  memberGender: string;
+  packageName: string;
+  startDate: string;
+  endDate?: string;
+  goals?: string;
+  notes?: string;
+  isActive: boolean;
+  createdAt: string;
+  dietPlan?: PTMemberDietPlan;
+}
+
+export interface TrainerDashboardStats {
+  totalSalary: number;
+  totalIncentive: number;
+  totalAssignedPTMembers: number;
+  currentMonthPTMembers: CurrentMonthPTMember[];
 }
