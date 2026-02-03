@@ -234,6 +234,20 @@ class AdminService {
       if (existingGym) throw new ConflictException('Gym with this email already exists');
     }
 
+    // Calculate subscription dates if a plan is assigned
+    let subscriptionStart: Date | undefined;
+    let subscriptionEnd: Date | undefined;
+    if (data.subscriptionPlanId) {
+      const plan = await prisma.gymSubscriptionPlan.findUnique({
+        where: { id: data.subscriptionPlanId },
+      });
+      if (plan) {
+        subscriptionStart = new Date();
+        subscriptionEnd = new Date();
+        subscriptionEnd.setDate(subscriptionEnd.getDate() + plan.durationDays);
+      }
+    }
+
     const gym = await prisma.gym.create({
       data: {
         name: data.name,
@@ -251,6 +265,8 @@ class AdminService {
         gymLogo: data.gymLogo,
         subscriptionPlanId: data.subscriptionPlanId,
         ownerId: data.ownerId,
+        subscriptionStart,
+        subscriptionEnd,
       },
       include: { subscriptionPlan: true },
     });
@@ -276,9 +292,23 @@ class AdminService {
     if (data.website !== undefined) updateData.website = data.website;
     if (data.note !== undefined) updateData.note = data.note;
     if (data.gymLogo !== undefined) updateData.gymLogo = data.gymLogo || null;
-    if (data.subscriptionPlanId !== undefined) updateData.subscriptionPlanId = data.subscriptionPlanId;
+    if (data.subscriptionPlanId !== undefined) {
+      updateData.subscriptionPlanId = data.subscriptionPlanId;
+
+      // When subscription plan changes, reset subscription dates
+      const plan = await prisma.gymSubscriptionPlan.findUnique({
+        where: { id: data.subscriptionPlanId },
+      });
+      if (plan) {
+        const now = new Date();
+        const endDate = new Date(now);
+        endDate.setDate(endDate.getDate() + plan.durationDays);
+        updateData.subscriptionStart = now;
+        updateData.subscriptionEnd = endDate;
+      }
+    }
     if (data.ownerId !== undefined) updateData.ownerId = data.ownerId;
-    
+
     const gym = await prisma.gym.update({
       where: { id },
       data: updateData,
