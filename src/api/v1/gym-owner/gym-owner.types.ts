@@ -19,6 +19,7 @@ export interface Trainer {
   createdAt: Date;
   createdBy?: string;
   updatedBy?: string;
+  ptMemberCount?: number;
 }
 
 export interface CreateTrainerRequest {
@@ -195,8 +196,10 @@ export interface UpdateMemberRequest {
 export interface PTMember {
   id: string;
   memberId: string;
+  memberMemberId?: string; // Auto-generated member ID (e.g., "1413")
   memberName: string;
   memberEmail: string;
+  memberPhone?: string;
   trainerId: string;
   trainerName: string;
   packageName: string;
@@ -213,6 +216,26 @@ export interface PTMember {
   createdAt: Date;
   createdBy?: string;
   updatedBy?: string;
+}
+
+// PT Member summary for trainer's assigned members (without session details)
+export interface TrainerPTMemberSummary {
+  id: string;
+  memberId: string;
+  memberMemberId?: string;
+  memberName: string;
+  memberEmail: string;
+  memberPhone?: string;
+  trainerId: string;
+  trainerName: string;
+  packageName: string;
+  startDate: Date;
+  endDate?: Date;
+  goals?: string;
+  notes?: string;
+  isActive: boolean;
+  gymId: string;
+  createdAt: Date;
 }
 
 export interface CreatePTMemberRequest {

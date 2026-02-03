@@ -27,6 +27,40 @@ export class TrainerController {
   }
 
   /**
+   * GET /trainer/profile/details
+   * Get trainer's complete profile details
+   */
+  async getProfileDetails(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user?.trainerId) {
+        throw new BadRequestException('Trainer profile not found');
+      }
+
+      const profileDetails = await trainerService.getProfileDetails(req.user.trainerId);
+      successResponse(res, profileDetails, 'Profile details retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /trainer/dashboard
+   * Get trainer dashboard stats
+   */
+  async getDashboard(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user?.trainerId) {
+        throw new BadRequestException('Trainer profile not found');
+      }
+
+      const stats = await trainerService.getDashboardStats(req.user.trainerId);
+      successResponse(res, stats, 'Dashboard stats retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * GET /trainer/members
    * Get all members assigned to this trainer
    */
