@@ -6388,6 +6388,91 @@ class GymOwnerService {
 
     return result;
   }
+
+  // =============================================
+  // Gym Subscription History (Gym Owner)
+  // =============================================
+
+  async getMySubscriptionHistory(gymId: string, params: PaginationParams) {
+    const { page = 1, limit = 10, sortBy = 'renewalDate', sortOrder = 'desc' } = params;
+    const skip = (page - 1) * limit;
+
+    const where: any = { gymId };
+
+    const [history, total] = await Promise.all([
+      prisma.gymSubscriptionHistory.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          subscriptionPlan: { select: { name: true, price: true, durationDays: true } },
+        },
+      }),
+      prisma.gymSubscriptionHistory.count({ where }),
+    ]);
+
+    return { history, total };
+  }
+
+  async getCurrentSubscription(gymId: string) {
+    const gym = await prisma.gym.findUnique({
+      where: { id: gymId },
+      include: {
+        subscriptionPlan: true,
+      },
+    });
+    if (!gym) throw new NotFoundException('Gym not found');
+
+    // Fetch the active history record
+    const activeHistory = await prisma.gymSubscriptionHistory.findFirst({
+      where: { gymId, isActive: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Calculate days remaining
+    let daysRemaining = 0;
+    let isExpired = true;
+    if (gym.subscriptionEnd) {
+      const now = new Date();
+      const diffTime = gym.subscriptionEnd.getTime() - now.getTime();
+      daysRemaining = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+      isExpired = daysRemaining <= 0;
+    }
+
+    return {
+      plan: gym.subscriptionPlan
+        ? {
+            id: gym.subscriptionPlan.id,
+            name: gym.subscriptionPlan.name,
+            description: gym.subscriptionPlan.description,
+            price: Number(gym.subscriptionPlan.price),
+            currency: gym.subscriptionPlan.priceCurrency,
+            durationDays: gym.subscriptionPlan.durationDays,
+            features: gym.subscriptionPlan.features || '',
+          }
+        : null,
+      subscriptionStart: gym.subscriptionStart,
+      subscriptionEnd: gym.subscriptionEnd,
+      daysRemaining,
+      isExpired,
+      subscriptionHistory: activeHistory
+        ? {
+            id: activeHistory.id,
+            subscriptionNumber: activeHistory.subscriptionNumber,
+            renewalType: activeHistory.renewalType,
+            renewalDate: activeHistory.renewalDate,
+            planAmount: activeHistory.planAmount ? Number(activeHistory.planAmount) : null,
+            extraDiscount: activeHistory.extraDiscount ? Number(activeHistory.extraDiscount) : null,
+            amount: Number(activeHistory.amount),
+            paymentStatus: activeHistory.paymentStatus,
+            paymentMode: activeHistory.paymentMode,
+            paidAmount: activeHistory.paidAmount ? Number(activeHistory.paidAmount) : null,
+            pendingAmount: activeHistory.pendingAmount ? Number(activeHistory.pendingAmount) : null,
+          }
+        : null,
+    };
+  }
 }
 
 export default new GymOwnerService();

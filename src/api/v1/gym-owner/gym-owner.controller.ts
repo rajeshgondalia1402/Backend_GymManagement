@@ -1609,6 +1609,36 @@ class GymOwnerController {
       next(error);
     }
   }
+
+  // =============================================
+  // Gym Subscription History Methods
+  // =============================================
+
+  async getMySubscriptionHistory(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { page = 1, limit = 10, sortBy, sortOrder } = req.query as any;
+      const { history, total } = await gymOwnerService.getMySubscriptionHistory(gymId, {
+        page: Number(page),
+        limit: Number(limit),
+        sortBy,
+        sortOrder,
+      });
+      paginatedResponse(res, history, Number(page), Number(limit), total, 'Subscription history retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getCurrentSubscription(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const subscription = await gymOwnerService.getCurrentSubscription(gymId);
+      successResponse(res, subscription, 'Current subscription retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new GymOwnerController();

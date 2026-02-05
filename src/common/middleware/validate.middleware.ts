@@ -938,6 +938,58 @@ export const salarySettlementPaginationSchema = z.object({
   toDate: z.string().optional(),
 });
 
+// Gym Subscription Renewal validation schemas
+export const renewGymSubscriptionSchema = z.object({
+  subscriptionPlanId: z.string().uuid('Invalid subscription plan ID'),
+  subscriptionStart: z.string().optional(),
+  paymentMode: z.string().optional(),
+  paidAmount: z.union([z.number().min(0, 'Paid amount must be non-negative'), z.string().transform(val => parseFloat(val))]).optional(),
+  notes: z.string().optional(),
+});
+
+export const gymSubscriptionHistoryQuerySchema = z.object({
+  page: z.string().optional().transform((val) => parseInt(val || '1', 10)),
+  limit: z.string().optional().transform((val) => parseInt(val || '10', 10)),
+  search: z.string().optional(),
+  sortBy: z.string().optional().default('renewalDate'),
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+  paymentStatus: z.enum(['PAID', 'PENDING', 'PARTIAL']).optional(),
+  renewalType: z.enum(['NEW', 'RENEWAL', 'UPGRADE', 'DOWNGRADE']).optional(),
+});
+
+// Gym Inquiry validation schemas
+export const createGymInquirySchema = z.object({
+  gymName: z.string().min(2, 'Gym name must be at least 2 characters'),
+  address1: z.string().optional(),
+  address2: z.string().optional(),
+  state: z.string().optional(),
+  city: z.string().optional(),
+  mobileNo: z.string().regex(/^\d+$/, 'Only numbers allowed').min(10).max(15),
+  email: z.string().email('Invalid email').optional().or(z.literal('')),
+  subscriptionPlanId: z.string().uuid('Invalid subscription plan ID'),
+  note: z.string().optional(),
+  sellerName: z.string().optional(),
+  sellerMobileNo: z.string().regex(/^\d+$/, 'Only numbers').min(10).max(15).optional().or(z.literal('')),
+  nextFollowupDate: z.string().optional(),
+});
+
+export const updateGymInquirySchema = createGymInquirySchema.partial();
+
+export const createGymInquiryFollowupSchema = z.object({
+  followupDate: z.string().optional(),
+  note: z.string().optional(),
+});
+
+export const gymInquiryPaginationSchema = z.object({
+  page: z.string().optional().transform((val) => parseInt(val || '1', 10)),
+  limit: z.string().optional().transform((val) => parseInt(val || '10', 10)),
+  search: z.string().optional(),
+  sortBy: z.string().optional().default('createdAt'),
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+  subscriptionPlanId: z.string().uuid().optional(),
+  isActive: z.string().optional().transform((val) => val === 'true' ? true : val === 'false' ? false : undefined),
+});
+
 // Validation middleware factory
 export const validate = (schema: ZodSchema, source: 'body' | 'query' | 'params' = 'body') => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {

@@ -52,7 +52,9 @@ model GymSubscriptionPlan {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   priceCurrency String   @default("INR")
-  gyms          Gym[]
+  gyms                Gym[]
+  subscriptionHistory GymSubscriptionHistory[]
+  gymInquiries        GymInquiry[]
 
   @@index([isActive])
   @@index([priceCurrency])
@@ -99,6 +101,7 @@ model Gym {
   dietTemplates      DietTemplate[]
   memberDiets        MemberDiet[]
   salarySettlements  TrainerSalarySettlement[]
+  subscriptionHistory GymSubscriptionHistory[]
 
   @@index([ownerId])
   @@index([city])
@@ -746,6 +749,51 @@ enum PaymentMode {
   NET_BANKING
   OTHER
 }
+
+enum GymSubscriptionRenewalType {
+  NEW
+  RENEWAL
+  UPGRADE
+  DOWNGRADE
+}
+
+model GymSubscriptionHistory {
+  id                      String                      @id @default(uuid())
+  subscriptionNumber      String                      // Auto-generated: GSUB-00001
+  gymId                   String
+  subscriptionPlanId      String
+  subscriptionStart       DateTime
+  subscriptionEnd         DateTime
+  renewalDate             DateTime                    @default(now())
+  previousPlanId          String?
+  previousPlanName        String?
+  previousSubscriptionEnd DateTime?
+  renewalType             GymSubscriptionRenewalType  @default(NEW)
+  planAmount              Decimal?                    @db.Decimal(10, 2)
+  extraDiscount           Decimal?                    @db.Decimal(10, 2)
+  amount                  Decimal                     @db.Decimal(10, 2)
+  paymentMode             String?
+  paymentStatus           PaymentStatus               @default(PAID)
+  paidAmount              Decimal?                    @db.Decimal(10, 2)
+  pendingAmount           Decimal?                    @db.Decimal(10, 2)
+  isActive                Boolean                     @default(true)
+  notes                   String?
+  createdBy               String?
+  updatedBy               String?
+  createdAt               DateTime                    @default(now())
+  updatedAt               DateTime                    @updatedAt
+
+  gym                     Gym                         @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  subscriptionPlan        GymSubscriptionPlan         @relation(fields: [subscriptionPlanId], references: [id])
+
+  @@index([gymId])
+  @@index([subscriptionPlanId])
+  @@index([isActive])
+  @@index([subscriptionNumber])
+  @@index([renewalDate])
+  @@index([paymentStatus])
+  @@map("gymsubscriptionhistory")
+}
 // ============================================
 // Diet Template & Member Diet Models
 // ============================================
@@ -891,4 +939,48 @@ model TrainerSalarySettlement {
   @@index([salaryMonth])
   @@index([createdAt])
   @@index([paymentMode])
+}
+
+model GymInquiry {
+  id                  String               @id @default(uuid())
+  gymName             String
+  address1            String?
+  address2            String?
+  state               String?
+  city                String?
+  mobileNo            String
+  email               String?
+  subscriptionPlanId  String
+  note                String?
+  sellerName          String?
+  sellerMobileNo      String?
+  nextFollowupDate    DateTime?
+  isActive            Boolean              @default(true)
+  createdBy           String?
+  updatedBy           String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  subscriptionPlan    GymSubscriptionPlan  @relation(fields: [subscriptionPlanId], references: [id])
+  followups           GymInquiryFollowup[]
+
+  @@map("gyminquiry")
+  @@index([isActive])
+  @@index([subscriptionPlanId])
+  @@index([nextFollowupDate])
+}
+
+model GymInquiryFollowup {
+  id            String      @id @default(uuid())
+  gymInquiryId  String
+  followupDate  DateTime    @default(now())
+  note          String?
+  createdBy     String?
+  createdAt     DateTime    @default(now())
+
+  gymInquiry    GymInquiry  @relation(fields: [gymInquiryId], references: [id], onDelete: Cascade)
+
+  @@map("gyminquiryfollowup")
+  @@index([gymInquiryId])
+  @@index([followupDate])
 }

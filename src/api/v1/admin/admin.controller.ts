@@ -397,6 +397,116 @@ class AdminController {
       next(error);
     }
   }
+
+  // Gym Subscription History
+  async renewGymSubscription(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const record = await adminService.renewGymSubscription(req.params.gymId, req.body, req.user?.id);
+      successResponse(res, record, 'Gym subscription renewed successfully', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getGymSubscriptionHistory(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { page = 1, limit = 10, search, sortBy, sortOrder, paymentStatus, renewalType } = req.query as any;
+      const { history, total } = await adminService.getGymSubscriptionHistory(req.params.gymId, {
+        page: Number(page),
+        limit: Number(limit),
+        search,
+        sortBy,
+        sortOrder,
+        paymentStatus,
+        renewalType,
+      });
+      paginatedResponse(res, history, Number(page), Number(limit), total, 'Gym subscription history retrieved');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getGymSubscriptionHistoryById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const record = await adminService.getGymSubscriptionHistoryById(req.params.id);
+      successResponse(res, record, 'Subscription history record retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Gym Inquiry
+  async getGymInquiries(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { page = 1, limit = 10, search, sortBy, sortOrder, subscriptionPlanId, isActive } = req.query as any;
+      const { inquiries, total } = await adminService.getGymInquiries({
+        page: Number(page),
+        limit: Number(limit),
+        search,
+        sortBy,
+        sortOrder,
+        subscriptionPlanId,
+        isActive,
+      });
+      paginatedResponse(res, inquiries, Number(page), Number(limit), total, 'Gym inquiries retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getGymInquiryById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const inquiry = await adminService.getGymInquiryById(req.params.id);
+      successResponse(res, inquiry, 'Gym inquiry retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createGymInquiry(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const inquiry = await adminService.createGymInquiry(req.body, req.user?.id);
+      successResponse(res, inquiry, 'Gym inquiry created successfully', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateGymInquiry(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const inquiry = await adminService.updateGymInquiry(req.params.id, req.body, req.user?.id);
+      successResponse(res, inquiry, 'Gym inquiry updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async toggleGymInquiryStatus(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const inquiry = await adminService.toggleGymInquiryStatus(req.params.id);
+      successResponse(res, inquiry, 'Gym inquiry status updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getGymInquiryFollowups(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const followups = await adminService.getGymInquiryFollowups(req.params.id);
+      successResponse(res, followups, 'Gym inquiry followups retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createGymInquiryFollowup(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const followup = await adminService.createGymInquiryFollowup(req.params.id, req.body, req.user?.id);
+      successResponse(res, followup, 'Gym inquiry followup created successfully', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new AdminController();
