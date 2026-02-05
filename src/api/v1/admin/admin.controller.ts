@@ -251,6 +251,15 @@ class AdminController {
     }
   }
 
+  async resetGymOwnerPassword(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await adminService.resetGymOwnerPassword(req.params.id);
+      successResponse(res, result, 'Gym owner password reset successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async toggleUserStatus(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await adminService.toggleUserStatus(req.params.id);
@@ -292,6 +301,15 @@ class AdminController {
     try {
       const occupation = await adminService.updateOccupation(req.params.id, req.body);
       successResponse(res, occupation, 'Occupation updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getOccupationUsage(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const usage = await adminService.getOccupationUsage(req.params.id);
+      successResponse(res, usage, 'Occupation usage retrieved successfully');
     } catch (error) {
       next(error);
     }
@@ -343,6 +361,15 @@ class AdminController {
     }
   }
 
+  async getEnquiryTypeUsage(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const usage = await adminService.getEnquiryTypeUsage(req.params.id);
+      successResponse(res, usage, 'Enquiry type usage retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async deleteEnquiryType(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const enquiryType = await adminService.deleteEnquiryType(req.params.id);
@@ -384,6 +411,15 @@ class AdminController {
     try {
       const paymentType = await adminService.updatePaymentType(req.params.id, req.body);
       successResponse(res, paymentType, 'Payment type updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getPaymentTypeUsage(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const usage = await adminService.getPaymentTypeUsage(req.params.id);
+      successResponse(res, usage, 'Payment type usage retrieved successfully');
     } catch (error) {
       next(error);
     }

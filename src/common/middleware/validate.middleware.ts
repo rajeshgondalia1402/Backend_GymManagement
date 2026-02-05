@@ -239,6 +239,7 @@ export const updateGymOwnerSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters').optional(),
   lastName: z.string().min(2, 'Last name must be at least 2 characters').optional(),
   email: z.string().email('Invalid email format').optional(),
+  password: z.string().min(6, 'Password must be at least 6 characters').optional(),
   phone: z.string().min(10, 'Phone must be at least 10 characters').optional(),
   isActive: z.boolean().optional(),
 });
@@ -971,6 +972,8 @@ export const createGymInquirySchema = z.object({
   sellerName: z.string().optional(),
   sellerMobileNo: z.string().regex(/^\d+$/, 'Only numbers').min(10).max(15).optional().or(z.literal('')),
   nextFollowupDate: z.string().optional(),
+  memberSize: z.number().int().positive().optional(),
+  enquiryTypeId: z.string().uuid('Invalid enquiry type ID'),
 });
 
 export const updateGymInquirySchema = createGymInquirySchema.partial();

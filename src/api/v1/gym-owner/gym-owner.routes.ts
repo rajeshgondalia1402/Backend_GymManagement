@@ -270,6 +270,53 @@ router.delete('/trainers/:id', validate(idParamSchema, 'params'), gymOwnerContro
 
 /**
  * @swagger
+ * /api/v1/gym-owner/trainers/{id}/reset-password:
+ *   post:
+ *     summary: Reset trainer password
+ *     description: |
+ *       Generates a new temporary password for the trainer.
+ *       The gym owner should securely share this password with the trainer.
+ *       The trainer should change this password on their next login.
+ *     tags: [Gym Owner - Trainers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Trainer ID
+ *     responses:
+ *       200:
+ *         description: Password reset successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     trainerId:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     temporaryPassword:
+ *                       type: string
+ *                       description: The new temporary password - share securely with trainer
+ *                     message:
+ *                       type: string
+ *       404:
+ *         description: Trainer not found
+ */
+router.post('/trainers/:id/reset-password', validate(idParamSchema, 'params'), gymOwnerController.resetTrainerPassword.bind(gymOwnerController));
+
+/**
+ * @swagger
  * /api/v1/gym-owner/trainers/{id}/toggle-status:
  *   patch:
  *     summary: Toggle trainer active status (activate/deactivate)
