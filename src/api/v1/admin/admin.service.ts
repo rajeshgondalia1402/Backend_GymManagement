@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { prisma } from '../../../config/database';
 import { NotFoundException, ConflictException } from '../../../common/exceptions';
+import { maskPassword, generateTempPassword } from '../../../common/utils';
 import {
   SubscriptionPlan,
   CreateSubscriptionPlanRequest,
@@ -298,6 +299,7 @@ class AdminService {
           email: data.email,
           gstRegNo: data.gstRegNo,
           website: data.website,
+          memberSize: data.memberSize,
           note: data.note,
           gymLogo: data.gymLogo,
           subscriptionPlanId: data.subscriptionPlanId,
@@ -363,6 +365,7 @@ class AdminService {
     if (data.email !== undefined) updateData.email = data.email;
     if (data.gstRegNo !== undefined) updateData.gstRegNo = data.gstRegNo;
     if (data.website !== undefined) updateData.website = data.website;
+    if (data.memberSize !== undefined) updateData.memberSize = data.memberSize;
     if (data.note !== undefined) updateData.note = data.note;
     if (data.gymLogo !== undefined) updateData.gymLogo = data.gymLogo || null;
 
@@ -552,7 +555,7 @@ class AdminService {
         skip,
         take: limit,
         orderBy: { [sortBy]: sortOrder },
-        include: { ownedGym: { select: { id: true, name: true } } },
+        include: { ownedGym: { select: { id: true, name: true, ownerPassword: true } } },
       }),
       prisma.user.count({ where }),
     ]);
@@ -563,6 +566,7 @@ class AdminService {
       firstName: u.name.split(' ')[0] || u.name,
       lastName: u.name.split(' ').slice(1).join(' ') || '',
       phone: undefined,
+      passwordHint: maskPassword(u.ownedGym?.ownerPassword),
       isActive: u.isActive,
       gymId: u.ownedGym?.id || '',
       gymName: u.ownedGym?.name || '',
@@ -600,6 +604,7 @@ class AdminService {
       firstName: data.firstName || nameParts[0] || fullName,
       lastName: data.lastName || nameParts.slice(1).join(' ') || '',
       phone: data.phone,
+      passwordHint: maskPassword(data.password),
       isActive: user.isActive,
       gymId: undefined,
       createdAt: user.createdAt,
@@ -612,7 +617,7 @@ class AdminService {
 
     const user = await prisma.user.findUnique({
       where: { id },
-      include: { ownedGym: true },
+      include: { ownedGym: { select: { id: true, name: true, ownerPassword: true } } },
     });
 
     if (!user) throw new NotFoundException('Gym owner not found');
@@ -625,6 +630,7 @@ class AdminService {
       firstName: nameParts[0] || user.name,
       lastName: nameParts.slice(1).join(' ') || '',
       phone: undefined,
+      passwordHint: maskPassword(user.ownedGym?.ownerPassword),
       isActive: user.isActive,
       gymId: user.ownedGym?.id || '',
       gymName: user.ownedGym?.name || '',
@@ -638,7 +644,7 @@ class AdminService {
 
     const user = await prisma.user.findUnique({
       where: { id },
-      include: { ownedGym: true },
+      include: { ownedGym: { select: { id: true, name: true, ownerPassword: true } } },
     });
 
     if (!user) throw new NotFoundException('Gym owner not found');
@@ -661,27 +667,51 @@ class AdminService {
       fullName = `${firstName} ${lastName}`.trim();
     }
 
-    const updatedUser = await prisma.user.update({
-      where: { id },
-      data: {
-        name: fullName,
-        email: data.email || user.email,
-        isActive: data.isActive !== undefined ? data.isActive : user.isActive,
-      },
-      include: { ownedGym: true },
+    // Handle password update
+    let hashedPassword: string | undefined;
+    if (data.password) {
+      hashedPassword = await bcrypt.hash(data.password, 10);
+    }
+
+    // Use transaction to update both User and Gym (for ownerPassword)
+    const result = await prisma.$transaction(async (tx) => {
+      const updatedUser = await tx.user.update({
+        where: { id },
+        data: {
+          name: fullName,
+          email: data.email || user.email,
+          isActive: data.isActive !== undefined ? data.isActive : user.isActive,
+          ...(hashedPassword && { password: hashedPassword }),
+        },
+        include: { ownedGym: { select: { id: true, name: true, ownerPassword: true } } },
+      });
+
+      // If password is being updated and user has a gym, update ownerPassword in Gym table
+      if (data.password && updatedUser.ownedGym) {
+        await tx.gym.update({
+          where: { id: updatedUser.ownedGym.id },
+          data: { ownerPassword: data.password },
+        });
+      }
+
+      return {
+        user: updatedUser,
+        newPassword: data.password,
+      };
     });
 
-    const nameParts = updatedUser.name.split(' ');
+    const nameParts = result.user.name.split(' ');
     return {
-      id: updatedUser.id,
-      email: updatedUser.email,
-      firstName: nameParts[0] || updatedUser.name,
+      id: result.user.id,
+      email: result.user.email,
+      firstName: nameParts[0] || result.user.name,
       lastName: nameParts.slice(1).join(' ') || '',
       phone: data.phone,
-      isActive: updatedUser.isActive,
-      gymId: updatedUser.ownedGym?.id || '',
-      gymName: updatedUser.ownedGym?.name || '',
-      createdAt: updatedUser.createdAt,
+      passwordHint: maskPassword(result.newPassword || result.user.ownedGym?.ownerPassword),
+      isActive: result.user.isActive,
+      gymId: result.user.ownedGym?.id || '',
+      gymName: result.user.ownedGym?.name || '',
+      createdAt: result.user.createdAt,
     };
   }
 
@@ -706,6 +736,51 @@ class AdminService {
     }
 
     await prisma.user.delete({ where: { id } });
+  }
+
+  /**
+   * Reset gym owner password - generates a new temporary password
+   * The gym owner should change this password on their next login
+   */
+  async resetGymOwnerPassword(id: string): Promise<{ ownerId: string; email: string; temporaryPassword: string; message: string }> {
+    const gymOwnerRole = await prisma.rolemaster.findFirst({ where: { rolename: 'GYM_OWNER' } });
+    if (!gymOwnerRole) throw new NotFoundException('GYM_OWNER role not found');
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      include: { ownedGym: true },
+    });
+
+    if (!user) throw new NotFoundException('Gym owner not found');
+    if (user.roleId !== gymOwnerRole.Id) throw new NotFoundException('User is not a gym owner');
+
+    // Generate a temporary password
+    const temporaryPassword = generateTempPassword(12);
+    const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
+
+    // Update both User table (hashed) and Gym table (plain for hint)
+    await prisma.$transaction(async (tx) => {
+      // Update hashed password in User table for authentication
+      await tx.user.update({
+        where: { id },
+        data: { password: hashedPassword },
+      });
+
+      // If user has a gym, update plain text password in Gym table for password hint display
+      if (user.ownedGym) {
+        await tx.gym.update({
+          where: { id: user.ownedGym.id },
+          data: { ownerPassword: temporaryPassword },
+        });
+      }
+    });
+
+    return {
+      ownerId: user.id,
+      email: user.email,
+      temporaryPassword,
+      message: 'Password has been reset. Please share this temporary password securely with the gym owner. They should change it on their next login.',
+    };
   }
 
   async toggleUserStatus(id: string): Promise<{ isActive: boolean }> {
@@ -784,16 +859,43 @@ class AdminService {
     return occupation;
   }
 
-  async deleteOccupation(id: string): Promise<Occupation> {
-    // Soft delete - set isActive to false
-    await this.getOccupationById(id);
+  async getOccupationUsage(id: string): Promise<{ usageCount: number; canDelete: boolean }> {
+    // Check if occupation exists
+    const occupation = await this.getOccupationById(id);
 
-    const occupation = await prisma.occupationMaster.update({
+    // Check if occupation name is used in any member records
+    const usageCount = await prisma.member.count({
+      where: { occupation: occupation.occupationName },
+    });
+
+    return {
+      usageCount,
+      canDelete: usageCount === 0,
+    };
+  }
+
+  async deleteOccupation(id: string): Promise<Occupation> {
+    // Check if occupation exists
+    const occupation = await this.getOccupationById(id);
+
+    // Check if occupation name is used in any member records
+    const usageCount = await prisma.member.count({
+      where: { occupation: occupation.occupationName },
+    });
+
+    if (usageCount > 0) {
+      throw new ConflictException(
+        `Cannot delete this occupation. It is currently used by ${usageCount} member(s). Please update those members first.`
+      );
+    }
+
+    // Soft delete - set isActive to false
+    const updatedOccupation = await prisma.occupationMaster.update({
       where: { id },
       data: { isActive: false },
     });
 
-    return occupation;
+    return updatedOccupation;
   }
 
   // Enquiry Type Master CRUD
@@ -858,10 +960,37 @@ class AdminService {
     return enquiryType;
   }
 
-  async deleteEnquiryType(id: string): Promise<EnquiryType> {
-    // Soft delete - set isActive to false
+  async getEnquiryTypeUsage(id: string): Promise<{ usageCount: number; canDelete: boolean }> {
+    // Check if enquiry type exists
     await this.getEnquiryTypeById(id);
 
+    // Check if enquiry type is used in any gym inquiries
+    const usageCount = await prisma.gymInquiry.count({
+      where: { enquiryTypeId: id },
+    });
+
+    return {
+      usageCount,
+      canDelete: usageCount === 0,
+    };
+  }
+
+  async deleteEnquiryType(id: string): Promise<EnquiryType> {
+    // Check if enquiry type exists
+    await this.getEnquiryTypeById(id);
+
+    // Check if enquiry type is used in any gym inquiries
+    const usageCount = await prisma.gymInquiry.count({
+      where: { enquiryTypeId: id },
+    });
+
+    if (usageCount > 0) {
+      throw new ConflictException(
+        `Cannot delete this enquiry type. It is currently used in ${usageCount} gym inquiry record(s). Please reassign or remove those inquiries first.`
+      );
+    }
+
+    // Soft delete - set isActive to false
     const enquiryType = await prisma.enquiryTypeMaster.update({
       where: { id },
       data: { isActive: false },
@@ -934,16 +1063,64 @@ class AdminService {
     return paymentType;
   }
 
-  async deletePaymentType(id: string): Promise<PaymentType> {
-    // Soft delete - set isActive to false
-    await this.getPaymentTypeById(id);
+  async getPaymentTypeUsage(id: string): Promise<{ usageCount: number; canDelete: boolean; details: { subscriptions: number; settlements: number; expenses: number } }> {
+    // Check if payment type exists
+    const paymentType = await this.getPaymentTypeById(id);
 
-    const paymentType = await prisma.paymentTypeMaster.update({
+    // Check usage across different tables that use payment type name
+    const [subscriptionCount, settlementCount, expenseCount] = await Promise.all([
+      // Check gym subscription history
+      prisma.gymSubscriptionHistory.count({
+        where: { paymentMode: paymentType.paymentTypeName },
+      }),
+      // Check trainer salary settlements (uses PaymentMode enum, but we check string match)
+      prisma.trainerSalarySettlement.count({
+        where: { paymentMode: paymentType.paymentTypeName as any },
+      }),
+      // Check expense master
+      prisma.expenseMaster.count({
+        where: { paymentMode: paymentType.paymentTypeName as any },
+      }),
+    ]);
+
+    const usageCount = subscriptionCount + settlementCount + expenseCount;
+
+    return {
+      usageCount,
+      canDelete: usageCount === 0,
+      details: {
+        subscriptions: subscriptionCount,
+        settlements: settlementCount,
+        expenses: expenseCount,
+      },
+    };
+  }
+
+  async deletePaymentType(id: string): Promise<PaymentType> {
+    // Check if payment type exists
+    const paymentType = await this.getPaymentTypeById(id);
+
+    // Check usage
+    const usage = await this.getPaymentTypeUsage(id);
+
+    if (!usage.canDelete) {
+      const usageDetails: string[] = [];
+      if (usage.details.subscriptions > 0) usageDetails.push(`${usage.details.subscriptions} subscription(s)`);
+      if (usage.details.settlements > 0) usageDetails.push(`${usage.details.settlements} salary settlement(s)`);
+      if (usage.details.expenses > 0) usageDetails.push(`${usage.details.expenses} expense(s)`);
+
+      throw new ConflictException(
+        `Cannot delete this payment type. It is currently used in ${usageDetails.join(', ')}. Please update those records first.`
+      );
+    }
+
+    // Soft delete - set isActive to false
+    const updatedPaymentType = await prisma.paymentTypeMaster.update({
       where: { id },
       data: { isActive: false },
     });
 
-    return paymentType;
+    return updatedPaymentType;
   }
 
   // =============================================
@@ -1226,6 +1403,7 @@ class AdminService {
         orderBy: { [sortBy]: sortOrder },
         include: {
           subscriptionPlan: { select: { id: true, name: true, price: true, durationDays: true } },
+          enquiryType: { select: { id: true, name: true } },
           _count: { select: { followups: true } },
         },
       }),
@@ -1240,6 +1418,7 @@ class AdminService {
       where: { id },
       include: {
         subscriptionPlan: { select: { id: true, name: true, price: true, durationDays: true } },
+        enquiryType: { select: { id: true, name: true } },
         followups: { orderBy: { followupDate: 'desc' } },
         _count: { select: { followups: true } },
       },
@@ -1252,6 +1431,10 @@ class AdminService {
     // Verify subscription plan exists
     const plan = await prisma.gymSubscriptionPlan.findUnique({ where: { id: data.subscriptionPlanId } });
     if (!plan) throw new NotFoundException('Subscription plan not found');
+
+    // Verify enquiry type exists
+    const enquiryType = await prisma.enquiryTypeMaster.findUnique({ where: { id: data.enquiryTypeId } });
+    if (!enquiryType) throw new NotFoundException('Enquiry type not found');
 
     const inquiry = await prisma.gymInquiry.create({
       data: {
@@ -1267,10 +1450,13 @@ class AdminService {
         sellerName: data.sellerName,
         sellerMobileNo: data.sellerMobileNo || null,
         nextFollowupDate: data.nextFollowupDate ? new Date(data.nextFollowupDate) : null,
+        memberSize: data.memberSize || null,
+        enquiryTypeId: data.enquiryTypeId,
         createdBy,
       },
       include: {
         subscriptionPlan: { select: { id: true, name: true, price: true, durationDays: true } },
+        enquiryType: { select: { id: true, name: true } },
         _count: { select: { followups: true } },
       },
     });
@@ -1288,6 +1474,12 @@ class AdminService {
       if (!plan) throw new NotFoundException('Subscription plan not found');
     }
 
+    // Verify enquiry type if changing
+    if (data.enquiryTypeId) {
+      const enquiryType = await prisma.enquiryTypeMaster.findUnique({ where: { id: data.enquiryTypeId } });
+      if (!enquiryType) throw new NotFoundException('Enquiry type not found');
+    }
+
     const updateData: any = { updatedBy };
     if (data.gymName !== undefined) updateData.gymName = data.gymName;
     if (data.address1 !== undefined) updateData.address1 = data.address1;
@@ -1301,12 +1493,15 @@ class AdminService {
     if (data.sellerName !== undefined) updateData.sellerName = data.sellerName;
     if (data.sellerMobileNo !== undefined) updateData.sellerMobileNo = data.sellerMobileNo || null;
     if (data.nextFollowupDate !== undefined) updateData.nextFollowupDate = data.nextFollowupDate ? new Date(data.nextFollowupDate) : null;
+    if (data.memberSize !== undefined) updateData.memberSize = data.memberSize || null;
+    if (data.enquiryTypeId !== undefined) updateData.enquiryTypeId = data.enquiryTypeId;
 
     const inquiry = await prisma.gymInquiry.update({
       where: { id },
       data: updateData,
       include: {
         subscriptionPlan: { select: { id: true, name: true, price: true, durationDays: true } },
+        enquiryType: { select: { id: true, name: true } },
         _count: { select: { followups: true } },
       },
     });
@@ -1323,6 +1518,7 @@ class AdminService {
       data: { isActive: !existing.isActive },
       include: {
         subscriptionPlan: { select: { id: true, name: true, price: true, durationDays: true } },
+        enquiryType: { select: { id: true, name: true } },
         _count: { select: { followups: true } },
       },
     });

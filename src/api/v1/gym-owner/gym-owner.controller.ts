@@ -107,6 +107,16 @@ class GymOwnerController {
     }
   }
 
+  async resetTrainerPassword(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const result = await gymOwnerService.resetTrainerPassword(gymId, req.params.id);
+      successResponse(res, result, 'Trainer password reset successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
 
   // Members
   async getMembers(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {

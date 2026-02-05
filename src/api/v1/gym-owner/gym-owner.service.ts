@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { prisma } from '../../../config/database';
 import { NotFoundException, ConflictException, ForbiddenException, BadRequestException } from '../../../common/exceptions';
+import { maskPassword, generateTempPassword } from '../../../common/utils';
 import {
   Trainer,
   CreateTrainerRequest,
@@ -199,7 +200,7 @@ class GymOwnerService {
       dateOfBirth: t.dateOfBirth || undefined,
       joiningDate: t.joiningDate || undefined,
       salary: t.salary ? Number(t.salary) : undefined,
-      password: t.password || undefined,
+      passwordHint: maskPassword(t.password),
       trainerPhoto: t.trainerPhoto || undefined,
       idProofType: t.idProofType || undefined,
       idProofDocument: t.idProofDocument || undefined,
@@ -235,7 +236,7 @@ class GymOwnerService {
       dateOfBirth: trainer.dateOfBirth || undefined,
       joiningDate: trainer.joiningDate || undefined,
       salary: trainer.salary ? Number(trainer.salary) : undefined,
-      password: trainer.password || undefined,
+      passwordHint: maskPassword(trainer.password),
       trainerPhoto: trainer.trainerPhoto || undefined,
       idProofType: trainer.idProofType || undefined,
       idProofDocument: trainer.idProofDocument || undefined,
@@ -304,7 +305,7 @@ class GymOwnerService {
       dateOfBirth: result.dateOfBirth || undefined,
       joiningDate: result.joiningDate || undefined,
       salary: result.salary ? Number(result.salary) : undefined,
-      password: result.password || undefined,
+      passwordHint: maskPassword(result.password),
       trainerPhoto: result.trainerPhoto || undefined,
       idProofType: result.idProofType || undefined,
       idProofDocument: result.idProofDocument || undefined,
@@ -383,7 +384,7 @@ class GymOwnerService {
       dateOfBirth: result.dateOfBirth || undefined,
       joiningDate: result.joiningDate || undefined,
       salary: result.salary ? Number(result.salary) : undefined,
-      password: result.password || undefined,
+      passwordHint: maskPassword(result.password),
       trainerPhoto: result.trainerPhoto || undefined,
       idProofType: result.idProofType || undefined,
       idProofDocument: result.idProofDocument || undefined,
@@ -404,6 +405,45 @@ class GymOwnerService {
       where: { id: trainerId },
       data: { isActive: false }
     });
+  }
+
+  /**
+   * Reset trainer password - generates a new temporary password
+   * The trainer should change this password on their next login
+   */
+  async resetTrainerPassword(gymId: string, trainerId: string): Promise<{ trainerId: string; email: string; temporaryPassword: string; message: string }> {
+    const trainer = await prisma.trainer.findFirst({
+      where: { id: trainerId, gymId },
+      include: { user: true }
+    });
+
+    if (!trainer) throw new NotFoundException('Trainer not found');
+
+    // Generate a temporary password
+    const temporaryPassword = generateTempPassword(12);
+    const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
+
+    // Update both the User table (hashed) and Trainer table (plain for hint)
+    await prisma.$transaction(async (tx) => {
+      // Update hashed password in User table for authentication
+      await tx.user.update({
+        where: { id: trainer.userId },
+        data: { password: hashedPassword }
+      });
+
+      // Update plain text password in Trainer table for password hint display
+      await tx.trainer.update({
+        where: { id: trainerId },
+        data: { password: temporaryPassword }
+      });
+    });
+
+    return {
+      trainerId: trainer.id,
+      email: trainer.user.email,
+      temporaryPassword,
+      message: 'Password has been reset. Please share this temporary password securely with the trainer. They should change it on their next login.'
+    };
   }
 
   async toggleTrainerStatus(gymId: string, trainerId: string): Promise<Trainer> {
@@ -435,7 +475,7 @@ class GymOwnerService {
       dateOfBirth: updatedTrainer.dateOfBirth || undefined,
       joiningDate: updatedTrainer.joiningDate || undefined,
       salary: updatedTrainer.salary ? Number(updatedTrainer.salary) : undefined,
-      password: updatedTrainer.password || undefined,
+      passwordHint: maskPassword(updatedTrainer.password),
       trainerPhoto: updatedTrainer.trainerPhoto || undefined,
       idProofType: updatedTrainer.idProofType || undefined,
       idProofDocument: updatedTrainer.idProofDocument || undefined,

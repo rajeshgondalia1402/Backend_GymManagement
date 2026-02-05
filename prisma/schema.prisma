@@ -75,9 +75,11 @@ model Gym {
   email              String?              // Email with validation at API level
   gstRegNo           String?              // GST Registration Number
   website            String?
+  memberSize         Int?                 // Expected number of members
   note               String?              // Terms and Conditions shown on receipts
   logo               String?              // Legacy field - use gymLogo instead
   gymLogo            String?              // Path to gym logo image
+  ownerPassword      String?              // Plain text password for display on frontend (password hint)
   isActive           Boolean              @default(true)
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
@@ -491,6 +493,8 @@ model EnquiryTypeMaster {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   createdBy String?
+
+  gymInquiries GymInquiry[]
 
   @@map("enquirytypemaster")
   @@index([isActive])
@@ -955,6 +959,8 @@ model GymInquiry {
   sellerName          String?
   sellerMobileNo      String?
   nextFollowupDate    DateTime?
+  memberSize          Int?
+  enquiryTypeId       String?
   isActive            Boolean              @default(true)
   createdBy           String?
   updatedBy           String?
@@ -962,12 +968,14 @@ model GymInquiry {
   updatedAt           DateTime             @updatedAt
 
   subscriptionPlan    GymSubscriptionPlan  @relation(fields: [subscriptionPlanId], references: [id])
+  enquiryType         EnquiryTypeMaster?   @relation(fields: [enquiryTypeId], references: [id])
   followups           GymInquiryFollowup[]
 
   @@map("gyminquiry")
   @@index([isActive])
   @@index([subscriptionPlanId])
   @@index([nextFollowupDate])
+  @@index([enquiryTypeId])
 }
 
 model GymInquiryFollowup {

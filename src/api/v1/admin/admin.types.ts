@@ -42,6 +42,7 @@ export interface Gym {
   email?: string;            // Email with validation
   gstRegNo?: string;         // GST Registration Number
   website?: string;
+  memberSize?: number;       // Expected number of members
   note?: string;             // Terms and Conditions on receipts
   logo?: string;             // Legacy field
   gymLogo?: string;          // Path to gym logo image
@@ -66,6 +67,7 @@ export interface CreateGymRequest {
   email?: string;            // Email with validation
   gstRegNo?: string;         // GST Registration Number
   website?: string;
+  memberSize?: number;       // Expected number of members
   note?: string;             // Terms and Conditions on receipts
   gymLogo?: string;          // Path to gym logo image
   subscriptionPlanId?: string;
@@ -81,6 +83,8 @@ export interface GymOwner {
   firstName: string;
   lastName: string;
   phone?: string;
+  /** Masked password hint showing only last 4 characters (e.g., '****word') - never exposes full password */
+  passwordHint?: string;
   isActive: boolean;
   gymId?: string;
   gymName?: string;
@@ -101,8 +105,23 @@ export interface UpdateGymOwnerRequest {
   firstName?: string;
   lastName?: string;
   email?: string;
+  password?: string;  // Optional - allows setting a new password
   phone?: string;
   isActive?: boolean;
+}
+
+/**
+ * Response for gym owner password reset
+ */
+export interface ResetGymOwnerPasswordResponse {
+  /** The gym owner's ID */
+  ownerId: string;
+  /** The gym owner's email */
+  email: string;
+  /** The new temporary password - should be communicated securely */
+  temporaryPassword: string;
+  /** Message for the admin */
+  message: string;
 }
 
 export interface DashboardStats {
@@ -244,12 +263,15 @@ export interface GymInquiry {
   sellerName?: string | null;
   sellerMobileNo?: string | null;
   nextFollowupDate?: Date | null;
+  memberSize?: number | null;
+  enquiryTypeId?: string | null;
   isActive: boolean;
   createdBy?: string | null;
   updatedBy?: string | null;
   createdAt: Date;
   updatedAt: Date;
   subscriptionPlan?: { id: string; name: string; price: any; durationDays: number };
+  enquiryType?: { id: string; name: string };
   followups?: GymInquiryFollowup[];
   _count?: { followups: number };
 }
@@ -267,6 +289,8 @@ export interface CreateGymInquiryRequest {
   sellerName?: string;
   sellerMobileNo?: string;
   nextFollowupDate?: string;
+  memberSize?: number;
+  enquiryTypeId: string;
 }
 
 export interface UpdateGymInquiryRequest extends Partial<CreateGymInquiryRequest> {}

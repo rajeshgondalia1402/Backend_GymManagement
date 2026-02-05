@@ -613,6 +613,53 @@ router.delete('/gym-owners/:id', validate(idParamSchema, 'params'), adminControl
 
 /**
  * @swagger
+ * /api/v1/admin/gym-owners/{id}/reset-password:
+ *   post:
+ *     summary: Reset gym owner password
+ *     description: |
+ *       Generates a new temporary password for the gym owner.
+ *       The admin should securely share this password with the gym owner.
+ *       The gym owner should change this password on their next login.
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Gym Owner ID
+ *     responses:
+ *       200:
+ *         description: Password reset successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     ownerId:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     temporaryPassword:
+ *                       type: string
+ *                       description: The new temporary password - share securely with gym owner
+ *                     message:
+ *                       type: string
+ *       404:
+ *         description: Gym owner not found
+ */
+router.post('/gym-owners/:id/reset-password', validate(idParamSchema, 'params'), adminController.resetGymOwnerPassword);
+
+/**
+ * @swagger
  * /api/v1/admin/users/{id}/toggle-status:
  *   patch:
  *     summary: Toggle user active status
@@ -796,6 +843,29 @@ router.put('/occupations/:id', validate(idParamSchema, 'params'), validate(updat
  */
 router.delete('/occupations/:id', validate(idParamSchema, 'params'), adminController.deleteOccupation);
 
+/**
+ * @swagger
+ * /api/v1/admin/occupations/{id}/usage:
+ *   get:
+ *     summary: Check occupation usage
+ *     tags: [Admin - Occupations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Occupation ID
+ *     responses:
+ *       200:
+ *         description: Usage info retrieved successfully
+ *       404:
+ *         description: Occupation not found
+ */
+router.get('/occupations/:id/usage', validate(idParamSchema, 'params'), adminController.getOccupationUsage);
+
 // Enquiry Type Master CRUD
 /**
  * @swagger
@@ -954,6 +1024,29 @@ router.put('/enquiry-types/:id', validate(idParamSchema, 'params'), validate(upd
  *         description: Enquiry type not found
  */
 router.delete('/enquiry-types/:id', validate(idParamSchema, 'params'), adminController.deleteEnquiryType);
+
+/**
+ * @swagger
+ * /api/v1/admin/enquiry-types/{id}/usage:
+ *   get:
+ *     summary: Check enquiry type usage
+ *     tags: [Admin - Enquiry Types]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Enquiry type ID
+ *     responses:
+ *       200:
+ *         description: Usage info retrieved successfully
+ *       404:
+ *         description: Enquiry type not found
+ */
+router.get('/enquiry-types/:id/usage', validate(idParamSchema, 'params'), adminController.getEnquiryTypeUsage);
 
 // Payment Type Master CRUD
 /**
@@ -1119,6 +1212,29 @@ router.put('/payment-types/:id', validate(idParamSchema, 'params'), validate(upd
  *         description: Payment type not found
  */
 router.delete('/payment-types/:id', validate(idParamSchema, 'params'), adminController.deletePaymentType);
+
+/**
+ * @swagger
+ * /api/v1/admin/payment-types/{id}/usage:
+ *   get:
+ *     summary: Check payment type usage
+ *     tags: [Admin - Payment Types]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Payment type ID
+ *     responses:
+ *       200:
+ *         description: Usage info retrieved successfully
+ *       404:
+ *         description: Payment type not found
+ */
+router.get('/payment-types/:id/usage', validate(idParamSchema, 'params'), adminController.getPaymentTypeUsage);
 
 // Gym Subscription History
 /**

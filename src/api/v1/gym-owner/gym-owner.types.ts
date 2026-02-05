@@ -10,7 +10,8 @@ export interface Trainer {
   dateOfBirth?: Date;
   joiningDate?: Date;
   salary?: number;
-  password?: string;
+  /** Masked password hint showing only last 4 characters (e.g., '****word') - never exposes full password */
+  passwordHint?: string;
   trainerPhoto?: string;
   idProofType?: string;
   idProofDocument?: string;
@@ -50,6 +51,21 @@ export interface UpdateTrainerRequest {
   salary?: number;
   idProofType?: string;
   isActive?: boolean;
+}
+
+/**
+ * Response for trainer password reset
+ * Contains a temporary password that the trainer should change on first login
+ */
+export interface ResetTrainerPasswordResponse {
+  /** The trainer's ID */
+  trainerId: string;
+  /** The trainer's email */
+  email: string;
+  /** The new temporary password - should be communicated securely to the trainer */
+  temporaryPassword: string;
+  /** Message for the gym owner */
+  message: string;
 }
 
 
