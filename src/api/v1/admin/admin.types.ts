@@ -70,6 +70,7 @@ export interface CreateGymRequest {
   gymLogo?: string;          // Path to gym logo image
   subscriptionPlanId?: string;
   ownerId?: string;
+  extraDiscount?: number;
 }
 
 export interface UpdateGymRequest extends Partial<CreateGymRequest> {}
@@ -181,5 +182,110 @@ export interface CreatePaymentTypeRequest {
 export interface UpdatePaymentTypeRequest {
   paymentTypeName?: string;
   description?: string;
+  isActive?: boolean;
+}
+
+// Gym Subscription History types
+export interface GymSubscriptionHistory {
+  id: string;
+  subscriptionNumber: string;
+  gymId: string;
+  gymName?: string;
+  subscriptionPlanId: string;
+  subscriptionPlanName?: string;
+  subscriptionStart: Date;
+  subscriptionEnd: Date;
+  renewalDate: Date;
+  previousPlanId?: string | null;
+  previousPlanName?: string | null;
+  previousSubscriptionEnd?: Date | null;
+  renewalType: string;
+  planAmount?: number | null;
+  extraDiscount?: number | null;
+  amount: number;
+  paymentMode?: string | null;
+  paymentStatus: string;
+  paidAmount?: number | null;
+  pendingAmount?: number | null;
+  isActive: boolean;
+  notes?: string | null;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface RenewGymSubscriptionRequest {
+  subscriptionPlanId: string;
+  subscriptionStart?: string;
+  paymentMode?: string;
+  paidAmount?: number;
+  extraDiscount?: number;
+  notes?: string;
+}
+
+export interface GymSubscriptionHistoryParams extends PaginationParams {
+  paymentStatus?: string;
+  renewalType?: string;
+}
+
+// Gym Inquiry types
+export interface GymInquiry {
+  id: string;
+  gymName: string;
+  address1?: string | null;
+  address2?: string | null;
+  state?: string | null;
+  city?: string | null;
+  mobileNo: string;
+  email?: string | null;
+  subscriptionPlanId: string;
+  note?: string | null;
+  sellerName?: string | null;
+  sellerMobileNo?: string | null;
+  nextFollowupDate?: Date | null;
+  isActive: boolean;
+  createdBy?: string | null;
+  updatedBy?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  subscriptionPlan?: { id: string; name: string; price: any; durationDays: number };
+  followups?: GymInquiryFollowup[];
+  _count?: { followups: number };
+}
+
+export interface CreateGymInquiryRequest {
+  gymName: string;
+  address1?: string;
+  address2?: string;
+  state?: string;
+  city?: string;
+  mobileNo: string;
+  email?: string;
+  subscriptionPlanId: string;
+  note?: string;
+  sellerName?: string;
+  sellerMobileNo?: string;
+  nextFollowupDate?: string;
+}
+
+export interface UpdateGymInquiryRequest extends Partial<CreateGymInquiryRequest> {}
+
+export interface GymInquiryFollowup {
+  id: string;
+  gymInquiryId: string;
+  followupDate: Date;
+  note?: string | null;
+  createdBy?: string | null;
+  createdAt: Date;
+}
+
+export interface CreateGymInquiryFollowupRequest {
+  followupDate?: string;
+  note?: string;
+}
+
+export interface GymInquiryParams extends PaginationParams {
+  subscriptionPlanId?: string;
   isActive?: boolean;
 }

@@ -1341,6 +1341,37 @@ export interface SalarySettlementListResponse {
 }
 
 // =============================================
+// Gym Subscription (Current + History) Types
+// =============================================
+
+export interface CurrentSubscription {
+  plan: {
+    id: string;
+    name: string;
+    description?: string | null;
+    price: number;
+    currency: string;
+    durationDays: number;
+    features: string;
+  } | null;
+  subscriptionStart: Date | null;
+  subscriptionEnd: Date | null;
+  daysRemaining: number;
+  isExpired: boolean;
+  subscriptionHistory: {
+    id: string;
+    subscriptionNumber: string;
+    renewalType: string;
+    renewalDate: Date;
+    amount: number;
+    paymentStatus: string;
+    paymentMode?: string | null;
+    paidAmount?: number | null;
+    pendingAmount?: number | null;
+  } | null;
+}
+
+// =============================================
 // Trainer Salary Slip Types
 // =============================================
 

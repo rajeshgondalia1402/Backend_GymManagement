@@ -4420,4 +4420,47 @@ router.put('/salary-settlement/:id', validate(idParamSchema, 'params'), validate
  */
 router.get('/salary-settlement/:id/slip', validate(idParamSchema, 'params'), gymOwnerController.generateSalarySlip.bind(gymOwnerController));
 
+// =============================================
+// Gym Subscription History Routes
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/subscription-history:
+ *   get:
+ *     summary: View own gym's subscription history
+ *     tags: [Gym Owner - Subscription]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *     responses:
+ *       200:
+ *         description: Subscription history retrieved successfully
+ */
+router.get('/subscription-history', validate(paginationSchema, 'query'), gymOwnerController.getMySubscriptionHistory.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/current-subscription:
+ *   get:
+ *     summary: View current subscription details with days remaining
+ *     tags: [Gym Owner - Subscription]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Current subscription retrieved successfully
+ */
+router.get('/current-subscription', gymOwnerController.getCurrentSubscription.bind(gymOwnerController));
+
 export default router;
