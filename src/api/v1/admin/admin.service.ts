@@ -14,6 +14,7 @@ import {
   UpdateGymOwnerRequest,
   DashboardStats,
   PaginationParams,
+  GymParams,
   Occupation,
   CreateOccupationRequest,
   UpdateOccupationRequest,
@@ -190,11 +191,12 @@ class AdminService {
   }
 
   // Gyms
-  async getGyms(params: PaginationParams): Promise<{ gyms: any[]; total: number }> {
-    const { page, limit, search, sortBy = 'createdAt', sortOrder = 'desc' } = params;
+  async getGyms(params: GymParams): Promise<{ gyms: any[]; total: number }> {
+    const { page, limit, search, sortBy = 'createdAt', sortOrder = 'desc', subscriptionStatus } = params;
     const skip = (page - 1) * limit;
 
-    const where = search
+    // Build where clause for search
+    const searchWhere = search
       ? {
           OR: [
             { name: { contains: search, mode: 'insensitive' as const } },
@@ -205,6 +207,52 @@ class AdminService {
           ],
         }
       : {};
+
+    // Build where clause for subscription status filter
+    // Logic matches frontend getGymSubscriptionStatus():
+    // - daysRemaining = Math.ceil((endDate - today) / oneDay)
+    // - EXPIRED: daysRemaining < 0 (end date before today)
+    // - EXPIRING_SOON: daysRemaining >= 0 && daysRemaining <= 7 (today through 7 days from now)
+    // - ACTIVE: daysRemaining > 7 (more than 7 days from now)
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    // Day 8 from today is the first day considered "ACTIVE"
+    // e.g., if today is Feb 9, then Feb 17 onwards is ACTIVE
+    const startOfDay8 = new Date(startOfToday);
+    startOfDay8.setDate(startOfDay8.getDate() + 8);
+
+    // Build subscription status conditions using AND array for clarity
+    const subscriptionConditions: any[] = [];
+
+    if (subscriptionStatus === 'ACTIVE') {
+      // Active: daysRemaining > 7 → subscriptionEnd >= startOfDay8
+      subscriptionConditions.push({ subscriptionPlanId: { not: null } });
+      subscriptionConditions.push({ subscriptionEnd: { not: null } });
+      subscriptionConditions.push({ subscriptionEnd: { gte: startOfDay8 } });
+    } else if (subscriptionStatus === 'EXPIRING_SOON') {
+      // Expiring Soon: daysRemaining >= 0 && daysRemaining <= 7
+      subscriptionConditions.push({ subscriptionPlanId: { not: null } });
+      subscriptionConditions.push({ subscriptionEnd: { not: null } });
+      subscriptionConditions.push({ subscriptionEnd: { gte: startOfToday } });
+      subscriptionConditions.push({ subscriptionEnd: { lt: startOfDay8 } });
+    } else if (subscriptionStatus === 'EXPIRED') {
+      // Expired: daysRemaining < 0 → subscriptionEnd < startOfToday
+      subscriptionConditions.push({ subscriptionPlanId: { not: null } });
+      subscriptionConditions.push({ subscriptionEnd: { not: null } });
+      subscriptionConditions.push({ subscriptionEnd: { lt: startOfToday } });
+    }
+
+    // Combine search and subscription status filters using AND
+    const whereConditions: any[] = [];
+    if (search) {
+      whereConditions.push(searchWhere);
+    }
+    if (subscriptionConditions.length > 0) {
+      whereConditions.push(...subscriptionConditions);
+    }
+
+    const where = whereConditions.length > 0 ? { AND: whereConditions } : {};
 
     const [gyms, total] = await Promise.all([
       prisma.gym.findMany({
@@ -498,7 +546,7 @@ class AdminService {
     return updated as unknown as Gym;
   }
 
-  async assignGymOwner(gymId: string, ownerId: string): Promise<Gym> {
+  async assignGymOwner(gymId: string, ownerId: string, password?: string): Promise<Gym> {
     // Verify gym exists
     await this.getGymById(gymId);
 
@@ -518,10 +566,13 @@ class AdminService {
       throw new ConflictException('User already owns another gym');
     }
 
-    // Assign owner to gym
+    // Assign owner to gym (and store password if provided)
     const gym = await prisma.gym.update({
       where: { id: gymId },
-      data: { ownerId },
+      data: {
+        ownerId,
+        ...(password && { ownerPassword: password }),
+      },
       include: {
         subscriptionPlan: true,
         owner: { select: { id: true, name: true, email: true } },
@@ -773,6 +824,21 @@ class AdminService {
           data: { ownerPassword: temporaryPassword },
         });
       }
+
+      // Log password reset in PasswordResetHistory
+      await tx.passwordResetHistory.create({
+        data: {
+          userId: user.id,
+          email: user.email,
+          roleId: user.roleId || undefined,
+          roleName: 'GYM_OWNER',
+          resetBy: user.id,
+          resetByEmail: user.email,
+          resetMethod: 'ADMIN_RESET',
+          targetTable: 'USER',
+          gymId: user.ownedGym?.id || undefined,
+        },
+      });
     });
 
     return {

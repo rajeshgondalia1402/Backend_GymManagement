@@ -802,6 +802,28 @@ router.delete('/members/:id', validate(idParamSchema, 'params'), gymOwnerControl
  */
 router.patch('/members/:id/toggle-status', validate(idParamSchema, 'params'), gymOwnerController.toggleMemberStatus.bind(gymOwnerController));
 
+/**
+ * @swagger
+ * /api/v1/gym-owner/members/{id}/reset-password:
+ *   post:
+ *     summary: Reset member password
+ *     tags: [Gym Owner - Members]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Member password reset successfully
+ *       404:
+ *         description: Member not found
+ */
+router.post('/members/:id/reset-password', validate(idParamSchema, 'params'), gymOwnerController.resetMemberPassword.bind(gymOwnerController));
+
 // Diet Plans
 /**
  * @swagger

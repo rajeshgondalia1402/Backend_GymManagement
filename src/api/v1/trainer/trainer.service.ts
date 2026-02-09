@@ -44,8 +44,8 @@ export class TrainerService {
 
     return {
       id: trainer.id,
-      name: trainer.user.name,
-      email: trainer.user.email,
+      name: trainer.name || trainer.user.name,
+      email: trainer.email || trainer.user.email,
       specialization: trainer.specialization || '',
       experience: trainer.experience,
       phone: trainer.phone || '',
@@ -89,8 +89,8 @@ export class TrainerService {
 
     return {
       id: trainer.id,
-      name: trainer.user.name,
-      email: trainer.user.email,
+      name: trainer.name || trainer.user.name,
+      email: trainer.email || trainer.user.email,
       phone: trainer.phone || undefined,
       gender: trainer.gender || undefined,
       dateOfBirth: trainer.dateOfBirth?.toISOString(),

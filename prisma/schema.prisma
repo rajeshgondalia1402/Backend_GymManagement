@@ -24,6 +24,7 @@ model User {
   memberInquiries         MemberInquiry[]
   createdDietTemplates    DietTemplate[]  @relation("DietTemplateCreator")
   assignedMemberDiets     MemberDiet[]    @relation("MemberDietAssigner")
+  passwordResetHistory    PasswordResetHistory[]
 
   @@index([email])
   @@index([roleId])
@@ -79,12 +80,12 @@ model Gym {
   note               String?              // Terms and Conditions shown on receipts
   logo               String?              // Legacy field - use gymLogo instead
   gymLogo            String?              // Path to gym logo image
-  ownerPassword      String?              // Plain text password for display on frontend (password hint)
   isActive           Boolean              @default(true)
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
   ownerId            String?              @unique
   subscriptionPlanId String?
+  ownerPassword      String?              // Plain text password for admin display hint
   subscriptionStart  DateTime?
   subscriptionEnd    DateTime?
   dietPlans          DietPlan[]
@@ -114,6 +115,9 @@ model Gym {
 
 model Trainer {
   id              String                    @id @default(uuid())
+  name            String?                   // Trainer's full name (synced from User table)
+  email           String?                   @unique // Trainer's email (synced from User table)
+  password        String?                   // Hashed password for easy management
   specialization  String?
   experience      Int?
   phone           String?
@@ -121,7 +125,6 @@ model Trainer {
   dateOfBirth     DateTime?                 // Trainer's date of birth
   joiningDate     DateTime?                 // Date when trainer joined the gym
   salary          Decimal?                  @db.Decimal(10, 2) // Monthly salary
-  password        String?                   // Plain text password for display on frontend
   trainerPhoto    String?                   // Path to trainer's passport size photo
   idProofType     String?                   // Type of ID proof (Aadhar, PAN, etc.)
   idProofDocument String?                   // Path to uploaded ID document
@@ -140,10 +143,14 @@ model Trainer {
 
   @@index([gymId])
   @@index([isActive])
+  @@index([email])
 }
 
 model Member {
   id                  String                     @id @default(uuid())
+  name                String?                    // Member's full name (synced from User table)
+  email               String?                    @unique // Member's email (synced from User table)
+  password            String?                    // Hashed password for easy management
   memberId            String?                    // Auto-generated member ID (e.g., 1413)
   phone               String?
   altContactNo        String?                    // Alternate contact number
@@ -205,6 +212,7 @@ model Member {
   @@index([memberId])
   @@index([isActive])
   @@index([hasPTAddon])
+  @@index([email])
 }
 
 // Member Balance Payment - tracks partial payments toward final fees
@@ -991,4 +999,33 @@ model GymInquiryFollowup {
   @@map("gyminquiryfollowup")
   @@index([gymInquiryId])
   @@index([followupDate])
+}
+
+// ============================================
+// Password Reset History - Tracks all password resets across roles
+// Admin can track which roles reset passwords, how many times, and when
+// ============================================
+model PasswordResetHistory {
+  id              String    @id @default(uuid())
+  userId          String    // Reference to User table
+  email           String?   // Email of the user at the time of reset
+  roleId          String?   // Role ID at the time of reset
+  roleName        String?   // Role name at the time of reset (denormalized for reporting)
+  resetBy         String?   // User ID of who performed the reset (admin/gym-owner/self)
+  resetByEmail    String?   // Email of who performed the reset
+  resetMethod     String    @default("MANUAL") // MANUAL, SELF, ADMIN_RESET, OWNER_RESET
+  targetTable     String?   // Which table was updated: USER, TRAINER, MEMBER
+  gymId           String?   // Gym ID (for gym-specific tracking)
+  ipAddress       String?   // IP address of the requester
+  createdAt       DateTime  @default(now())
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("passwordresethistory")
+  @@index([userId])
+  @@index([email])
+  @@index([roleId])
+  @@index([roleName])
+  @@index([gymId])
+  @@index([createdAt])
 }
