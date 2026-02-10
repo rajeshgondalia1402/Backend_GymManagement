@@ -8,6 +8,8 @@ export const paginationSchema = z.object({
   search: z.string().optional(),
   sortBy: z.string().optional(),
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+  // Gym subscription status filter
+  subscriptionStatus: z.enum(['ACTIVE', 'EXPIRED', 'EXPIRING_SOON']).optional(),
   // Member-specific filters
   status: z.enum(['Active', 'InActive', 'Expired']).optional(),
   isActive: z.string().optional().transform((val) => val === 'true' ? true : val === 'false' ? false : undefined),

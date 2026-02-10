@@ -71,13 +71,14 @@ class AdminController {
   // Gyms
   async getGyms(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { page = 1, limit = 10, search, sortBy, sortOrder } = req.query as any;
+      const { page = 1, limit = 10, search, sortBy, sortOrder, subscriptionStatus } = req.query as any;
       const { gyms, total } = await adminService.getGyms({
         page: Number(page),
         limit: Number(limit),
         search,
         sortBy,
         sortOrder,
+        subscriptionStatus,
       });
       paginatedResponse(res, gyms, Number(page), Number(limit), total, 'Gyms retrieved successfully');
     } catch (error) {
@@ -132,8 +133,8 @@ class AdminController {
 
   async assignGymOwner(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { ownerId } = req.body;
-      const gym = await adminService.assignGymOwner(req.params.id, ownerId);
+      const { ownerId, password } = req.body;
+      const gym = await adminService.assignGymOwner(req.params.id, ownerId, password);
       successResponse(res, gym, 'Owner assigned to gym successfully');
     } catch (error) {
       next(error);

@@ -224,11 +224,14 @@ class AuthService {
   }
 
   async changePassword(userId: string, data: ChangePasswordRequest): Promise<void> {
+    // Include ownedGym relation to find gym owner's gym (same approach as resetGymOwnerPassword)
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
         trainerProfile: true,
         memberProfile: true,
+        role: true,
+        ownedGym: true,
       },
     });
 
@@ -236,26 +239,71 @@ class AuthService {
       throw new NotFoundException('User not found');
     }
 
-    const isPasswordValid = await bcrypt.compare(data.currentPassword, user.password);
+    // Determine where the current password is stored based on role
+    let currentHashedPassword = user.password;
+    const roleName = user.role?.rolename || 'MEMBER';
+
+    // For Trainer/Member, the hashed password is in their own table
+    if (user.trainerProfile && user.trainerProfile.password) {
+      currentHashedPassword = user.trainerProfile.password;
+    } else if (user.memberProfile && user.memberProfile.password) {
+      currentHashedPassword = user.memberProfile.password;
+    }
+
+    const isPasswordValid = await bcrypt.compare(data.currentPassword, currentHashedPassword);
     if (!isPasswordValid) {
       throw new BadRequestException('Current password is incorrect');
     }
 
     const hashedPassword = await bcrypt.hash(data.newPassword, 10);
 
-    // Update password in User table (hashed for authentication)
-    await prisma.user.update({
-      where: { id: userId },
-      data: { password: hashedPassword },
-    });
-
-    // If user is a trainer, also update plain text password in Trainer table (for display)
-    if (user.trainerProfile) {
-      await prisma.trainer.update({
-        where: { id: user.trainerProfile.id },
-        data: { password: data.newPassword },
+    // Use transaction to update all password fields atomically
+    await prisma.$transaction(async (tx) => {
+      // Always update password in User table (for token/auth compatibility)
+      await tx.user.update({
+        where: { id: userId },
+        data: { password: hashedPassword },
       });
-    }
+
+      // If user is a trainer, update password in Trainer table
+      if (user.trainerProfile) {
+        await tx.trainer.update({
+          where: { id: user.trainerProfile.id },
+          data: { password: hashedPassword },
+        });
+      }
+
+      // If user is a member, update password in Member table
+      if (user.memberProfile) {
+        await tx.member.update({
+          where: { id: user.memberProfile.id },
+          data: { password: hashedPassword },
+        });
+      }
+
+      // If user owns a gym (via ownedGym relation), update ownerPassword
+      if (user.ownedGym) {
+        await tx.gym.update({
+          where: { id: user.ownedGym.id },
+          data: { ownerPassword: data.newPassword },
+        });
+      }
+
+      // Log the password change in PasswordResetHistory
+      await tx.passwordResetHistory.create({
+        data: {
+          userId: userId,
+          email: user.email,
+          roleId: user.roleId || undefined,
+          roleName: roleName,
+          resetBy: userId,
+          resetByEmail: user.email,
+          resetMethod: 'SELF',
+          targetTable: user.trainerProfile ? 'TRAINER' : user.memberProfile ? 'MEMBER' : 'USER',
+          gymId: user.ownedGym?.id || user.trainerProfile?.gymId || user.memberProfile?.gymId || undefined,
+        },
+      });
+    });
 
     // Invalidate all refresh tokens
     await this.logoutAll(userId);

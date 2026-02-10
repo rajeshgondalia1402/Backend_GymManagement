@@ -190,9 +190,9 @@ class GymOwnerService {
 
     const trainers: Trainer[] = trainerRecords.map((t) => ({
       id: t.id,
-      email: t.user.email,
-      firstName: t.user.name.split(' ')[0] || t.user.name,
-      lastName: t.user.name.split(' ').slice(1).join(' ') || '',
+      email: t.email || t.user.email,
+      firstName: (t.name || t.user.name).split(' ')[0] || t.user.name,
+      lastName: (t.name || t.user.name).split(' ').slice(1).join(' ') || '',
       phone: t.phone || undefined,
       specialization: t.specialization || undefined,
       experience: t.experience || undefined,
@@ -200,7 +200,7 @@ class GymOwnerService {
       dateOfBirth: t.dateOfBirth || undefined,
       joiningDate: t.joiningDate || undefined,
       salary: t.salary ? Number(t.salary) : undefined,
-      passwordHint: maskPassword(t.password),
+      passwordHint: undefined, // Hashed password - use reset if needed
       trainerPhoto: t.trainerPhoto || undefined,
       idProofType: t.idProofType || undefined,
       idProofDocument: t.idProofDocument || undefined,
@@ -226,9 +226,9 @@ class GymOwnerService {
 
     return {
       id: trainer.id,
-      email: trainer.user.email,
-      firstName: trainer.user.name.split(' ')[0] || trainer.user.name,
-      lastName: trainer.user.name.split(' ').slice(1).join(' ') || '',
+      email: trainer.email || trainer.user.email,
+      firstName: (trainer.name || trainer.user.name).split(' ')[0] || trainer.user.name,
+      lastName: (trainer.name || trainer.user.name).split(' ').slice(1).join(' ') || '',
       phone: trainer.phone || undefined,
       specialization: trainer.specialization || undefined,
       experience: trainer.experience || undefined,
@@ -236,7 +236,7 @@ class GymOwnerService {
       dateOfBirth: trainer.dateOfBirth || undefined,
       joiningDate: trainer.joiningDate || undefined,
       salary: trainer.salary ? Number(trainer.salary) : undefined,
-      passwordHint: maskPassword(trainer.password),
+      passwordHint: undefined, // Hashed password - use reset if needed
       trainerPhoto: trainer.trainerPhoto || undefined,
       idProofType: trainer.idProofType || undefined,
       idProofDocument: trainer.idProofDocument || undefined,
@@ -273,6 +273,9 @@ class GymOwnerService {
         data: {
           userId: user.id,
           gymId,
+          name: `${data.firstName} ${data.lastName}`,
+          email: data.email,
+          password: hashedPassword, // Store hashed password in Trainer table
           phone: data.phone,
           specialization: data.specialization,
           experience: data.experience,
@@ -280,7 +283,6 @@ class GymOwnerService {
           dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
           joiningDate: data.joiningDate ? new Date(data.joiningDate) : new Date(), // Default to today
           salary: data.salary,
-          password: data.password, // Store plain text password for frontend display
           idProofType: data.idProofType,
           trainerPhoto: files?.trainerPhoto,
           idProofDocument: files?.idProofDocument,
@@ -295,7 +297,7 @@ class GymOwnerService {
 
     return {
       id: result.id,
-      email: result.user.email,
+      email: result.email || result.user.email,
       firstName: data.firstName,
       lastName: data.lastName,
       phone: data.phone,
@@ -305,7 +307,7 @@ class GymOwnerService {
       dateOfBirth: result.dateOfBirth || undefined,
       joiningDate: result.joiningDate || undefined,
       salary: result.salary ? Number(result.salary) : undefined,
-      passwordHint: maskPassword(result.password),
+      passwordHint: maskPassword(data.password), // Mask original plain text on create
       trainerPhoto: result.trainerPhoto || undefined,
       idProofType: result.idProofType || undefined,
       idProofDocument: result.idProofDocument || undefined,
@@ -345,6 +347,13 @@ class GymOwnerService {
 
       // Build update data
       const updateData: any = {};
+      // Sync name to Trainer table
+      if (data.firstName || data.lastName) {
+        const currentName = existingTrainer.user.name.split(' ');
+        const newFirst = data.firstName || currentName[0];
+        const newLast = data.lastName || currentName.slice(1).join(' ');
+        updateData.name = `${newFirst} ${newLast}`;
+      }
       if (data.phone !== undefined) updateData.phone = data.phone;
       if (data.specialization !== undefined) updateData.specialization = data.specialization;
       if (data.experience !== undefined) updateData.experience = data.experience;
@@ -354,8 +363,10 @@ class GymOwnerService {
       if (data.salary !== undefined) updateData.salary = data.salary;
       if (data.idProofType !== undefined) updateData.idProofType = data.idProofType;
       if (data.isActive !== undefined) updateData.isActive = data.isActive;
-      // Update plain text password in Trainer table for display
-      if (data.password) updateData.password = data.password;
+      // Store hashed password in Trainer table
+      if (data.password) {
+        updateData.password = await bcrypt.hash(data.password, 10);
+      }
 
       // Handle file uploads
       if (files?.trainerPhoto) updateData.trainerPhoto = files.trainerPhoto;
@@ -374,9 +385,9 @@ class GymOwnerService {
 
     return {
       id: result.id,
-      email: result.user.email,
-      firstName: result.user.name.split(' ')[0] || result.user.name,
-      lastName: result.user.name.split(' ').slice(1).join(' ') || '',
+      email: result.email || result.user.email,
+      firstName: (result.name || result.user.name).split(' ')[0] || result.user.name,
+      lastName: (result.name || result.user.name).split(' ').slice(1).join(' ') || '',
       phone: result.phone || undefined,
       specialization: result.specialization || undefined,
       experience: result.experience || undefined,
@@ -384,7 +395,7 @@ class GymOwnerService {
       dateOfBirth: result.dateOfBirth || undefined,
       joiningDate: result.joiningDate || undefined,
       salary: result.salary ? Number(result.salary) : undefined,
-      passwordHint: maskPassword(result.password),
+      passwordHint: data.password ? maskPassword(data.password) : undefined, // Mask original plain text if provided
       trainerPhoto: result.trainerPhoto || undefined,
       idProofType: result.idProofType || undefined,
       idProofDocument: result.idProofDocument || undefined,
@@ -423,7 +434,7 @@ class GymOwnerService {
     const temporaryPassword = generateTempPassword(12);
     const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
 
-    // Update both the User table (hashed) and Trainer table (plain for hint)
+    // Update both the User table (hashed) and Trainer table (hashed)
     await prisma.$transaction(async (tx) => {
       // Update hashed password in User table for authentication
       await tx.user.update({
@@ -431,10 +442,25 @@ class GymOwnerService {
         data: { password: hashedPassword }
       });
 
-      // Update plain text password in Trainer table for password hint display
+      // Update hashed password in Trainer table
       await tx.trainer.update({
         where: { id: trainerId },
-        data: { password: temporaryPassword }
+        data: { password: hashedPassword }
+      });
+
+      // Log password reset in PasswordResetHistory
+      await tx.passwordResetHistory.create({
+        data: {
+          userId: trainer.userId,
+          email: trainer.user.email,
+          roleId: trainer.user.roleId || undefined,
+          roleName: 'TRAINER',
+          resetBy: trainer.userId, // Will be overridden by caller if needed
+          resetByEmail: trainer.user.email,
+          resetMethod: 'OWNER_RESET',
+          targetTable: 'TRAINER',
+          gymId: gymId,
+        },
       });
     });
 
@@ -465,9 +491,9 @@ class GymOwnerService {
 
     return {
       id: updatedTrainer.id,
-      email: updatedTrainer.user.email,
-      firstName: updatedTrainer.user.name.split(' ')[0] || updatedTrainer.user.name,
-      lastName: updatedTrainer.user.name.split(' ').slice(1).join(' ') || '',
+      email: updatedTrainer.email || updatedTrainer.user.email,
+      firstName: (updatedTrainer.name || updatedTrainer.user.name).split(' ')[0] || updatedTrainer.user.name,
+      lastName: (updatedTrainer.name || updatedTrainer.user.name).split(' ').slice(1).join(' ') || '',
       phone: updatedTrainer.phone || undefined,
       specialization: updatedTrainer.specialization || undefined,
       experience: updatedTrainer.experience || undefined,
@@ -475,7 +501,7 @@ class GymOwnerService {
       dateOfBirth: updatedTrainer.dateOfBirth || undefined,
       joiningDate: updatedTrainer.joiningDate || undefined,
       salary: updatedTrainer.salary ? Number(updatedTrainer.salary) : undefined,
-      passwordHint: maskPassword(updatedTrainer.password),
+      passwordHint: undefined, // Hashed password - use reset if needed
       trainerPhoto: updatedTrainer.trainerPhoto || undefined,
       idProofType: updatedTrainer.idProofType || undefined,
       idProofDocument: updatedTrainer.idProofDocument || undefined,
@@ -612,9 +638,9 @@ class GymOwnerService {
       return {
         id: m.id,
         memberId: m.memberId || undefined,
-        email: m.user.email,
-        firstName: m.user.name.split(' ')[0] || m.user.name,
-        lastName: m.user.name.split(' ').slice(1).join(' ') || '',
+        email: m.email || m.user.email,
+        firstName: (m.name || m.user.name).split(' ')[0] || m.user.name,
+        lastName: (m.name || m.user.name).split(' ').slice(1).join(' ') || '',
         phone: m.phone || undefined,
         altContactNo: m.altContactNo || undefined,
         address: m.address || undefined,
@@ -791,6 +817,9 @@ class GymOwnerService {
         data: {
           userId: user.id,
           gymId,
+          name: `${data.firstName} ${data.lastName}`,
+          email: data.email,
+          password: hashedPassword, // Store hashed password in Member table
           memberId: nextMemberId,
           phone: data.phone,
           altContactNo: data.altContactNo,
@@ -837,7 +866,7 @@ class GymOwnerService {
     return {
       id: result.id,
       memberId: result.memberId || undefined,
-      email: result.user.email,
+      email: result.email || result.user.email,
       firstName: data.firstName,
       lastName: data.lastName,
       phone: data.phone,
@@ -891,6 +920,13 @@ class GymOwnerService {
       }
 
       const updateData: any = {};
+      // Sync name to Member table
+      if (data.firstName || data.lastName) {
+        const currentName = existingMember.user.name.split(' ');
+        const newFirst = data.firstName || currentName[0];
+        const newLast = data.lastName || currentName.slice(1).join(' ');
+        updateData.name = `${newFirst} ${newLast}`;
+      }
       if (data.phone !== undefined) updateData.phone = data.phone;
       if (data.altContactNo !== undefined) updateData.altContactNo = data.altContactNo;
       if (data.address !== undefined) updateData.address = data.address;
@@ -976,9 +1012,9 @@ class GymOwnerService {
     return {
       id: result.id,
       memberId: result.memberId || undefined,
-      email: result.user.email,
-      firstName: result.user.name.split(' ')[0] || result.user.name,
-      lastName: result.user.name.split(' ').slice(1).join(' ') || '',
+      email: result.email || result.user.email,
+      firstName: (result.name || result.user.name).split(' ')[0] || result.user.name,
+      lastName: (result.name || result.user.name).split(' ').slice(1).join(' ') || '',
       phone: result.phone || undefined,
       altContactNo: result.altContactNo || undefined,
       address: result.address || undefined,
@@ -1023,6 +1059,60 @@ class GymOwnerService {
     });
   }
 
+  /**
+   * Reset member password - generates a new temporary password
+   * The member should change this password on their next login
+   */
+  async resetMemberPassword(gymId: string, memberId: string): Promise<{ memberId: string; email: string; temporaryPassword: string; message: string }> {
+    const member = await prisma.member.findFirst({
+      where: { id: memberId, gymId },
+      include: { user: true }
+    });
+
+    if (!member) throw new NotFoundException('Member not found');
+
+    // Generate a temporary password
+    const temporaryPassword = generateTempPassword(12);
+    const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
+
+    // Update both the User table and Member table with hashed password
+    await prisma.$transaction(async (tx) => {
+      // Update hashed password in User table for authentication
+      await tx.user.update({
+        where: { id: member.userId },
+        data: { password: hashedPassword }
+      });
+
+      // Update hashed password in Member table
+      await tx.member.update({
+        where: { id: memberId },
+        data: { password: hashedPassword }
+      });
+
+      // Log password reset in PasswordResetHistory
+      await tx.passwordResetHistory.create({
+        data: {
+          userId: member.userId,
+          email: member.user.email,
+          roleId: member.user.roleId || undefined,
+          roleName: 'MEMBER',
+          resetBy: member.userId,
+          resetByEmail: member.user.email,
+          resetMethod: 'OWNER_RESET',
+          targetTable: 'MEMBER',
+          gymId: gymId,
+        },
+      });
+    });
+
+    return {
+      memberId: member.id,
+      email: member.user.email,
+      temporaryPassword,
+      message: 'Password has been reset. Please share this temporary password securely with the member. They should change it on their next login.'
+    };
+  }
+
   async toggleMemberStatus(gymId: string, memberId: string): Promise<Member> {
     const existingMember = await prisma.member.findFirst({
       where: { id: memberId, gymId },
@@ -1054,9 +1144,9 @@ class GymOwnerService {
     return {
       id: updatedMember.id,
       memberId: updatedMember.memberId || undefined,
-      email: updatedMember.user.email,
-      firstName: updatedMember.user.name.split(' ')[0] || updatedMember.user.name,
-      lastName: updatedMember.user.name.split(' ').slice(1).join(' ') || '',
+      email: updatedMember.email || updatedMember.user.email,
+      firstName: (updatedMember.name || updatedMember.user.name).split(' ')[0] || updatedMember.user.name,
+      lastName: (updatedMember.name || updatedMember.user.name).split(' ').slice(1).join(' ') || '',
       phone: updatedMember.phone || undefined,
       altContactNo: updatedMember.altContactNo || undefined,
       address: updatedMember.address || undefined,

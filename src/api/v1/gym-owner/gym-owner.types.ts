@@ -68,6 +68,17 @@ export interface ResetTrainerPasswordResponse {
   message: string;
 }
 
+export interface ResetMemberPasswordResponse {
+  /** The member's ID */
+  memberId: string;
+  /** The member's email */
+  email: string;
+  /** The new temporary password - should be communicated securely to the member */
+  temporaryPassword: string;
+  /** Message for the gym owner */
+  message: string;
+}
+
 
 export interface Member {
   id: string;

@@ -141,6 +141,13 @@ export interface PaginationParams {
   sortOrder?: 'asc' | 'desc';
 }
 
+// Gym subscription status filter types
+export type GymSubscriptionStatusFilter = 'ACTIVE' | 'EXPIRED' | 'EXPIRING_SOON';
+
+export interface GymParams extends PaginationParams {
+  subscriptionStatus?: GymSubscriptionStatusFilter;
+}
+
 // Occupation Master types
 export interface Occupation {
   id: string;
