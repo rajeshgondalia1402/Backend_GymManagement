@@ -544,6 +544,41 @@ class AdminController {
       next(error);
     }
   }
+
+  // Admin Members List by Gym/GymOwner
+  async getMembersByGymOrOwner(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const {
+        page = 1,
+        limit = 10,
+        search,
+        sortBy,
+        sortOrder,
+        gymId,
+        gymOwnerId,
+        membershipStatus,
+        memberType,
+        isActive,
+      } = req.query as any;
+
+      const { members, total } = await adminService.getMembersByGymOrOwner({
+        page: Number(page),
+        limit: Number(limit),
+        search,
+        sortBy,
+        sortOrder,
+        gymId,
+        gymOwnerId,
+        membershipStatus,
+        memberType,
+        isActive: isActive !== undefined ? isActive === 'true' : undefined,
+      });
+
+      paginatedResponse(res, members, Number(page), Number(limit), total, 'Members retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new AdminController();

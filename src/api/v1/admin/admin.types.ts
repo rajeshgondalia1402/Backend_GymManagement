@@ -320,3 +320,124 @@ export interface GymInquiryParams extends PaginationParams {
   subscriptionPlanId?: string;
   isActive?: boolean;
 }
+
+// Admin Members List types
+export interface AdminMembersParams extends PaginationParams {
+  gymId?: string;
+  gymOwnerId?: string;
+  membershipStatus?: 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
+  memberType?: 'REGULAR' | 'PT' | 'REGULAR_PT';
+  isActive?: boolean;
+}
+
+export interface AdminMemberDetails {
+  id: string;
+  memberId: string;
+  name: string;
+  email: string;
+  phone?: string | null;
+  altContactNo?: string | null;
+  dateOfBirth?: Date | null;
+  gender?: string | null;
+  bloodGroup?: string | null;
+  address?: string | null;
+  occupation?: string | null;
+  memberPhoto?: string | null;
+  memberType: string;
+  isActive: boolean;
+
+  // User credentials
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    passwordHint?: string;
+    isActive: boolean;
+  };
+
+  // Gym details
+  gym: {
+    id: string;
+    name: string;
+    email?: string | null;
+    mobileNo?: string | null;
+  };
+
+  // Current subscription details
+  subscription: {
+    membershipStart: Date;
+    membershipEnd: Date;
+    membershipStatus: string;
+    daysRemaining: number;
+  };
+
+  // Package & fees details
+  package: {
+    coursePackageId?: string | null;
+    coursePackageName?: string | null;
+    packageFees: number;
+    maxDiscount: number;
+    afterDiscount: number;
+    extraDiscount: number;
+    finalFees: number;
+  };
+
+  // PT addon details (if applicable)
+  ptAddon?: {
+    hasPTAddon: boolean;
+    ptPackageName?: string | null;
+    ptPackageFees: number;
+    ptMaxDiscount: number;
+    ptAfterDiscount: number;
+    ptExtraDiscount: number;
+    ptFinalFees: number;
+  } | null;
+
+  // Payment summary
+  payment: {
+    totalAmount: number;
+    totalPaid: number;
+    totalPending: number;
+    paymentStatus: 'PAID' | 'PARTIAL' | 'PENDING';
+    lastPaymentDate?: Date | null;
+  };
+
+  // Assigned trainer details
+  trainer?: {
+    id: string;
+    name?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    specialization?: string | null;
+  } | null;
+
+  // PT member details (if PT type)
+  ptDetails?: {
+    id: string;
+    packageName: string;
+    sessionsTotal: number;
+    sessionsUsed: number;
+    sessionsRemaining: number;
+    startDate: Date;
+    endDate?: Date | null;
+    goals?: string | null;
+  } | null;
+
+  // Assigned diet plan details
+  dietPlan?: {
+    id: string;
+    templateId: string;
+    templateName: string;
+    startDate: Date;
+    endDate?: Date | null;
+    meals: {
+      mealNo: number;
+      title: string;
+      description: string;
+      time: string;
+    }[];
+  } | null;
+
+  createdAt: Date;
+  updatedAt: Date;
+}

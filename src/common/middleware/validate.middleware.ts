@@ -995,6 +995,23 @@ export const gymInquiryPaginationSchema = z.object({
   isActive: z.string().optional().transform((val) => val === 'true' ? true : val === 'false' ? false : undefined),
 });
 
+// Admin Members List validation schema
+export const adminMembersQuerySchema = z.object({
+  page: z.string().optional().transform((val) => parseInt(val || '1', 10)),
+  limit: z.string().optional().transform((val) => parseInt(val || '10', 10)),
+  search: z.string().optional(),
+  sortBy: z.string().optional().default('createdAt'),
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+  gymId: z.string().uuid('Invalid gym ID').optional(),
+  gymOwnerId: z.string().uuid('Invalid gym owner ID').optional(),
+  membershipStatus: z.enum(['ACTIVE', 'EXPIRED', 'CANCELLED']).optional(),
+  memberType: z.enum(['REGULAR', 'PT', 'REGULAR_PT']).optional(),
+  isActive: z.string().optional().transform((val) => val === 'true' ? true : val === 'false' ? false : undefined),
+}).refine(
+  (data) => data.gymId || data.gymOwnerId,
+  { message: 'Either gymId or gymOwnerId is required', path: ['gymId'] }
+);
+
 // Validation middleware factory
 export const validate = (schema: ZodSchema, source: 'body' | 'query' | 'params' = 'body') => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
