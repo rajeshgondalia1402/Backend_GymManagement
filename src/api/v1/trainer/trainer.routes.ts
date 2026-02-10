@@ -20,8 +20,8 @@ router.use(authorize('TRAINER'));
  * @swagger
  * /api/v1/trainer/profile:
  *   get:
- *     summary: Get trainer's own profile
- *     tags: [Trainer]
+ *     summary: Get trainer's own profile (basic)
+ *     tags: [Trainer - Profile]
  *     security:
  *       - bearerAuth: []
  *     responses:
@@ -29,6 +29,243 @@ router.use(authorize('TRAINER'));
  *         description: Profile retrieved successfully
  */
 router.get('/profile', trainerController.getProfile.bind(trainerController));
+
+/**
+ * @swagger
+ * /api/v1/trainer/profile/details:
+ *   get:
+ *     summary: Get trainer's complete profile details
+ *     description: |
+ *       Returns comprehensive profile information for the logged-in trainer including:
+ *       - Personal details (name, email, phone, gender, date of birth)
+ *       - Professional details (specialization, experience, joining date, salary)
+ *       - Documents (trainer photo, ID proof type, ID proof document)
+ *       - Gym details (name, logo, address, contact information)
+ *     tags: [Trainer - Profile]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Profile details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Profile details retrieved successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       format: uuid
+ *                     name:
+ *                       type: string
+ *                       example: John Doe
+ *                     email:
+ *                       type: string
+ *                       format: email
+ *                       example: john@example.com
+ *                     phone:
+ *                       type: string
+ *                       example: "9876543210"
+ *                     gender:
+ *                       type: string
+ *                       example: Male
+ *                     dateOfBirth:
+ *                       type: string
+ *                       format: date-time
+ *                     specialization:
+ *                       type: string
+ *                       example: Weight Training
+ *                     experience:
+ *                       type: integer
+ *                       description: Experience in years
+ *                       example: 5
+ *                     joiningDate:
+ *                       type: string
+ *                       format: date-time
+ *                     salary:
+ *                       type: number
+ *                       description: Monthly salary
+ *                       example: 25000
+ *                     trainerPhoto:
+ *                       type: string
+ *                       description: Path to trainer's photo
+ *                     idProofType:
+ *                       type: string
+ *                       example: Aadhar
+ *                     idProofDocument:
+ *                       type: string
+ *                       description: Path to ID proof document
+ *                     isActive:
+ *                       type: boolean
+ *                       example: true
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *                     gym:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                           format: uuid
+ *                         name:
+ *                           type: string
+ *                           example: Fitness First Gym
+ *                         logo:
+ *                           type: string
+ *                           description: Path to gym logo
+ *                         address1:
+ *                           type: string
+ *                         address2:
+ *                           type: string
+ *                         city:
+ *                           type: string
+ *                         state:
+ *                           type: string
+ *                         zipcode:
+ *                           type: string
+ *                         mobileNo:
+ *                           type: string
+ *                         phoneNo:
+ *                           type: string
+ *                         email:
+ *                           type: string
+ *                           format: email
+ *       400:
+ *         description: Trainer profile not found
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - User is not a trainer
+ */
+router.get('/profile/details', trainerController.getProfileDetails.bind(trainerController));
+
+// =============================================
+// Dashboard Routes
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/trainer/dashboard:
+ *   get:
+ *     summary: Get trainer dashboard stats
+ *     description: |
+ *       Returns dashboard statistics for the logged-in trainer:
+ *       - Total Salary: Sum of all calculated salary records assigned to this trainer
+ *       - Total Incentive: Sum of all incentive amounts assigned to this trainer
+ *       - Total Assigned PT Members: Count of all PT members assigned to this trainer (all time)
+ *       - Current Month PT Members: List of PT members assigned in the current month with their diet plan details
+ *     tags: [Trainer - Dashboard]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Dashboard stats retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Dashboard stats retrieved successfully
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     totalSalary:
+ *                       type: number
+ *                       description: Sum of all calculated salary records
+ *                       example: 50000
+ *                     totalIncentive:
+ *                       type: number
+ *                       description: Sum of all incentive amounts
+ *                       example: 5000
+ *                     totalAssignedPTMembers:
+ *                       type: integer
+ *                       description: Count of all PT members assigned (all time)
+ *                       example: 15
+ *                     currentMonthPTMembers:
+ *                       type: array
+ *                       description: List of PT members assigned in current month with diet plan
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                             format: uuid
+ *                           memberId:
+ *                             type: string
+ *                             format: uuid
+ *                           memberName:
+ *                             type: string
+ *                           memberEmail:
+ *                             type: string
+ *                           memberPhone:
+ *                             type: string
+ *                           memberGender:
+ *                             type: string
+ *                           packageName:
+ *                             type: string
+ *                           startDate:
+ *                             type: string
+ *                             format: date-time
+ *                           endDate:
+ *                             type: string
+ *                             format: date-time
+ *                           goals:
+ *                             type: string
+ *                           notes:
+ *                             type: string
+ *                           isActive:
+ *                             type: boolean
+ *                           createdAt:
+ *                             type: string
+ *                             format: date-time
+ *                           dietPlan:
+ *                             type: object
+ *                             nullable: true
+ *                             description: Active diet plan assigned to the member
+ *                             properties:
+ *                               id:
+ *                                 type: string
+ *                                 format: uuid
+ *                               planName:
+ *                                 type: string
+ *                               description:
+ *                                 type: string
+ *                               calories:
+ *                                 type: integer
+ *                               meals:
+ *                                 type: object
+ *                               startDate:
+ *                                 type: string
+ *                                 format: date-time
+ *                               endDate:
+ *                                 type: string
+ *                                 format: date-time
+ *                               isActive:
+ *                                 type: boolean
+ *       400:
+ *         description: Trainer profile not found
+ *       401:
+ *         description: Unauthorized - Invalid or missing token
+ *       403:
+ *         description: Forbidden - User is not a trainer
+ */
+router.get('/dashboard', trainerController.getDashboard.bind(trainerController));
 
 // =============================================
 // Member Management Routes

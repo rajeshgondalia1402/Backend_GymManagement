@@ -71,13 +71,14 @@ class AdminController {
   // Gyms
   async getGyms(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { page = 1, limit = 10, search, sortBy, sortOrder } = req.query as any;
+      const { page = 1, limit = 10, search, sortBy, sortOrder, subscriptionStatus } = req.query as any;
       const { gyms, total } = await adminService.getGyms({
         page: Number(page),
         limit: Number(limit),
         search,
         sortBy,
         sortOrder,
+        subscriptionStatus,
       });
       paginatedResponse(res, gyms, Number(page), Number(limit), total, 'Gyms retrieved successfully');
     } catch (error) {
@@ -132,8 +133,8 @@ class AdminController {
 
   async assignGymOwner(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { ownerId } = req.body;
-      const gym = await adminService.assignGymOwner(req.params.id, ownerId);
+      const { ownerId, password } = req.body;
+      const gym = await adminService.assignGymOwner(req.params.id, ownerId, password);
       successResponse(res, gym, 'Owner assigned to gym successfully');
     } catch (error) {
       next(error);
@@ -251,6 +252,15 @@ class AdminController {
     }
   }
 
+  async resetGymOwnerPassword(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const result = await adminService.resetGymOwnerPassword(req.params.id);
+      successResponse(res, result, 'Gym owner password reset successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async toggleUserStatus(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await adminService.toggleUserStatus(req.params.id);
@@ -292,6 +302,15 @@ class AdminController {
     try {
       const occupation = await adminService.updateOccupation(req.params.id, req.body);
       successResponse(res, occupation, 'Occupation updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getOccupationUsage(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const usage = await adminService.getOccupationUsage(req.params.id);
+      successResponse(res, usage, 'Occupation usage retrieved successfully');
     } catch (error) {
       next(error);
     }
@@ -343,6 +362,15 @@ class AdminController {
     }
   }
 
+  async getEnquiryTypeUsage(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const usage = await adminService.getEnquiryTypeUsage(req.params.id);
+      successResponse(res, usage, 'Enquiry type usage retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async deleteEnquiryType(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const enquiryType = await adminService.deleteEnquiryType(req.params.id);
@@ -389,10 +417,129 @@ class AdminController {
     }
   }
 
+  async getPaymentTypeUsage(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const usage = await adminService.getPaymentTypeUsage(req.params.id);
+      successResponse(res, usage, 'Payment type usage retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async deletePaymentType(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const paymentType = await adminService.deletePaymentType(req.params.id);
       successResponse(res, paymentType, 'Payment type deleted successfully (soft delete)');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Gym Subscription History
+  async renewGymSubscription(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const record = await adminService.renewGymSubscription(req.params.gymId, req.body, req.user?.id);
+      successResponse(res, record, 'Gym subscription renewed successfully', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getGymSubscriptionHistory(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { page = 1, limit = 10, search, sortBy, sortOrder, paymentStatus, renewalType } = req.query as any;
+      const { history, total } = await adminService.getGymSubscriptionHistory(req.params.gymId, {
+        page: Number(page),
+        limit: Number(limit),
+        search,
+        sortBy,
+        sortOrder,
+        paymentStatus,
+        renewalType,
+      });
+      paginatedResponse(res, history, Number(page), Number(limit), total, 'Gym subscription history retrieved');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getGymSubscriptionHistoryById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const record = await adminService.getGymSubscriptionHistoryById(req.params.id);
+      successResponse(res, record, 'Subscription history record retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Gym Inquiry
+  async getGymInquiries(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { page = 1, limit = 10, search, sortBy, sortOrder, subscriptionPlanId, isActive } = req.query as any;
+      const { inquiries, total } = await adminService.getGymInquiries({
+        page: Number(page),
+        limit: Number(limit),
+        search,
+        sortBy,
+        sortOrder,
+        subscriptionPlanId,
+        isActive,
+      });
+      paginatedResponse(res, inquiries, Number(page), Number(limit), total, 'Gym inquiries retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getGymInquiryById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const inquiry = await adminService.getGymInquiryById(req.params.id);
+      successResponse(res, inquiry, 'Gym inquiry retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createGymInquiry(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const inquiry = await adminService.createGymInquiry(req.body, req.user?.id);
+      successResponse(res, inquiry, 'Gym inquiry created successfully', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateGymInquiry(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const inquiry = await adminService.updateGymInquiry(req.params.id, req.body, req.user?.id);
+      successResponse(res, inquiry, 'Gym inquiry updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async toggleGymInquiryStatus(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const inquiry = await adminService.toggleGymInquiryStatus(req.params.id);
+      successResponse(res, inquiry, 'Gym inquiry status updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getGymInquiryFollowups(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const followups = await adminService.getGymInquiryFollowups(req.params.id);
+      successResponse(res, followups, 'Gym inquiry followups retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createGymInquiryFollowup(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const followup = await adminService.createGymInquiryFollowup(req.params.id, req.body, req.user?.id);
+      successResponse(res, followup, 'Gym inquiry followup created successfully', 201);
     } catch (error) {
       next(error);
     }

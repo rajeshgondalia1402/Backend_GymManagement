@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { prisma } from '../../../config/database';
 import { NotFoundException, ConflictException } from '../../../common/exceptions';
+import { maskPassword, generateTempPassword } from '../../../common/utils';
 import {
   SubscriptionPlan,
   CreateSubscriptionPlanRequest,
@@ -13,6 +14,7 @@ import {
   UpdateGymOwnerRequest,
   DashboardStats,
   PaginationParams,
+  GymParams,
   Occupation,
   CreateOccupationRequest,
   UpdateOccupationRequest,
@@ -22,6 +24,12 @@ import {
   PaymentType,
   CreatePaymentTypeRequest,
   UpdatePaymentTypeRequest,
+  RenewGymSubscriptionRequest,
+  GymSubscriptionHistoryParams,
+  CreateGymInquiryRequest,
+  UpdateGymInquiryRequest,
+  CreateGymInquiryFollowupRequest,
+  GymInquiryParams,
 } from './admin.types';
 
 class AdminService {
@@ -183,11 +191,12 @@ class AdminService {
   }
 
   // Gyms
-  async getGyms(params: PaginationParams): Promise<{ gyms: Gym[]; total: number }> {
-    const { page, limit, search, sortBy = 'createdAt', sortOrder = 'desc' } = params;
+  async getGyms(params: GymParams): Promise<{ gyms: any[]; total: number }> {
+    const { page, limit, search, sortBy = 'createdAt', sortOrder = 'desc', subscriptionStatus } = params;
     const skip = (page - 1) * limit;
 
-    const where = search
+    // Build where clause for search
+    const searchWhere = search
       ? {
           OR: [
             { name: { contains: search, mode: 'insensitive' as const } },
@@ -199,6 +208,52 @@ class AdminService {
         }
       : {};
 
+    // Build where clause for subscription status filter
+    // Logic matches frontend getGymSubscriptionStatus():
+    // - daysRemaining = Math.ceil((endDate - today) / oneDay)
+    // - EXPIRED: daysRemaining < 0 (end date before today)
+    // - EXPIRING_SOON: daysRemaining >= 0 && daysRemaining <= 7 (today through 7 days from now)
+    // - ACTIVE: daysRemaining > 7 (more than 7 days from now)
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    // Day 8 from today is the first day considered "ACTIVE"
+    // e.g., if today is Feb 9, then Feb 17 onwards is ACTIVE
+    const startOfDay8 = new Date(startOfToday);
+    startOfDay8.setDate(startOfDay8.getDate() + 8);
+
+    // Build subscription status conditions using AND array for clarity
+    const subscriptionConditions: any[] = [];
+
+    if (subscriptionStatus === 'ACTIVE') {
+      // Active: daysRemaining > 7 → subscriptionEnd >= startOfDay8
+      subscriptionConditions.push({ subscriptionPlanId: { not: null } });
+      subscriptionConditions.push({ subscriptionEnd: { not: null } });
+      subscriptionConditions.push({ subscriptionEnd: { gte: startOfDay8 } });
+    } else if (subscriptionStatus === 'EXPIRING_SOON') {
+      // Expiring Soon: daysRemaining >= 0 && daysRemaining <= 7
+      subscriptionConditions.push({ subscriptionPlanId: { not: null } });
+      subscriptionConditions.push({ subscriptionEnd: { not: null } });
+      subscriptionConditions.push({ subscriptionEnd: { gte: startOfToday } });
+      subscriptionConditions.push({ subscriptionEnd: { lt: startOfDay8 } });
+    } else if (subscriptionStatus === 'EXPIRED') {
+      // Expired: daysRemaining < 0 → subscriptionEnd < startOfToday
+      subscriptionConditions.push({ subscriptionPlanId: { not: null } });
+      subscriptionConditions.push({ subscriptionEnd: { not: null } });
+      subscriptionConditions.push({ subscriptionEnd: { lt: startOfToday } });
+    }
+
+    // Combine search and subscription status filters using AND
+    const whereConditions: any[] = [];
+    if (search) {
+      whereConditions.push(searchWhere);
+    }
+    if (subscriptionConditions.length > 0) {
+      whereConditions.push(...subscriptionConditions);
+    }
+
+    const where = whereConditions.length > 0 ? { AND: whereConditions } : {};
+
     const [gyms, total] = await Promise.all([
       prisma.gym.findMany({
         where,
@@ -208,12 +263,40 @@ class AdminService {
         include: {
           subscriptionPlan: true,
           owner: { select: { id: true, name: true, email: true } },
+          subscriptionHistory: {
+            select: {
+              amount: true,
+              paidAmount: true,
+            },
+          },
         },
       }),
       prisma.gym.count({ where }),
     ]);
 
-    return { gyms: gyms as unknown as Gym[], total };
+    // Calculate total subscription amount per gym
+    const gymsWithTotalAmount = gyms.map((gym) => {
+      const totalSubscriptionAmount = gym.subscriptionHistory.reduce(
+        (sum, history) => sum + Number(history.amount || 0),
+        0
+      );
+      const totalPaidAmount = gym.subscriptionHistory.reduce(
+        (sum, history) => sum + Number(history.paidAmount || 0),
+        0
+      );
+      const totalPendingAmount = totalSubscriptionAmount - totalPaidAmount;
+
+      // Remove subscriptionHistory array from response and add totals
+      const { subscriptionHistory, ...gymData } = gym;
+      return {
+        ...gymData,
+        totalSubscriptionAmount,
+        totalPaidAmount,
+        totalPendingAmount,
+      };
+    });
+
+    return { gyms: gymsWithTotalAmount, total };
   }
 
   async getGymById(id: string): Promise<Gym> {
@@ -234,33 +317,89 @@ class AdminService {
       if (existingGym) throw new ConflictException('Gym with this email already exists');
     }
 
-    const gym = await prisma.gym.create({
-      data: {
-        name: data.name,
-        address1: data.address1,
-        address2: data.address2,
-        city: data.city,
-        state: data.state,
-        zipcode: data.zipcode,
-        mobileNo: data.mobileNo,
-        phoneNo: data.phoneNo,
-        email: data.email,
-        gstRegNo: data.gstRegNo,
-        website: data.website,
-        note: data.note,
-        gymLogo: data.gymLogo,
-        subscriptionPlanId: data.subscriptionPlanId,
-        ownerId: data.ownerId,
-      },
-      include: { subscriptionPlan: true },
+    // Calculate subscription dates if a plan is assigned
+    let subscriptionStart: Date | undefined;
+    let subscriptionEnd: Date | undefined;
+    let plan: any = null;
+    if (data.subscriptionPlanId) {
+      plan = await prisma.gymSubscriptionPlan.findUnique({
+        where: { id: data.subscriptionPlanId },
+      });
+      if (plan) {
+        subscriptionStart = new Date();
+        subscriptionEnd = new Date();
+        subscriptionEnd.setDate(subscriptionEnd.getDate() + plan.durationDays);
+      }
+    }
+
+    // Use transaction to create gym and initial subscription history
+    const gym = await prisma.$transaction(async (tx) => {
+      const newGym = await tx.gym.create({
+        data: {
+          name: data.name,
+          address1: data.address1,
+          address2: data.address2,
+          city: data.city,
+          state: data.state,
+          zipcode: data.zipcode,
+          mobileNo: data.mobileNo,
+          phoneNo: data.phoneNo,
+          email: data.email,
+          gstRegNo: data.gstRegNo,
+          website: data.website,
+          memberSize: data.memberSize,
+          note: data.note,
+          gymLogo: data.gymLogo,
+          subscriptionPlanId: data.subscriptionPlanId,
+          ownerId: data.ownerId,
+          subscriptionStart,
+          subscriptionEnd,
+        },
+        include: { subscriptionPlan: true },
+      });
+
+      // Create initial subscription history record if plan is assigned
+      if (plan && subscriptionStart && subscriptionEnd) {
+        const planPrice = Number(plan.price);
+        const discount = data.extraDiscount || 0;
+        if (discount < 0 || discount > planPrice) {
+          throw new ConflictException('Extra discount must be between 0 and the plan price');
+        }
+        const finalAmount = planPrice - discount;
+
+        const subscriptionNumber = await this.generateSubscriptionNumber(tx);
+        await tx.gymSubscriptionHistory.create({
+          data: {
+            subscriptionNumber,
+            gymId: newGym.id,
+            subscriptionPlanId: data.subscriptionPlanId!,
+            subscriptionStart,
+            subscriptionEnd,
+            renewalType: 'NEW',
+            planAmount: planPrice,
+            extraDiscount: discount,
+            amount: finalAmount,
+            paymentStatus: 'PAID',
+            paidAmount: finalAmount,
+            pendingAmount: 0,
+            isActive: true,
+          },
+        });
+      }
+
+      return newGym;
     });
 
     return gym as unknown as Gym;
   }
 
   async updateGym(id: string, data: UpdateGymRequest): Promise<Gym> {
-    await this.getGymById(id);
-    
+    const existingGym = await prisma.gym.findUnique({
+      where: { id },
+      include: { subscriptionPlan: true },
+    });
+    if (!existingGym) throw new NotFoundException('Gym not found');
+
     // Build update data object with only provided fields
     const updateData: any = {};
     if (data.name !== undefined) updateData.name = data.name;
@@ -274,16 +413,121 @@ class AdminService {
     if (data.email !== undefined) updateData.email = data.email;
     if (data.gstRegNo !== undefined) updateData.gstRegNo = data.gstRegNo;
     if (data.website !== undefined) updateData.website = data.website;
+    if (data.memberSize !== undefined) updateData.memberSize = data.memberSize;
     if (data.note !== undefined) updateData.note = data.note;
     if (data.gymLogo !== undefined) updateData.gymLogo = data.gymLogo || null;
-    if (data.subscriptionPlanId !== undefined) updateData.subscriptionPlanId = data.subscriptionPlanId;
+
+    let newPlan: any = null;
+    const subscriptionPlanChanged = data.subscriptionPlanId !== undefined && data.subscriptionPlanId !== existingGym.subscriptionPlanId;
+
+    if (data.subscriptionPlanId !== undefined) {
+      updateData.subscriptionPlanId = data.subscriptionPlanId;
+
+      // When subscription plan changes, reset subscription dates
+      newPlan = await prisma.gymSubscriptionPlan.findUnique({
+        where: { id: data.subscriptionPlanId },
+      });
+      if (newPlan) {
+        const now = new Date();
+        const endDate = new Date(now);
+        endDate.setDate(endDate.getDate() + newPlan.durationDays);
+        updateData.subscriptionStart = now;
+        updateData.subscriptionEnd = endDate;
+      }
+    }
     if (data.ownerId !== undefined) updateData.ownerId = data.ownerId;
-    
-    const gym = await prisma.gym.update({
-      where: { id },
-      data: updateData,
-      include: { subscriptionPlan: true },
+
+    // Use transaction when subscription plan changes to also create history
+    const gym = await prisma.$transaction(async (tx) => {
+      const updatedGym = await tx.gym.update({
+        where: { id },
+        data: updateData,
+        include: { subscriptionPlan: true },
+      });
+
+      // Create subscription history record when plan changes
+      if (subscriptionPlanChanged && newPlan) {
+        // Backfill: if no history records exist for this gym (gym created before history feature),
+        // create an initial "NEW" record for the original subscription
+        const existingHistoryCount = await tx.gymSubscriptionHistory.count({ where: { gymId: id } });
+        if (existingHistoryCount === 0 && existingGym.subscriptionPlanId && existingGym.subscriptionPlan && existingGym.subscriptionStart && existingGym.subscriptionEnd) {
+          const initialSubNumber = await this.generateSubscriptionNumber(tx);
+          const initialPlanPrice = Number(existingGym.subscriptionPlan.price);
+          await tx.gymSubscriptionHistory.create({
+            data: {
+              subscriptionNumber: initialSubNumber,
+              gymId: id,
+              subscriptionPlanId: existingGym.subscriptionPlanId,
+              subscriptionStart: existingGym.subscriptionStart,
+              subscriptionEnd: existingGym.subscriptionEnd,
+              renewalDate: existingGym.subscriptionStart,
+              renewalType: 'NEW',
+              planAmount: initialPlanPrice,
+              extraDiscount: 0,
+              amount: initialPlanPrice,
+              paymentStatus: 'PAID',
+              paidAmount: initialPlanPrice,
+              pendingAmount: 0,
+              isActive: true,
+            },
+          });
+        }
+
+        // Deactivate previous history records
+        await tx.gymSubscriptionHistory.updateMany({
+          where: { gymId: id, isActive: true },
+          data: { isActive: false },
+        });
+
+        // Determine renewal type
+        let renewalType: 'NEW' | 'RENEWAL' | 'UPGRADE' | 'DOWNGRADE' = 'NEW';
+        if (existingGym.subscriptionPlanId && existingGym.subscriptionPlan) {
+          const oldPrice = Number(existingGym.subscriptionPlan.price);
+          const newPrice = Number(newPlan.price);
+          if (existingGym.subscriptionPlanId === data.subscriptionPlanId) {
+            renewalType = 'RENEWAL';
+          } else if (newPrice > oldPrice) {
+            renewalType = 'UPGRADE';
+          } else if (newPrice < oldPrice) {
+            renewalType = 'DOWNGRADE';
+          } else {
+            renewalType = 'RENEWAL';
+          }
+        }
+
+        const newPlanPrice = Number(newPlan.price);
+        const discount = data.extraDiscount || 0;
+        if (discount < 0 || discount > newPlanPrice) {
+          throw new ConflictException('Extra discount must be between 0 and the plan price');
+        }
+        const finalAmount = newPlanPrice - discount;
+
+        const subscriptionNumber = await this.generateSubscriptionNumber(tx);
+        await tx.gymSubscriptionHistory.create({
+          data: {
+            subscriptionNumber,
+            gymId: id,
+            subscriptionPlanId: data.subscriptionPlanId!,
+            subscriptionStart: updateData.subscriptionStart,
+            subscriptionEnd: updateData.subscriptionEnd,
+            renewalType,
+            planAmount: newPlanPrice,
+            extraDiscount: discount,
+            amount: finalAmount,
+            previousPlanId: existingGym.subscriptionPlanId || undefined,
+            previousPlanName: existingGym.subscriptionPlan?.name || undefined,
+            previousSubscriptionEnd: existingGym.subscriptionEnd || undefined,
+            paymentStatus: 'PAID',
+            paidAmount: finalAmount,
+            pendingAmount: 0,
+            isActive: true,
+          },
+        });
+      }
+
+      return updatedGym;
     });
+
     return gym as unknown as Gym;
   }
 
@@ -302,7 +546,7 @@ class AdminService {
     return updated as unknown as Gym;
   }
 
-  async assignGymOwner(gymId: string, ownerId: string): Promise<Gym> {
+  async assignGymOwner(gymId: string, ownerId: string, password?: string): Promise<Gym> {
     // Verify gym exists
     await this.getGymById(gymId);
 
@@ -322,10 +566,13 @@ class AdminService {
       throw new ConflictException('User already owns another gym');
     }
 
-    // Assign owner to gym
+    // Assign owner to gym (and store password if provided)
     const gym = await prisma.gym.update({
       where: { id: gymId },
-      data: { ownerId },
+      data: {
+        ownerId,
+        ...(password && { ownerPassword: password }),
+      },
       include: {
         subscriptionPlan: true,
         owner: { select: { id: true, name: true, email: true } },
@@ -359,7 +606,7 @@ class AdminService {
         skip,
         take: limit,
         orderBy: { [sortBy]: sortOrder },
-        include: { ownedGym: { select: { id: true, name: true } } },
+        include: { ownedGym: { select: { id: true, name: true, ownerPassword: true } } },
       }),
       prisma.user.count({ where }),
     ]);
@@ -370,6 +617,7 @@ class AdminService {
       firstName: u.name.split(' ')[0] || u.name,
       lastName: u.name.split(' ').slice(1).join(' ') || '',
       phone: undefined,
+      passwordHint: maskPassword(u.ownedGym?.ownerPassword),
       isActive: u.isActive,
       gymId: u.ownedGym?.id || '',
       gymName: u.ownedGym?.name || '',
@@ -407,6 +655,7 @@ class AdminService {
       firstName: data.firstName || nameParts[0] || fullName,
       lastName: data.lastName || nameParts.slice(1).join(' ') || '',
       phone: data.phone,
+      passwordHint: maskPassword(data.password),
       isActive: user.isActive,
       gymId: undefined,
       createdAt: user.createdAt,
@@ -419,7 +668,7 @@ class AdminService {
 
     const user = await prisma.user.findUnique({
       where: { id },
-      include: { ownedGym: true },
+      include: { ownedGym: { select: { id: true, name: true, ownerPassword: true } } },
     });
 
     if (!user) throw new NotFoundException('Gym owner not found');
@@ -432,6 +681,7 @@ class AdminService {
       firstName: nameParts[0] || user.name,
       lastName: nameParts.slice(1).join(' ') || '',
       phone: undefined,
+      passwordHint: maskPassword(user.ownedGym?.ownerPassword),
       isActive: user.isActive,
       gymId: user.ownedGym?.id || '',
       gymName: user.ownedGym?.name || '',
@@ -445,7 +695,7 @@ class AdminService {
 
     const user = await prisma.user.findUnique({
       where: { id },
-      include: { ownedGym: true },
+      include: { ownedGym: { select: { id: true, name: true, ownerPassword: true } } },
     });
 
     if (!user) throw new NotFoundException('Gym owner not found');
@@ -468,27 +718,51 @@ class AdminService {
       fullName = `${firstName} ${lastName}`.trim();
     }
 
-    const updatedUser = await prisma.user.update({
-      where: { id },
-      data: {
-        name: fullName,
-        email: data.email || user.email,
-        isActive: data.isActive !== undefined ? data.isActive : user.isActive,
-      },
-      include: { ownedGym: true },
+    // Handle password update
+    let hashedPassword: string | undefined;
+    if (data.password) {
+      hashedPassword = await bcrypt.hash(data.password, 10);
+    }
+
+    // Use transaction to update both User and Gym (for ownerPassword)
+    const result = await prisma.$transaction(async (tx) => {
+      const updatedUser = await tx.user.update({
+        where: { id },
+        data: {
+          name: fullName,
+          email: data.email || user.email,
+          isActive: data.isActive !== undefined ? data.isActive : user.isActive,
+          ...(hashedPassword && { password: hashedPassword }),
+        },
+        include: { ownedGym: { select: { id: true, name: true, ownerPassword: true } } },
+      });
+
+      // If password is being updated and user has a gym, update ownerPassword in Gym table
+      if (data.password && updatedUser.ownedGym) {
+        await tx.gym.update({
+          where: { id: updatedUser.ownedGym.id },
+          data: { ownerPassword: data.password },
+        });
+      }
+
+      return {
+        user: updatedUser,
+        newPassword: data.password,
+      };
     });
 
-    const nameParts = updatedUser.name.split(' ');
+    const nameParts = result.user.name.split(' ');
     return {
-      id: updatedUser.id,
-      email: updatedUser.email,
-      firstName: nameParts[0] || updatedUser.name,
+      id: result.user.id,
+      email: result.user.email,
+      firstName: nameParts[0] || result.user.name,
       lastName: nameParts.slice(1).join(' ') || '',
       phone: data.phone,
-      isActive: updatedUser.isActive,
-      gymId: updatedUser.ownedGym?.id || '',
-      gymName: updatedUser.ownedGym?.name || '',
-      createdAt: updatedUser.createdAt,
+      passwordHint: maskPassword(result.newPassword || result.user.ownedGym?.ownerPassword),
+      isActive: result.user.isActive,
+      gymId: result.user.ownedGym?.id || '',
+      gymName: result.user.ownedGym?.name || '',
+      createdAt: result.user.createdAt,
     };
   }
 
@@ -513,6 +787,66 @@ class AdminService {
     }
 
     await prisma.user.delete({ where: { id } });
+  }
+
+  /**
+   * Reset gym owner password - generates a new temporary password
+   * The gym owner should change this password on their next login
+   */
+  async resetGymOwnerPassword(id: string): Promise<{ ownerId: string; email: string; temporaryPassword: string; message: string }> {
+    const gymOwnerRole = await prisma.rolemaster.findFirst({ where: { rolename: 'GYM_OWNER' } });
+    if (!gymOwnerRole) throw new NotFoundException('GYM_OWNER role not found');
+
+    const user = await prisma.user.findUnique({
+      where: { id },
+      include: { ownedGym: true },
+    });
+
+    if (!user) throw new NotFoundException('Gym owner not found');
+    if (user.roleId !== gymOwnerRole.Id) throw new NotFoundException('User is not a gym owner');
+
+    // Generate a temporary password
+    const temporaryPassword = generateTempPassword(12);
+    const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
+
+    // Update both User table (hashed) and Gym table (plain for hint)
+    await prisma.$transaction(async (tx) => {
+      // Update hashed password in User table for authentication
+      await tx.user.update({
+        where: { id },
+        data: { password: hashedPassword },
+      });
+
+      // If user has a gym, update plain text password in Gym table for password hint display
+      if (user.ownedGym) {
+        await tx.gym.update({
+          where: { id: user.ownedGym.id },
+          data: { ownerPassword: temporaryPassword },
+        });
+      }
+
+      // Log password reset in PasswordResetHistory
+      await tx.passwordResetHistory.create({
+        data: {
+          userId: user.id,
+          email: user.email,
+          roleId: user.roleId || undefined,
+          roleName: 'GYM_OWNER',
+          resetBy: user.id,
+          resetByEmail: user.email,
+          resetMethod: 'ADMIN_RESET',
+          targetTable: 'USER',
+          gymId: user.ownedGym?.id || undefined,
+        },
+      });
+    });
+
+    return {
+      ownerId: user.id,
+      email: user.email,
+      temporaryPassword,
+      message: 'Password has been reset. Please share this temporary password securely with the gym owner. They should change it on their next login.',
+    };
   }
 
   async toggleUserStatus(id: string): Promise<{ isActive: boolean }> {
@@ -591,16 +925,43 @@ class AdminService {
     return occupation;
   }
 
-  async deleteOccupation(id: string): Promise<Occupation> {
-    // Soft delete - set isActive to false
-    await this.getOccupationById(id);
+  async getOccupationUsage(id: string): Promise<{ usageCount: number; canDelete: boolean }> {
+    // Check if occupation exists
+    const occupation = await this.getOccupationById(id);
 
-    const occupation = await prisma.occupationMaster.update({
+    // Check if occupation name is used in any member records
+    const usageCount = await prisma.member.count({
+      where: { occupation: occupation.occupationName },
+    });
+
+    return {
+      usageCount,
+      canDelete: usageCount === 0,
+    };
+  }
+
+  async deleteOccupation(id: string): Promise<Occupation> {
+    // Check if occupation exists
+    const occupation = await this.getOccupationById(id);
+
+    // Check if occupation name is used in any member records
+    const usageCount = await prisma.member.count({
+      where: { occupation: occupation.occupationName },
+    });
+
+    if (usageCount > 0) {
+      throw new ConflictException(
+        `Cannot delete this occupation. It is currently used by ${usageCount} member(s). Please update those members first.`
+      );
+    }
+
+    // Soft delete - set isActive to false
+    const updatedOccupation = await prisma.occupationMaster.update({
       where: { id },
       data: { isActive: false },
     });
 
-    return occupation;
+    return updatedOccupation;
   }
 
   // Enquiry Type Master CRUD
@@ -665,10 +1026,37 @@ class AdminService {
     return enquiryType;
   }
 
-  async deleteEnquiryType(id: string): Promise<EnquiryType> {
-    // Soft delete - set isActive to false
+  async getEnquiryTypeUsage(id: string): Promise<{ usageCount: number; canDelete: boolean }> {
+    // Check if enquiry type exists
     await this.getEnquiryTypeById(id);
 
+    // Check if enquiry type is used in any gym inquiries
+    const usageCount = await prisma.gymInquiry.count({
+      where: { enquiryTypeId: id },
+    });
+
+    return {
+      usageCount,
+      canDelete: usageCount === 0,
+    };
+  }
+
+  async deleteEnquiryType(id: string): Promise<EnquiryType> {
+    // Check if enquiry type exists
+    await this.getEnquiryTypeById(id);
+
+    // Check if enquiry type is used in any gym inquiries
+    const usageCount = await prisma.gymInquiry.count({
+      where: { enquiryTypeId: id },
+    });
+
+    if (usageCount > 0) {
+      throw new ConflictException(
+        `Cannot delete this enquiry type. It is currently used in ${usageCount} gym inquiry record(s). Please reassign or remove those inquiries first.`
+      );
+    }
+
+    // Soft delete - set isActive to false
     const enquiryType = await prisma.enquiryTypeMaster.update({
       where: { id },
       data: { isActive: false },
@@ -741,16 +1129,505 @@ class AdminService {
     return paymentType;
   }
 
-  async deletePaymentType(id: string): Promise<PaymentType> {
-    // Soft delete - set isActive to false
-    await this.getPaymentTypeById(id);
+  async getPaymentTypeUsage(id: string): Promise<{ usageCount: number; canDelete: boolean; details: { subscriptions: number; settlements: number; expenses: number } }> {
+    // Check if payment type exists
+    const paymentType = await this.getPaymentTypeById(id);
 
-    const paymentType = await prisma.paymentTypeMaster.update({
+    // Check usage across different tables that use payment type name
+    const [subscriptionCount, settlementCount, expenseCount] = await Promise.all([
+      // Check gym subscription history
+      prisma.gymSubscriptionHistory.count({
+        where: { paymentMode: paymentType.paymentTypeName },
+      }),
+      // Check trainer salary settlements (uses PaymentMode enum, but we check string match)
+      prisma.trainerSalarySettlement.count({
+        where: { paymentMode: paymentType.paymentTypeName as any },
+      }),
+      // Check expense master
+      prisma.expenseMaster.count({
+        where: { paymentMode: paymentType.paymentTypeName as any },
+      }),
+    ]);
+
+    const usageCount = subscriptionCount + settlementCount + expenseCount;
+
+    return {
+      usageCount,
+      canDelete: usageCount === 0,
+      details: {
+        subscriptions: subscriptionCount,
+        settlements: settlementCount,
+        expenses: expenseCount,
+      },
+    };
+  }
+
+  async deletePaymentType(id: string): Promise<PaymentType> {
+    // Check if payment type exists
+    const paymentType = await this.getPaymentTypeById(id);
+
+    // Check usage
+    const usage = await this.getPaymentTypeUsage(id);
+
+    if (!usage.canDelete) {
+      const usageDetails: string[] = [];
+      if (usage.details.subscriptions > 0) usageDetails.push(`${usage.details.subscriptions} subscription(s)`);
+      if (usage.details.settlements > 0) usageDetails.push(`${usage.details.settlements} salary settlement(s)`);
+      if (usage.details.expenses > 0) usageDetails.push(`${usage.details.expenses} expense(s)`);
+
+      throw new ConflictException(
+        `Cannot delete this payment type. It is currently used in ${usageDetails.join(', ')}. Please update those records first.`
+      );
+    }
+
+    // Soft delete - set isActive to false
+    const updatedPaymentType = await prisma.paymentTypeMaster.update({
       where: { id },
       data: { isActive: false },
     });
 
-    return paymentType;
+    return updatedPaymentType;
+  }
+
+  // =============================================
+  // Gym Subscription History
+  // =============================================
+
+  private async generateSubscriptionNumber(tx: any): Promise<string> {
+    const lastRecord = await tx.gymSubscriptionHistory.findFirst({
+      orderBy: { createdAt: 'desc' },
+      select: { subscriptionNumber: true },
+    });
+
+    let nextNumber = 1;
+    if (lastRecord?.subscriptionNumber) {
+      const match = lastRecord.subscriptionNumber.match(/GSUB-(\d+)/);
+      if (match) {
+        nextNumber = parseInt(match[1]) + 1;
+      }
+    }
+    return `GSUB-${String(nextNumber).padStart(5, '0')}`;
+  }
+
+  async renewGymSubscription(gymId: string, data: RenewGymSubscriptionRequest, adminUserId?: string) {
+    // Fetch gym with current plan
+    const gym = await prisma.gym.findUnique({
+      where: { id: gymId },
+      include: { subscriptionPlan: true },
+    });
+    if (!gym) throw new NotFoundException('Gym not found');
+
+    // Fetch new plan
+    const newPlan = await prisma.gymSubscriptionPlan.findUnique({
+      where: { id: data.subscriptionPlanId },
+    });
+    if (!newPlan) throw new NotFoundException('Subscription plan not found');
+    if (!newPlan.isActive) throw new ConflictException('Subscription plan is not active');
+
+    // Determine renewal type
+    let renewalType: 'NEW' | 'RENEWAL' | 'UPGRADE' | 'DOWNGRADE' = 'NEW';
+    if (gym.subscriptionPlanId && gym.subscriptionPlan) {
+      const oldPrice = Number(gym.subscriptionPlan.price);
+      const newPrice = Number(newPlan.price);
+      if (gym.subscriptionPlanId === data.subscriptionPlanId) {
+        renewalType = 'RENEWAL';
+      } else if (newPrice > oldPrice) {
+        renewalType = 'UPGRADE';
+      } else if (newPrice < oldPrice) {
+        renewalType = 'DOWNGRADE';
+      } else {
+        renewalType = 'RENEWAL';
+      }
+    }
+
+    // Calculate dates
+    const subscriptionStart = data.subscriptionStart ? new Date(data.subscriptionStart) : new Date();
+    const subscriptionEnd = new Date(subscriptionStart);
+    subscriptionEnd.setDate(subscriptionEnd.getDate() + newPlan.durationDays);
+
+    // Calculate payment with extra discount
+    const planPrice = Number(newPlan.price);
+    const extraDiscount = data.extraDiscount || 0;
+    if (extraDiscount < 0 || extraDiscount > planPrice) {
+      throw new ConflictException('Extra discount must be between 0 and the plan price');
+    }
+    const amount = planPrice - extraDiscount;
+    const paidAmount = data.paidAmount || 0;
+    const pendingAmount = Math.max(0, amount - paidAmount);
+    let paymentStatus: 'PAID' | 'PENDING' | 'PARTIAL' = 'PENDING';
+    if (paidAmount >= amount && amount > 0) {
+      paymentStatus = 'PAID';
+    } else if (paidAmount > 0) {
+      paymentStatus = 'PARTIAL';
+    } else if (amount === 0) {
+      paymentStatus = 'PAID';
+    }
+
+    // Transaction
+    const historyRecord = await prisma.$transaction(async (tx) => {
+      // Backfill: if no history records exist for this gym (gym created before history feature),
+      // create an initial "NEW" record for the original subscription
+      const existingHistoryCount = await tx.gymSubscriptionHistory.count({ where: { gymId } });
+      if (existingHistoryCount === 0 && gym.subscriptionPlanId && gym.subscriptionPlan && gym.subscriptionStart && gym.subscriptionEnd) {
+        const initialSubNumber = await this.generateSubscriptionNumber(tx);
+        const initialPlanPrice = Number(gym.subscriptionPlan.price);
+        await tx.gymSubscriptionHistory.create({
+          data: {
+            subscriptionNumber: initialSubNumber,
+            gymId,
+            subscriptionPlanId: gym.subscriptionPlanId,
+            subscriptionStart: gym.subscriptionStart,
+            subscriptionEnd: gym.subscriptionEnd,
+            renewalDate: gym.subscriptionStart,
+            renewalType: 'NEW',
+            planAmount: initialPlanPrice,
+            extraDiscount: 0,
+            amount: initialPlanPrice,
+            paymentStatus: 'PAID',
+            paidAmount: initialPlanPrice,
+            pendingAmount: 0,
+            isActive: true,
+          },
+        });
+      }
+
+      // Deactivate all previous active history records
+      await tx.gymSubscriptionHistory.updateMany({
+        where: { gymId, isActive: true },
+        data: { isActive: false },
+      });
+
+      // Generate subscription number
+      const subscriptionNumber = await this.generateSubscriptionNumber(tx);
+
+      // Create new history record
+      const record = await tx.gymSubscriptionHistory.create({
+        data: {
+          subscriptionNumber,
+          gymId,
+          subscriptionPlanId: data.subscriptionPlanId,
+          subscriptionStart,
+          subscriptionEnd,
+          renewalType,
+          planAmount: planPrice,
+          extraDiscount,
+          amount,
+          paymentMode: data.paymentMode,
+          paymentStatus,
+          paidAmount,
+          pendingAmount,
+          isActive: true,
+          notes: data.notes,
+          previousPlanId: gym.subscriptionPlanId,
+          previousPlanName: gym.subscriptionPlan?.name,
+          previousSubscriptionEnd: gym.subscriptionEnd,
+          createdBy: adminUserId,
+        },
+        include: {
+          subscriptionPlan: { select: { name: true, price: true, durationDays: true } },
+        },
+      });
+
+      // Update gym table
+      await tx.gym.update({
+        where: { id: gymId },
+        data: {
+          subscriptionPlanId: data.subscriptionPlanId,
+          subscriptionStart,
+          subscriptionEnd,
+        },
+      });
+
+      return record;
+    });
+
+    return historyRecord;
+  }
+
+  async getGymSubscriptionHistory(gymId: string, params: GymSubscriptionHistoryParams) {
+    const { page = 1, limit = 10, search, sortBy = 'renewalDate', sortOrder = 'desc', paymentStatus, renewalType } = params;
+    const skip = (page - 1) * limit;
+
+    // Verify gym exists
+    const gym = await prisma.gym.findUnique({
+      where: { id: gymId },
+      include: { subscriptionPlan: true },
+    });
+    if (!gym) throw new NotFoundException('Gym not found');
+
+    // Backfill: if history records exist but no "NEW" record, create initial record from earliest renewal's previous plan data
+    const hasNewRecord = await prisma.gymSubscriptionHistory.findFirst({
+      where: { gymId, renewalType: 'NEW' },
+    });
+
+    if (!hasNewRecord) {
+      // Find the earliest record which should have previousPlan data
+      const earliestRecord = await prisma.gymSubscriptionHistory.findFirst({
+        where: { gymId },
+        orderBy: { renewalDate: 'asc' },
+      });
+
+      if (earliestRecord && earliestRecord.previousPlanId) {
+        // Reconstruct the initial subscription from the earliest renewal's previous plan info
+        const previousPlan = await prisma.gymSubscriptionPlan.findUnique({
+          where: { id: earliestRecord.previousPlanId },
+        });
+
+        if (previousPlan) {
+          const initialPlanPrice = Number(previousPlan.price);
+          const initialStart = earliestRecord.previousSubscriptionEnd
+            ? new Date(new Date(earliestRecord.previousSubscriptionEnd).getTime() - previousPlan.durationDays * 24 * 60 * 60 * 1000)
+            : new Date(earliestRecord.createdAt.getTime() - previousPlan.durationDays * 24 * 60 * 60 * 1000);
+          const initialEnd = earliestRecord.previousSubscriptionEnd || earliestRecord.subscriptionStart;
+
+          const subscriptionNumber = await this.generateSubscriptionNumber(prisma as any);
+          await prisma.gymSubscriptionHistory.create({
+            data: {
+              subscriptionNumber,
+              gymId,
+              subscriptionPlanId: earliestRecord.previousPlanId,
+              subscriptionStart: initialStart,
+              subscriptionEnd: initialEnd,
+              renewalDate: initialStart,
+              renewalType: 'NEW',
+              planAmount: initialPlanPrice,
+              extraDiscount: 0,
+              amount: initialPlanPrice,
+              paymentStatus: 'PAID',
+              paidAmount: initialPlanPrice,
+              pendingAmount: 0,
+              isActive: false,
+            },
+          });
+        }
+      }
+    }
+
+    const where: any = { gymId };
+    if (paymentStatus) where.paymentStatus = paymentStatus;
+    if (renewalType) where.renewalType = renewalType;
+    if (search) {
+      where.OR = [
+        { subscriptionNumber: { contains: search, mode: 'insensitive' } },
+        { subscriptionPlan: { name: { contains: search, mode: 'insensitive' } } },
+      ];
+    }
+
+    const [history, total] = await Promise.all([
+      prisma.gymSubscriptionHistory.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          subscriptionPlan: { select: { name: true, price: true, durationDays: true } },
+        },
+      }),
+      prisma.gymSubscriptionHistory.count({ where }),
+    ]);
+
+    return { history, total };
+  }
+
+  async getGymSubscriptionHistoryById(id: string) {
+    const record = await prisma.gymSubscriptionHistory.findUnique({
+      where: { id },
+      include: {
+        subscriptionPlan: { select: { name: true, price: true, durationDays: true } },
+        gym: { select: { name: true } },
+      },
+    });
+    if (!record) throw new NotFoundException('Subscription history record not found');
+    return record;
+  }
+
+  // =============================================
+  // Gym Inquiry
+  // =============================================
+
+  async getGymInquiries(params: GymInquiryParams) {
+    const { page = 1, limit = 10, search, sortBy = 'createdAt', sortOrder = 'desc', subscriptionPlanId, isActive } = params;
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (search) {
+      where.OR = [
+        { gymName: { contains: search, mode: 'insensitive' } },
+        { mobileNo: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { sellerName: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+    if (subscriptionPlanId) where.subscriptionPlanId = subscriptionPlanId;
+    if (isActive !== undefined) where.isActive = isActive;
+
+    const [inquiries, total] = await Promise.all([
+      prisma.gymInquiry.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          subscriptionPlan: { select: { id: true, name: true, price: true, durationDays: true } },
+          enquiryType: { select: { id: true, name: true } },
+          _count: { select: { followups: true } },
+        },
+      }),
+      prisma.gymInquiry.count({ where }),
+    ]);
+
+    return { inquiries, total };
+  }
+
+  async getGymInquiryById(id: string) {
+    const inquiry = await prisma.gymInquiry.findUnique({
+      where: { id },
+      include: {
+        subscriptionPlan: { select: { id: true, name: true, price: true, durationDays: true } },
+        enquiryType: { select: { id: true, name: true } },
+        followups: { orderBy: { followupDate: 'desc' } },
+        _count: { select: { followups: true } },
+      },
+    });
+    if (!inquiry) throw new NotFoundException('Gym inquiry not found');
+    return inquiry;
+  }
+
+  async createGymInquiry(data: CreateGymInquiryRequest, createdBy?: string) {
+    // Verify subscription plan exists
+    const plan = await prisma.gymSubscriptionPlan.findUnique({ where: { id: data.subscriptionPlanId } });
+    if (!plan) throw new NotFoundException('Subscription plan not found');
+
+    // Verify enquiry type exists
+    const enquiryType = await prisma.enquiryTypeMaster.findUnique({ where: { id: data.enquiryTypeId } });
+    if (!enquiryType) throw new NotFoundException('Enquiry type not found');
+
+    const inquiry = await prisma.gymInquiry.create({
+      data: {
+        gymName: data.gymName,
+        address1: data.address1,
+        address2: data.address2,
+        state: data.state,
+        city: data.city,
+        mobileNo: data.mobileNo,
+        email: data.email || null,
+        subscriptionPlanId: data.subscriptionPlanId,
+        note: data.note,
+        sellerName: data.sellerName,
+        sellerMobileNo: data.sellerMobileNo || null,
+        nextFollowupDate: data.nextFollowupDate ? new Date(data.nextFollowupDate) : null,
+        memberSize: data.memberSize || null,
+        enquiryTypeId: data.enquiryTypeId,
+        createdBy,
+      },
+      include: {
+        subscriptionPlan: { select: { id: true, name: true, price: true, durationDays: true } },
+        enquiryType: { select: { id: true, name: true } },
+        _count: { select: { followups: true } },
+      },
+    });
+
+    return inquiry;
+  }
+
+  async updateGymInquiry(id: string, data: UpdateGymInquiryRequest, updatedBy?: string) {
+    const existing = await prisma.gymInquiry.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Gym inquiry not found');
+
+    // Verify plan if changing
+    if (data.subscriptionPlanId) {
+      const plan = await prisma.gymSubscriptionPlan.findUnique({ where: { id: data.subscriptionPlanId } });
+      if (!plan) throw new NotFoundException('Subscription plan not found');
+    }
+
+    // Verify enquiry type if changing
+    if (data.enquiryTypeId) {
+      const enquiryType = await prisma.enquiryTypeMaster.findUnique({ where: { id: data.enquiryTypeId } });
+      if (!enquiryType) throw new NotFoundException('Enquiry type not found');
+    }
+
+    const updateData: any = { updatedBy };
+    if (data.gymName !== undefined) updateData.gymName = data.gymName;
+    if (data.address1 !== undefined) updateData.address1 = data.address1;
+    if (data.address2 !== undefined) updateData.address2 = data.address2;
+    if (data.state !== undefined) updateData.state = data.state;
+    if (data.city !== undefined) updateData.city = data.city;
+    if (data.mobileNo !== undefined) updateData.mobileNo = data.mobileNo;
+    if (data.email !== undefined) updateData.email = data.email || null;
+    if (data.subscriptionPlanId !== undefined) updateData.subscriptionPlanId = data.subscriptionPlanId;
+    if (data.note !== undefined) updateData.note = data.note;
+    if (data.sellerName !== undefined) updateData.sellerName = data.sellerName;
+    if (data.sellerMobileNo !== undefined) updateData.sellerMobileNo = data.sellerMobileNo || null;
+    if (data.nextFollowupDate !== undefined) updateData.nextFollowupDate = data.nextFollowupDate ? new Date(data.nextFollowupDate) : null;
+    if (data.memberSize !== undefined) updateData.memberSize = data.memberSize || null;
+    if (data.enquiryTypeId !== undefined) updateData.enquiryTypeId = data.enquiryTypeId;
+
+    const inquiry = await prisma.gymInquiry.update({
+      where: { id },
+      data: updateData,
+      include: {
+        subscriptionPlan: { select: { id: true, name: true, price: true, durationDays: true } },
+        enquiryType: { select: { id: true, name: true } },
+        _count: { select: { followups: true } },
+      },
+    });
+
+    return inquiry;
+  }
+
+  async toggleGymInquiryStatus(id: string) {
+    const existing = await prisma.gymInquiry.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Gym inquiry not found');
+
+    const inquiry = await prisma.gymInquiry.update({
+      where: { id },
+      data: { isActive: !existing.isActive },
+      include: {
+        subscriptionPlan: { select: { id: true, name: true, price: true, durationDays: true } },
+        enquiryType: { select: { id: true, name: true } },
+        _count: { select: { followups: true } },
+      },
+    });
+
+    return inquiry;
+  }
+
+  async getGymInquiryFollowups(inquiryId: string) {
+    const inquiry = await prisma.gymInquiry.findUnique({ where: { id: inquiryId } });
+    if (!inquiry) throw new NotFoundException('Gym inquiry not found');
+
+    const followups = await prisma.gymInquiryFollowup.findMany({
+      where: { gymInquiryId: inquiryId },
+      orderBy: { followupDate: 'desc' },
+    });
+
+    return followups;
+  }
+
+  async createGymInquiryFollowup(inquiryId: string, data: CreateGymInquiryFollowupRequest, createdBy?: string) {
+    const inquiry = await prisma.gymInquiry.findUnique({ where: { id: inquiryId } });
+    if (!inquiry) throw new NotFoundException('Gym inquiry not found');
+
+    const followupDate = data.followupDate ? new Date(data.followupDate) : new Date();
+
+    const followup = await prisma.gymInquiryFollowup.create({
+      data: {
+        gymInquiryId: inquiryId,
+        followupDate,
+        note: data.note,
+        createdBy,
+      },
+    });
+
+    // Update nextFollowupDate on the inquiry
+    if (data.followupDate) {
+      await prisma.gymInquiry.update({
+        where: { id: inquiryId },
+        data: { nextFollowupDate: new Date(data.followupDate) },
+      });
+    }
+
+    return followup;
   }
 }
 

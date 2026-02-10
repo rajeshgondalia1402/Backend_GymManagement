@@ -10,7 +10,8 @@ export interface Trainer {
   dateOfBirth?: Date;
   joiningDate?: Date;
   salary?: number;
-  password?: string;
+  /** Masked password hint showing only last 4 characters (e.g., '****word') - never exposes full password */
+  passwordHint?: string;
   trainerPhoto?: string;
   idProofType?: string;
   idProofDocument?: string;
@@ -19,6 +20,7 @@ export interface Trainer {
   createdAt: Date;
   createdBy?: string;
   updatedBy?: string;
+  ptMemberCount?: number;
 }
 
 export interface CreateTrainerRequest {
@@ -49,6 +51,32 @@ export interface UpdateTrainerRequest {
   salary?: number;
   idProofType?: string;
   isActive?: boolean;
+}
+
+/**
+ * Response for trainer password reset
+ * Contains a temporary password that the trainer should change on first login
+ */
+export interface ResetTrainerPasswordResponse {
+  /** The trainer's ID */
+  trainerId: string;
+  /** The trainer's email */
+  email: string;
+  /** The new temporary password - should be communicated securely to the trainer */
+  temporaryPassword: string;
+  /** Message for the gym owner */
+  message: string;
+}
+
+export interface ResetMemberPasswordResponse {
+  /** The member's ID */
+  memberId: string;
+  /** The member's email */
+  email: string;
+  /** The new temporary password - should be communicated securely to the member */
+  temporaryPassword: string;
+  /** Message for the gym owner */
+  message: string;
 }
 
 
@@ -195,8 +223,10 @@ export interface UpdateMemberRequest {
 export interface PTMember {
   id: string;
   memberId: string;
+  memberMemberId?: string; // Auto-generated member ID (e.g., "1413")
   memberName: string;
   memberEmail: string;
+  memberPhone?: string;
   trainerId: string;
   trainerName: string;
   packageName: string;
@@ -213,6 +243,26 @@ export interface PTMember {
   createdAt: Date;
   createdBy?: string;
   updatedBy?: string;
+}
+
+// PT Member summary for trainer's assigned members (without session details)
+export interface TrainerPTMemberSummary {
+  id: string;
+  memberId: string;
+  memberMemberId?: string;
+  memberName: string;
+  memberEmail: string;
+  memberPhone?: string;
+  trainerId: string;
+  trainerName: string;
+  packageName: string;
+  startDate: Date;
+  endDate?: Date;
+  goals?: string;
+  notes?: string;
+  isActive: boolean;
+  gymId: string;
+  createdAt: Date;
 }
 
 export interface CreatePTMemberRequest {
@@ -1315,6 +1365,37 @@ export interface SalarySettlementListResponse {
   page: number;
   limit: number;
   totalAmount: number; // Sum of all settlements matching the filter
+}
+
+// =============================================
+// Gym Subscription (Current + History) Types
+// =============================================
+
+export interface CurrentSubscription {
+  plan: {
+    id: string;
+    name: string;
+    description?: string | null;
+    price: number;
+    currency: string;
+    durationDays: number;
+    features: string;
+  } | null;
+  subscriptionStart: Date | null;
+  subscriptionEnd: Date | null;
+  daysRemaining: number;
+  isExpired: boolean;
+  subscriptionHistory: {
+    id: string;
+    subscriptionNumber: string;
+    renewalType: string;
+    renewalDate: Date;
+    amount: number;
+    paymentStatus: string;
+    paymentMode?: string | null;
+    paidAmount?: number | null;
+    pendingAmount?: number | null;
+  } | null;
 }
 
 // =============================================

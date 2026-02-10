@@ -270,6 +270,53 @@ router.delete('/trainers/:id', validate(idParamSchema, 'params'), gymOwnerContro
 
 /**
  * @swagger
+ * /api/v1/gym-owner/trainers/{id}/reset-password:
+ *   post:
+ *     summary: Reset trainer password
+ *     description: |
+ *       Generates a new temporary password for the trainer.
+ *       The gym owner should securely share this password with the trainer.
+ *       The trainer should change this password on their next login.
+ *     tags: [Gym Owner - Trainers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Trainer ID
+ *     responses:
+ *       200:
+ *         description: Password reset successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     trainerId:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     temporaryPassword:
+ *                       type: string
+ *                       description: The new temporary password - share securely with trainer
+ *                     message:
+ *                       type: string
+ *       404:
+ *         description: Trainer not found
+ */
+router.post('/trainers/:id/reset-password', validate(idParamSchema, 'params'), gymOwnerController.resetTrainerPassword.bind(gymOwnerController));
+
+/**
+ * @swagger
  * /api/v1/gym-owner/trainers/{id}/toggle-status:
  *   patch:
  *     summary: Toggle trainer active status (activate/deactivate)
@@ -287,6 +334,128 @@ router.delete('/trainers/:id', validate(idParamSchema, 'params'), gymOwnerContro
  *         description: Trainer status toggled successfully
  */
 router.patch('/trainers/:id/toggle-status', validate(idParamSchema, 'params'), gymOwnerController.toggleTrainerStatus.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/trainers/{trainerId}/pt-members:
+ *   get:
+ *     summary: Get all PT members assigned to a specific trainer
+ *     description: |
+ *       Returns a paginated list of PT members assigned to the specified trainer.
+ *       Supports search by member name, email, phone number, and member ID.
+ *     tags: [Gym Owner - Trainers]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: trainerId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: The trainer ID
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Items per page
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search by member name, email, phone, or member ID
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           default: createdAt
+ *         description: Field to sort by
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           default: desc
+ *         description: Sort order
+ *     responses:
+ *       200:
+ *         description: PT Members retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     trainer:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         name:
+ *                           type: string
+ *                     items:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           memberId:
+ *                             type: string
+ *                           memberMemberId:
+ *                             type: string
+ *                             description: Auto-generated member ID (e.g., "1413")
+ *                           memberName:
+ *                             type: string
+ *                           memberEmail:
+ *                             type: string
+ *                           memberPhone:
+ *                             type: string
+ *                           packageName:
+ *                             type: string
+ *                           startDate:
+ *                             type: string
+ *                             format: date-time
+ *                           endDate:
+ *                             type: string
+ *                             format: date-time
+ *                           goals:
+ *                             type: string
+ *                           notes:
+ *                             type: string
+ *                           isActive:
+ *                             type: boolean
+ *                           createdAt:
+ *                             type: string
+ *                             format: date-time
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         page:
+ *                           type: integer
+ *                         limit:
+ *                           type: integer
+ *                         total:
+ *                           type: integer
+ *                         totalPages:
+ *                           type: integer
+ *       404:
+ *         description: Trainer not found
+ */
+router.get('/trainers/:trainerId/pt-members', validate(paginationSchema, 'query'), gymOwnerController.getPTMembersByTrainerId.bind(gymOwnerController));
 
 
 // Members
@@ -632,6 +801,28 @@ router.delete('/members/:id', validate(idParamSchema, 'params'), gymOwnerControl
  *         description: Member status toggled successfully
  */
 router.patch('/members/:id/toggle-status', validate(idParamSchema, 'params'), gymOwnerController.toggleMemberStatus.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/members/{id}/reset-password:
+ *   post:
+ *     summary: Reset member password
+ *     tags: [Gym Owner - Members]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Member password reset successfully
+ *       404:
+ *         description: Member not found
+ */
+router.post('/members/:id/reset-password', validate(idParamSchema, 'params'), gymOwnerController.resetMemberPassword.bind(gymOwnerController));
 
 // Diet Plans
 /**
@@ -4297,5 +4488,48 @@ router.put('/salary-settlement/:id', validate(idParamSchema, 'params'), validate
  *         description: Salary settlement not found
  */
 router.get('/salary-settlement/:id/slip', validate(idParamSchema, 'params'), gymOwnerController.generateSalarySlip.bind(gymOwnerController));
+
+// =============================================
+// Gym Subscription History Routes
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/subscription-history:
+ *   get:
+ *     summary: View own gym's subscription history
+ *     tags: [Gym Owner - Subscription]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *     responses:
+ *       200:
+ *         description: Subscription history retrieved successfully
+ */
+router.get('/subscription-history', validate(paginationSchema, 'query'), gymOwnerController.getMySubscriptionHistory.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/current-subscription:
+ *   get:
+ *     summary: View current subscription details with days remaining
+ *     tags: [Gym Owner - Subscription]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Current subscription retrieved successfully
+ */
+router.get('/current-subscription', gymOwnerController.getCurrentSubscription.bind(gymOwnerController));
 
 export default router;

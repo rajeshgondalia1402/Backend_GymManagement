@@ -107,6 +107,26 @@ class GymOwnerController {
     }
   }
 
+  async resetTrainerPassword(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const result = await gymOwnerService.resetTrainerPassword(gymId, req.params.id);
+      successResponse(res, result, 'Trainer password reset successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async resetMemberPassword(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const result = await gymOwnerService.resetMemberPassword(gymId, req.params.id);
+      successResponse(res, result, 'Member password reset successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
 
   // Members
   async getMembers(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
@@ -428,6 +448,43 @@ class GymOwnerController {
       const gymId = this.getGymId(req);
       const ptMember = await gymOwnerService.getPTMemberById(gymId, req.params.id);
       successResponse(res, ptMember, 'PT Member retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /gym-owner/trainers/:trainerId/pt-members
+   * Get all PT members assigned to a specific trainer
+   */
+  async getPTMembersByTrainerId(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { trainerId } = req.params;
+      const { page = 1, limit = 10, search, sortBy, sortOrder } = req.query as any;
+
+      const { ptMembers, total, trainer } = await gymOwnerService.getPTMembersByTrainerId(gymId, trainerId, {
+        page: Number(page),
+        limit: Number(limit),
+        search,
+        sortBy,
+        sortOrder,
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'PT Members retrieved successfully',
+        data: {
+          trainer,
+          items: ptMembers,
+          pagination: {
+            page: Number(page),
+            limit: Number(limit),
+            total,
+            totalPages: Math.ceil(total / Number(limit)),
+          },
+        },
+      });
     } catch (error) {
       next(error);
     }
@@ -1568,6 +1625,36 @@ class GymOwnerController {
       const gymId = this.getGymId(req);
       const salarySlip = await gymOwnerService.generateSalarySlip(gymId, req.params.id);
       successResponse(res, salarySlip, 'Salary slip generated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // =============================================
+  // Gym Subscription History Methods
+  // =============================================
+
+  async getMySubscriptionHistory(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { page = 1, limit = 10, sortBy, sortOrder } = req.query as any;
+      const { history, total } = await gymOwnerService.getMySubscriptionHistory(gymId, {
+        page: Number(page),
+        limit: Number(limit),
+        sortBy,
+        sortOrder,
+      });
+      paginatedResponse(res, history, Number(page), Number(limit), total, 'Subscription history retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getCurrentSubscription(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const subscription = await gymOwnerService.getCurrentSubscription(gymId);
+      successResponse(res, subscription, 'Current subscription retrieved successfully');
     } catch (error) {
       next(error);
     }

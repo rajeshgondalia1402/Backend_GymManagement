@@ -48,11 +48,14 @@ class MemberService {
 
     const activeTrainer = member.trainerAssignments[0]?.trainer;
 
+    const memberName = member.name || user.name;
+    const memberEmail = member.email || user.email;
+
     return {
       id: member.id,
-      email: user.email,
-      firstName: user.name.split(' ')[0] || user.name,
-      lastName: user.name.split(' ').slice(1).join(' ') || '',
+      email: memberEmail,
+      firstName: memberName.split(' ')[0] || memberName,
+      lastName: memberName.split(' ').slice(1).join(' ') || '',
       phone: member.phone || undefined,
       dateOfBirth: member.dateOfBirth || undefined,
       gender: member.gender || undefined,
@@ -65,9 +68,9 @@ class MemberService {
       trainerId: activeTrainer?.id,
       trainer: activeTrainer ? {
         id: activeTrainer.id,
-        firstName: activeTrainer.user.name.split(' ')[0],
-        lastName: activeTrainer.user.name.split(' ').slice(1).join(' ') || '',
-        email: activeTrainer.user.email,
+        firstName: (activeTrainer.name || activeTrainer.user.name).split(' ')[0],
+        lastName: (activeTrainer.name || activeTrainer.user.name).split(' ').slice(1).join(' ') || '',
+        email: activeTrainer.email || activeTrainer.user.email,
         specialization: activeTrainer.specialization || undefined,
       } : undefined,
       membershipStartDate: member.membershipStart || undefined,
@@ -91,9 +94,15 @@ class MemberService {
         const currentName = user.name.split(' ');
         const newFirst = data.firstName || currentName[0];
         const newLast = data.lastName || currentName.slice(1).join(' ');
+        const fullName = `${newFirst} ${newLast}`;
         await tx.user.update({
           where: { id: userId },
-          data: { name: `${newFirst} ${newLast}` }
+          data: { name: fullName }
+        });
+        // Sync name to Member table
+        await tx.member.update({
+          where: { userId },
+          data: { name: fullName }
         });
       }
 
@@ -178,7 +187,7 @@ class MemberService {
       trainer: activeTrainer
         ? {
             id: activeTrainer.id,
-            name: activeTrainer.user.name,
+            name: activeTrainer.name || activeTrainer.user.name,
             specialization: activeTrainer.specialization || undefined,
           }
         : undefined,
@@ -210,9 +219,9 @@ class MemberService {
 
     return {
       id: activeTrainer.id,
-      firstName: activeTrainer.user.name.split(' ')[0],
-      lastName: activeTrainer.user.name.split(' ').slice(1).join(' ') || '',
-      email: activeTrainer.user.email,
+      firstName: (activeTrainer.name || activeTrainer.user.name).split(' ')[0],
+      lastName: (activeTrainer.name || activeTrainer.user.name).split(' ').slice(1).join(' ') || '',
+      email: activeTrainer.email || activeTrainer.user.email,
       phone: activeTrainer.phone,
       specialization: activeTrainer.specialization,
     };
@@ -442,8 +451,8 @@ class MemberService {
       isActive: ptMember.isActive,
       trainer: {
         id: ptMember.trainer.id,
-        name: ptMember.trainer.user.name,
-        email: ptMember.trainer.user.email,
+        name: ptMember.trainer.name || ptMember.trainer.user.name,
+        email: ptMember.trainer.email || ptMember.trainer.user.email,
         specialization: ptMember.trainer.specialization,
       },
     };
