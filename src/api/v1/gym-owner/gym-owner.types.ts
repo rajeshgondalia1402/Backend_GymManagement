@@ -1499,3 +1499,151 @@ export interface TrainerSalarySlip {
   remarks?: string;
   createdAt: Date;
 }
+
+// =============================================
+// Expense Report Types (Combined Expenses + Salary Settlements)
+// =============================================
+
+export type ExpenseType = 'EXPENSE' | 'SALARY';
+
+export interface ExpenseReportParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  // Filters
+  year?: number;
+  month?: number; // 1-12
+  dateFrom?: string;
+  dateTo?: string;
+  expenseType?: ExpenseType; // Filter by type: EXPENSE or SALARY
+  expenseGroupId?: string; // Only for EXPENSE type
+  paymentMode?: PaymentMode;
+}
+
+export interface ExpenseReportItem {
+  id: string;
+  date: Date;
+  name: string;
+  description?: string;
+  category: string; // Expense group name or "Salary"
+  amount: number;
+  paymentMode: PaymentMode;
+  type: ExpenseType;
+  // Additional details based on type
+  expenseGroupId?: string; // For EXPENSE type
+  trainerId?: string; // For SALARY type
+  trainerName?: string; // For SALARY type
+  salaryMonth?: string; // For SALARY type (YYYY-MM)
+  attachments?: string[]; // For EXPENSE type
+  createdAt: Date;
+}
+
+export interface ExpenseReportResponse {
+  items: ExpenseReportItem[];
+  total: number;
+  page: number;
+  limit: number;
+  summary: {
+    totalExpenseAmount: number;
+    totalSalaryAmount: number;
+    grandTotal: number;
+    expenseCount: number;
+    salaryCount: number;
+  };
+}
+
+// =============================================
+// Income Report Types (Member Payments)
+// =============================================
+
+export interface IncomeReportParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  // Filters
+  year?: number;
+  month?: number; // 1-12
+  dateFrom?: string;
+  dateTo?: string;
+  paymentStatus?: PaymentStatus; // PAID, PENDING, PARTIAL
+  membershipStatus?: 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
+}
+
+export interface MemberIncomeItem {
+  memberId: string;
+  memberCode: string;
+  memberName: string;
+  email?: string;
+  phone?: string;
+  memberPhoto?: string;
+  membershipStatus: string;
+  // Payment summary
+  initialPayment: number;
+  renewalPayments: number;
+  balancePayments: number;
+  totalPaidAmount: number;
+  totalPendingAmount: number;
+  lastPaymentDate?: Date;
+  paymentCount: number;
+}
+
+export interface IncomeReportResponse {
+  items: MemberIncomeItem[];
+  total: number;
+  page: number;
+  limit: number;
+  summary: {
+    totalInitialPayments: number;
+    totalRenewalPayments: number;
+    totalBalancePayments: number;
+    grandTotal: number;
+    totalPending: number;
+    memberCount: number;
+  };
+}
+
+// Member Payment Details (for popup)
+export interface MemberPaymentDetailParams {
+  page?: number;
+  limit?: number;
+  sortOrder?: 'asc' | 'desc';
+  dateFrom?: string;
+  dateTo?: string;
+  paymentFor?: PaymentFor; // REGULAR, PT
+}
+
+export type PaymentSource = 'INITIAL' | 'RENEWAL' | 'BALANCE_PAYMENT';
+
+export interface MemberPaymentDetailItem {
+  id: string;
+  paymentDate: Date;
+  source: PaymentSource;
+  paymentFor: PaymentFor;
+  amount: number;
+  paymentMode?: string;
+  receiptNo?: string;
+  renewalNumber?: string;
+  notes?: string;
+  packageName?: string;
+  createdAt: Date;
+}
+
+export interface MemberPaymentDetailResponse {
+  memberId: string;
+  memberName: string;
+  memberCode: string;
+  items: MemberPaymentDetailItem[];
+  total: number;
+  page: number;
+  limit: number;
+  summary: {
+    totalPaidAmount: number;
+    regularPayments: number;
+    ptPayments: number;
+    paymentCount: number;
+  };
+}

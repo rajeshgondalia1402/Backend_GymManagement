@@ -97,6 +97,16 @@ export const createGymSchema = z.object({
 
 export const updateGymSchema = createGymSchema.partial();
 
+// Plan Category Master validation schemas
+export const createPlanCategorySchema = z.object({
+  categoryName: z.string().min(2, 'Category name must be at least 2 characters'),
+  description: z.string().optional(),
+});
+
+export const updatePlanCategorySchema = createPlanCategorySchema.partial().extend({
+  isActive: z.boolean().optional(),
+});
+
 // Occupation Master validation schemas
 export const createOccupationSchema = z.object({
   occupationName: z.string().min(2, 'Occupation name must be at least 2 characters'),
@@ -1011,6 +1021,65 @@ export const adminMembersQuerySchema = z.object({
   (data) => data.gymId || data.gymOwnerId,
   { message: 'Either gymId or gymOwnerId is required', path: ['gymId'] }
 );
+
+// =============================================
+// Report Validation Schemas
+// =============================================
+
+// Expense Report query schema (Combined Expenses + Salary Settlements)
+export const expenseReportQuerySchema = z.object({
+  page: z.string().optional().transform((val) => parseInt(val || '1', 10)),
+  limit: z.string().optional().transform((val) => parseInt(val || '10', 10)),
+  search: z.string().optional(),
+  sortBy: z.string().optional().default('date'),
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+  // Date filters
+  year: z.string().optional().transform((val) => val ? parseInt(val, 10) : undefined),
+  month: z.string().optional().transform((val) => {
+    if (!val) return undefined;
+    const num = parseInt(val, 10);
+    if (num < 1 || num > 12) throw new Error('Month must be between 1 and 12');
+    return num;
+  }),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
+  // Type filter
+  expenseType: z.enum(['EXPENSE', 'SALARY']).optional(),
+  expenseGroupId: z.string().uuid('Invalid expense group ID').optional(),
+  paymentMode: z.enum(['CASH', 'CARD', 'UPI', 'BANK_TRANSFER', 'CHEQUE', 'NET_BANKING', 'OTHER']).optional(),
+});
+
+// Income Report query schema (Members with Total Payments)
+export const incomeReportQuerySchema = z.object({
+  page: z.string().optional().transform((val) => parseInt(val || '1', 10)),
+  limit: z.string().optional().transform((val) => parseInt(val || '10', 10)),
+  search: z.string().optional(),
+  sortBy: z.string().optional().default('totalPaidAmount'),
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+  // Date filters
+  year: z.string().optional().transform((val) => val ? parseInt(val, 10) : undefined),
+  month: z.string().optional().transform((val) => {
+    if (!val) return undefined;
+    const num = parseInt(val, 10);
+    if (num < 1 || num > 12) throw new Error('Month must be between 1 and 12');
+    return num;
+  }),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
+  // Additional filters
+  paymentStatus: z.enum(['PAID', 'PENDING', 'PARTIAL']).optional(),
+  membershipStatus: z.enum(['ACTIVE', 'EXPIRED', 'CANCELLED']).optional(),
+});
+
+// Member Payment Details query schema (for popup)
+export const memberPaymentDetailsQuerySchema = z.object({
+  page: z.string().optional().transform((val) => parseInt(val || '1', 10)),
+  limit: z.string().optional().transform((val) => parseInt(val || '10', 10)),
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
+  paymentFor: z.enum(['REGULAR', 'PT']).optional(),
+});
 
 // Validation middleware factory
 export const validate = (schema: ZodSchema, source: 'body' | 'query' | 'params' = 'body') => {
