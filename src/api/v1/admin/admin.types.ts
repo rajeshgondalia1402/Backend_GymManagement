@@ -148,6 +148,28 @@ export interface GymParams extends PaginationParams {
   subscriptionStatus?: GymSubscriptionStatusFilter;
 }
 
+// Plan Category Master types
+export interface PlanCategory {
+  id: string;
+  categoryName: string;
+  description?: string | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy?: string | null;
+}
+
+export interface CreatePlanCategoryRequest {
+  categoryName: string;
+  description?: string;
+}
+
+export interface UpdatePlanCategoryRequest {
+  categoryName?: string;
+  description?: string;
+  isActive?: boolean;
+}
+
 // Occupation Master types
 export interface Occupation {
   id: string;

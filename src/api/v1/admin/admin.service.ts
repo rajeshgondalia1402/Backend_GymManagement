@@ -15,6 +15,9 @@ import {
   DashboardStats,
   PaginationParams,
   GymParams,
+  PlanCategory,
+  CreatePlanCategoryRequest,
+  UpdatePlanCategoryRequest,
   Occupation,
   CreateOccupationRequest,
   UpdateOccupationRequest,
@@ -964,6 +967,86 @@ class AdminService {
     });
 
     return updatedOccupation;
+  }
+
+  // Plan Category Master CRUD
+  async getPlanCategories(): Promise<PlanCategory[]> {
+    const categories = await prisma.planCategoryMaster.findMany({
+      orderBy: { categoryName: 'asc' },
+    });
+    return categories;
+  }
+
+  async getPlanCategoryById(id: string): Promise<PlanCategory> {
+    const category = await prisma.planCategoryMaster.findUnique({ where: { id } });
+    if (!category) {
+      throw new NotFoundException('Plan category not found');
+    }
+    return category;
+  }
+
+  async createPlanCategory(data: CreatePlanCategoryRequest, createdBy?: string): Promise<PlanCategory> {
+    const existing = await prisma.planCategoryMaster.findUnique({
+      where: { categoryName: data.categoryName },
+    });
+    if (existing) {
+      throw new ConflictException('Plan category with this name already exists');
+    }
+    const category = await prisma.planCategoryMaster.create({
+      data: {
+        categoryName: data.categoryName,
+        description: data.description,
+        createdBy: createdBy,
+      },
+    });
+    return category;
+  }
+
+  async updatePlanCategory(id: string, data: UpdatePlanCategoryRequest): Promise<PlanCategory> {
+    await this.getPlanCategoryById(id);
+    if (data.categoryName) {
+      const existing = await prisma.planCategoryMaster.findFirst({
+        where: { categoryName: data.categoryName, NOT: { id } },
+      });
+      if (existing) {
+        throw new ConflictException('Plan category with this name already exists');
+      }
+    }
+    const updateData: any = {};
+    if (data.categoryName) updateData.categoryName = data.categoryName;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    const category = await prisma.planCategoryMaster.update({
+      where: { id },
+      data: updateData,
+    });
+    return category;
+  }
+
+  async getPlanCategoryUsage(id: string): Promise<{ usageCount: number; canDelete: boolean }> {
+    const category = await this.getPlanCategoryById(id);
+    // Check if category name is used in any subscription plan names
+    const usageCount = await prisma.gymSubscriptionPlan.count({
+      where: { name: { contains: category.categoryName, mode: 'insensitive' } },
+    });
+    return { usageCount, canDelete: usageCount === 0 };
+  }
+
+  async deletePlanCategory(id: string): Promise<PlanCategory> {
+    const category = await this.getPlanCategoryById(id);
+    const usageCount = await prisma.gymSubscriptionPlan.count({
+      where: { name: { contains: category.categoryName, mode: 'insensitive' } },
+    });
+    if (usageCount > 0) {
+      throw new ConflictException(
+        `Cannot delete this plan category. It is currently used by ${usageCount} subscription plan(s). Please update those plans first.`
+      );
+    }
+    const updatedCategory = await prisma.planCategoryMaster.update({
+      where: { id },
+      data: { isActive: false },
+    });
+    return updatedCategory;
   }
 
   // Enquiry Type Master CRUD

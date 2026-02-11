@@ -563,6 +563,20 @@ model ExpenseMaster {
   @@index([createdBy])
 }
 
+model PlanCategoryMaster {
+  id               String   @id @default(uuid())
+  categoryName     String   @unique
+  description      String?
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  createdBy        String?
+
+  @@map("plancategorymaster")
+  @@index([isActive])
+  @@index([categoryName])
+}
+
 model DesignationMaster {
   id              String   @id @default(uuid())
   designationName String

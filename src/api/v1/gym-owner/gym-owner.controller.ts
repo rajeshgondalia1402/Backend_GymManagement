@@ -1659,6 +1659,88 @@ class GymOwnerController {
       next(error);
     }
   }
+
+  // =============================================
+  // Report Methods
+  // =============================================
+
+  // Expense Report (Combined Expenses + Salary Settlements)
+  async getExpenseReport(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const params = req.query as any;
+      const result = await gymOwnerService.getExpenseReport(gymId, params);
+
+      res.status(200).json({
+        success: true,
+        message: 'Expense report retrieved successfully',
+        data: result.items,
+        pagination: {
+          page: result.page,
+          limit: result.limit,
+          total: result.total,
+          totalPages: Math.ceil(result.total / result.limit),
+        },
+        summary: result.summary,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Income Report (Members with Total Payments)
+  async getIncomeReport(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const params = req.query as any;
+      const result = await gymOwnerService.getIncomeReport(gymId, params);
+
+      res.status(200).json({
+        success: true,
+        message: 'Income report retrieved successfully',
+        data: result.items,
+        pagination: {
+          page: result.page,
+          limit: result.limit,
+          total: result.total,
+          totalPages: Math.ceil(result.total / result.limit),
+        },
+        summary: result.summary,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Member Payment Details (for popup)
+  async getMemberPaymentDetails(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { memberId } = req.params;
+      const params = req.query as any;
+      const result = await gymOwnerService.getMemberPaymentDetails(gymId, memberId, params);
+
+      res.status(200).json({
+        success: true,
+        message: 'Member payment details retrieved successfully',
+        data: {
+          memberId: result.memberId,
+          memberName: result.memberName,
+          memberCode: result.memberCode,
+          payments: result.items,
+        },
+        pagination: {
+          page: result.page,
+          limit: result.limit,
+          total: result.total,
+          totalPages: Math.ceil(result.total / result.limit),
+        },
+        summary: result.summary,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new GymOwnerController();

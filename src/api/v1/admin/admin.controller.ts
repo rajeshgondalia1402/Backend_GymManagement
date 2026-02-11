@@ -325,6 +325,61 @@ class AdminController {
     }
   }
 
+  // Plan Category Master CRUD
+  async getPlanCategories(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const categories = await adminService.getPlanCategories();
+      successResponse(res, categories, 'Plan categories retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getPlanCategoryById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const category = await adminService.getPlanCategoryById(req.params.id);
+      successResponse(res, category, 'Plan category retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createPlanCategory(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const category = await adminService.createPlanCategory(req.body, req.user?.id);
+      successResponse(res, category, 'Plan category created successfully', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updatePlanCategory(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const category = await adminService.updatePlanCategory(req.params.id, req.body);
+      successResponse(res, category, 'Plan category updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getPlanCategoryUsage(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const usage = await adminService.getPlanCategoryUsage(req.params.id);
+      successResponse(res, usage, 'Plan category usage retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deletePlanCategory(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const category = await adminService.deletePlanCategory(req.params.id);
+      successResponse(res, category, 'Plan category deleted successfully (soft delete)');
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // Enquiry Type Master CRUD
   async getEnquiryTypes(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {

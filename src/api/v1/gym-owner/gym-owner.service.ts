@@ -107,6 +107,18 @@ import {
   SalarySlipEarnings,
   SalarySlipAttendance,
   SalarySlipPaymentDetails,
+  // Report Types
+  ExpenseReportParams,
+  ExpenseReportItem,
+  ExpenseReportResponse,
+  ExpenseType,
+  IncomeReportParams,
+  MemberIncomeItem,
+  IncomeReportResponse,
+  MemberPaymentDetailParams,
+  MemberPaymentDetailItem,
+  MemberPaymentDetailResponse,
+  PaymentSource,
 } from './gym-owner.types';
 
 class GymOwnerService {
@@ -6601,6 +6613,557 @@ class GymOwnerService {
             pendingAmount: activeHistory.pendingAmount ? Number(activeHistory.pendingAmount) : null,
           }
         : null,
+    };
+  }
+
+  // =============================================
+  // Expense Report (Combined Expenses + Salary Settlements)
+  // =============================================
+
+  async getExpenseReport(gymId: string, params: ExpenseReportParams): Promise<ExpenseReportResponse> {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      sortBy = 'date',
+      sortOrder = 'desc',
+      year,
+      month,
+      dateFrom,
+      dateTo,
+      expenseType,
+      expenseGroupId,
+      paymentMode,
+    } = params;
+
+    const skip = (page - 1) * limit;
+
+    // Build date filters
+    let dateFilter: { gte?: Date; lte?: Date } = {};
+
+    if (year && month) {
+      // Specific month of a year
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+      dateFilter = { gte: startDate, lte: endDate };
+    } else if (year) {
+      // Entire year
+      const startDate = new Date(year, 0, 1);
+      const endDate = new Date(year, 11, 31, 23, 59, 59, 999);
+      dateFilter = { gte: startDate, lte: endDate };
+    } else if (dateFrom || dateTo) {
+      // Custom date range
+      if (dateFrom) {
+        dateFilter.gte = new Date(dateFrom);
+      }
+      if (dateTo) {
+        const endDate = new Date(dateTo);
+        endDate.setHours(23, 59, 59, 999);
+        dateFilter.lte = endDate;
+      }
+    }
+
+    // Fetch expenses if not filtering for SALARY only
+    let expenses: ExpenseReportItem[] = [];
+    let expenseTotal = 0;
+    let expenseCount = 0;
+    let totalExpenseAmount = 0;
+
+    if (!expenseType || expenseType === 'EXPENSE') {
+      const expenseWhere: any = {
+        gymId,
+        isActive: true,
+        ...(Object.keys(dateFilter).length > 0 && { expenseDate: dateFilter }),
+        ...(expenseGroupId && { expenseGroupId }),
+        ...(paymentMode && { paymentMode }),
+        ...(search && {
+          OR: [
+            { name: { contains: search, mode: 'insensitive' } },
+            { description: { contains: search, mode: 'insensitive' } },
+            { expenseGroup: { expenseGroupName: { contains: search, mode: 'insensitive' } } },
+          ],
+        }),
+      };
+
+      const [expenseRecords, expenseCountResult, expenseSum] = await Promise.all([
+        prisma.expenseMaster.findMany({
+          where: expenseWhere,
+          include: { expenseGroup: true },
+          orderBy: sortBy === 'date' ? { expenseDate: sortOrder } : { [sortBy]: sortOrder },
+        }),
+        prisma.expenseMaster.count({ where: expenseWhere }),
+        prisma.expenseMaster.aggregate({
+          where: expenseWhere,
+          _sum: { amount: true },
+        }),
+      ]);
+
+      expenseCount = expenseCountResult;
+      totalExpenseAmount = Number(expenseSum._sum.amount || 0);
+
+      expenses = expenseRecords.map((e): ExpenseReportItem => ({
+        id: e.id,
+        date: e.expenseDate,
+        name: e.name,
+        description: e.description || undefined,
+        category: e.expenseGroup.expenseGroupName,
+        amount: Number(e.amount),
+        paymentMode: e.paymentMode as PaymentMode,
+        type: 'EXPENSE',
+        expenseGroupId: e.expenseGroupId,
+        attachments: e.attachments,
+        createdAt: e.createdAt,
+      }));
+    }
+
+    // Fetch salary settlements if not filtering for EXPENSE only
+    let salaries: ExpenseReportItem[] = [];
+    let salaryCount = 0;
+    let totalSalaryAmount = 0;
+
+    if (!expenseType || expenseType === 'SALARY') {
+      // For salary, filter by salarySentDate or createdAt
+      const salaryWhere: any = {
+        gymId,
+        ...(Object.keys(dateFilter).length > 0 && { salarySentDate: dateFilter }),
+        ...(paymentMode && { paymentMode }),
+        ...(search && {
+          OR: [
+            { trainerName: { contains: search, mode: 'insensitive' } },
+            { remarks: { contains: search, mode: 'insensitive' } },
+          ],
+        }),
+      };
+
+      const [salaryRecords, salaryCountResult, salarySum] = await Promise.all([
+        prisma.trainerSalarySettlement.findMany({
+          where: salaryWhere,
+          orderBy: sortBy === 'date' ? { salarySentDate: sortOrder } : { createdAt: sortOrder },
+        }),
+        prisma.trainerSalarySettlement.count({ where: salaryWhere }),
+        prisma.trainerSalarySettlement.aggregate({
+          where: salaryWhere,
+          _sum: { finalPayableAmount: true },
+        }),
+      ]);
+
+      salaryCount = salaryCountResult;
+      totalSalaryAmount = Number(salarySum._sum.finalPayableAmount || 0);
+
+      salaries = salaryRecords.map((s): ExpenseReportItem => ({
+        id: s.id,
+        date: s.salarySentDate || s.createdAt,
+        name: `Salary - ${s.trainerName}`,
+        description: s.remarks || undefined,
+        category: 'Salary Settlement',
+        amount: Number(s.finalPayableAmount),
+        paymentMode: s.paymentMode as PaymentMode,
+        type: 'SALARY',
+        trainerId: s.trainerId,
+        trainerName: s.trainerName,
+        salaryMonth: s.salaryMonth,
+        createdAt: s.createdAt,
+      }));
+    }
+
+    // Combine and sort
+    let allItems = [...expenses, ...salaries];
+
+    // Sort combined items
+    allItems.sort((a, b) => {
+      const aDate = a.date.getTime();
+      const bDate = b.date.getTime();
+      return sortOrder === 'desc' ? bDate - aDate : aDate - bDate;
+    });
+
+    // Apply pagination to combined results
+    const total = allItems.length;
+    const paginatedItems = allItems.slice(skip, skip + limit);
+
+    return {
+      items: paginatedItems,
+      total,
+      page,
+      limit,
+      summary: {
+        totalExpenseAmount,
+        totalSalaryAmount,
+        grandTotal: totalExpenseAmount + totalSalaryAmount,
+        expenseCount,
+        salaryCount,
+      },
+    };
+  }
+
+  // =============================================
+  // Income Report (Member Payments)
+  // =============================================
+
+  async getIncomeReport(gymId: string, params: IncomeReportParams): Promise<IncomeReportResponse> {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      sortBy = 'totalPaidAmount',
+      sortOrder = 'desc',
+      year,
+      month,
+      dateFrom,
+      dateTo,
+      paymentStatus,
+      membershipStatus,
+    } = params;
+
+    const skip = (page - 1) * limit;
+
+    // Build date filters for payments
+    let dateFilter: { gte?: Date; lte?: Date } = {};
+
+    if (year && month) {
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+      dateFilter = { gte: startDate, lte: endDate };
+    } else if (year) {
+      const startDate = new Date(year, 0, 1);
+      const endDate = new Date(year, 11, 31, 23, 59, 59, 999);
+      dateFilter = { gte: startDate, lte: endDate };
+    } else if (dateFrom || dateTo) {
+      if (dateFrom) {
+        dateFilter.gte = new Date(dateFrom);
+      }
+      if (dateTo) {
+        const endDate = new Date(dateTo);
+        endDate.setHours(23, 59, 59, 999);
+        dateFilter.lte = endDate;
+      }
+    }
+
+    // Build member where clause
+    const memberWhere: any = {
+      gymId,
+      ...(membershipStatus && { membershipStatus }),
+      ...(search && {
+        OR: [
+          { memberId: { contains: search, mode: 'insensitive' } },
+          { name: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } },
+          { phone: { contains: search, mode: 'insensitive' } },
+        ],
+      }),
+    };
+
+    // Get all members with their payments
+    const members = await prisma.member.findMany({
+      where: memberWhere,
+      include: {
+        user: { select: { name: true, email: true } },
+        balancePayments: {
+          where: {
+            isActive: true,
+            // Don't date-filter balance payments here - we need ALL of them to calculate correct pending amounts
+            // Date filtering for paid amounts is done in-memory below
+          },
+        },
+        membershipRenewals: {
+          where: {
+            isActive: true,
+            ...(paymentStatus && { paymentStatus }),
+            ...(Object.keys(dateFilter).length > 0 && { renewalDate: dateFilter }),
+          },
+        },
+      },
+    });
+
+    // Calculate payment summaries for each member
+    const hasDateFilter = Object.keys(dateFilter).length > 0;
+    let memberIncomeItems: MemberIncomeItem[] = members.map((member) => {
+      // Note: Initial payment is not stored separately on Member model
+      // It's tracked through balance payments or the finalFees field
+      const initialPayment = 0; // No separate initial payment field in schema
+
+      // Renewal payments (already date-filtered from query)
+      const renewalPayments = member.membershipRenewals.reduce((sum, r) => sum + Number(r.paidAmount || 0), 0);
+      const renewalPending = member.membershipRenewals.reduce((sum, r) => sum + Number(r.pendingAmount || 0), 0);
+
+      // Separate balance payments by date filter for display vs all for pending calc
+      const allBalancePayments = member.balancePayments;
+      const filteredBalancePayments = hasDateFilter
+        ? allBalancePayments.filter(p => {
+            const payDate = p.paymentDate.getTime();
+            if (dateFilter.gte && payDate < dateFilter.gte.getTime()) return false;
+            if (dateFilter.lte && payDate > dateFilter.lte.getTime()) return false;
+            return true;
+          })
+        : allBalancePayments;
+
+      // Balance payments within period (for paid amount display)
+      const balancePayments = filteredBalancePayments.reduce((sum, p) => sum + Number(p.paidFees || 0), 0);
+
+      // Calculate initial membership pending using ALL balance payments (not date-filtered)
+      const totalRegularBalancePaid = allBalancePayments
+        .filter(p => p.paymentFor === 'REGULAR')
+        .reduce((sum, p) => sum + Number(p.paidFees || 0), 0);
+      const totalPTBalancePaid = allBalancePayments
+        .filter(p => p.paymentFor === 'PT')
+        .reduce((sum, p) => sum + Number(p.paidFees || 0), 0);
+
+      const initialRegularPending = Math.max(0, Number(member.finalFees || 0) - totalRegularBalancePaid);
+      const initialPTPending = member.hasPTAddon
+        ? Math.max(0, Number(member.ptFinalFees || 0) - totalPTBalancePaid)
+        : 0;
+
+      // Total pending = initial membership pending + renewal pending
+      const totalPendingAmount = initialRegularPending + initialPTPending + renewalPending;
+
+      // Calculate last payment date
+      const paymentDates: Date[] = [];
+      member.membershipRenewals.forEach(r => {
+        if (r.paidAmount && Number(r.paidAmount) > 0) paymentDates.push(r.renewalDate);
+      });
+      filteredBalancePayments.forEach(p => paymentDates.push(p.paymentDate));
+
+      const lastPaymentDate = paymentDates.length > 0
+        ? new Date(Math.max(...paymentDates.map(d => d.getTime())))
+        : undefined;
+
+      const totalPaidAmount = renewalPayments + balancePayments;
+      const paymentCount = member.membershipRenewals.length + filteredBalancePayments.length;
+
+      return {
+        memberId: member.id,
+        memberCode: member.memberId || member.id.substring(0, 8), // memberId is the member code
+        memberName: member.name || member.user.name,
+        email: member.email || member.user.email || undefined,
+        phone: member.phone || undefined,
+        memberPhoto: member.memberPhoto || undefined,
+        membershipStatus: member.membershipStatus,
+        initialPayment,
+        renewalPayments,
+        balancePayments,
+        totalPaidAmount,
+        totalPendingAmount,
+        lastPaymentDate,
+        paymentCount,
+      };
+    });
+
+    // Filter out members with no payments if date filter is applied
+    if (Object.keys(dateFilter).length > 0) {
+      memberIncomeItems = memberIncomeItems.filter(m => m.totalPaidAmount > 0 || m.totalPendingAmount > 0);
+    }
+
+    // Sort
+    memberIncomeItems.sort((a, b) => {
+      let aVal: any, bVal: any;
+      switch (sortBy) {
+        case 'totalPaidAmount':
+          aVal = a.totalPaidAmount;
+          bVal = b.totalPaidAmount;
+          break;
+        case 'lastPaymentDate':
+          aVal = a.lastPaymentDate?.getTime() || 0;
+          bVal = b.lastPaymentDate?.getTime() || 0;
+          break;
+        case 'memberName':
+          aVal = a.memberName.toLowerCase();
+          bVal = b.memberName.toLowerCase();
+          break;
+        case 'memberCode':
+          aVal = a.memberCode;
+          bVal = b.memberCode;
+          break;
+        default:
+          aVal = a.totalPaidAmount;
+          bVal = b.totalPaidAmount;
+      }
+      if (typeof aVal === 'string') {
+        return sortOrder === 'desc' ? bVal.localeCompare(aVal) : aVal.localeCompare(bVal);
+      }
+      return sortOrder === 'desc' ? bVal - aVal : aVal - bVal;
+    });
+
+    // Calculate summary totals
+    const summary = memberIncomeItems.reduce(
+      (acc, m) => ({
+        totalInitialPayments: acc.totalInitialPayments + m.initialPayment,
+        totalRenewalPayments: acc.totalRenewalPayments + m.renewalPayments,
+        totalBalancePayments: acc.totalBalancePayments + m.balancePayments,
+        grandTotal: acc.grandTotal + m.totalPaidAmount,
+        totalPending: acc.totalPending + m.totalPendingAmount,
+        memberCount: acc.memberCount + 1,
+      }),
+      {
+        totalInitialPayments: 0,
+        totalRenewalPayments: 0,
+        totalBalancePayments: 0,
+        grandTotal: 0,
+        totalPending: 0,
+        memberCount: 0,
+      }
+    );
+
+    // Apply pagination
+    const total = memberIncomeItems.length;
+    const paginatedItems = memberIncomeItems.slice(skip, skip + limit);
+
+    return {
+      items: paginatedItems,
+      total,
+      page,
+      limit,
+      summary,
+    };
+  }
+
+  // =============================================
+  // Member Payment Details (for popup)
+  // =============================================
+
+  async getMemberPaymentDetails(
+    gymId: string,
+    memberId: string,
+    params: MemberPaymentDetailParams
+  ): Promise<MemberPaymentDetailResponse> {
+    const {
+      page = 1,
+      limit = 10,
+      sortOrder = 'desc',
+      dateFrom,
+      dateTo,
+      paymentFor,
+    } = params;
+
+    const skip = (page - 1) * limit;
+
+    // Build date filter
+    let dateFilter: { gte?: Date; lte?: Date } = {};
+    if (dateFrom) {
+      dateFilter.gte = new Date(dateFrom);
+    }
+    if (dateTo) {
+      const endDate = new Date(dateTo);
+      endDate.setHours(23, 59, 59, 999);
+      dateFilter.lte = endDate;
+    }
+
+    // Get member with basic info
+    const member = await prisma.member.findFirst({
+      where: { id: memberId, gymId },
+      include: {
+        user: { select: { name: true } },
+      },
+    });
+
+    if (!member) {
+      throw new NotFoundException('Member not found');
+    }
+
+    // Get course package name if exists
+    let coursePackageName: string | undefined;
+    if (member.coursePackageId) {
+      const pkg = await prisma.coursePackage.findUnique({
+        where: { id: member.coursePackageId },
+        select: { packageName: true },
+      });
+      coursePackageName = pkg?.packageName;
+    }
+
+    const paymentItems: MemberPaymentDetailItem[] = [];
+
+    // Note: Initial payment is not stored separately on Member model
+    // All payments are tracked through balance payments or renewals
+
+    // 1. Renewal payments
+    const renewalWhere: any = {
+      memberId,
+      isActive: true,
+      ...(Object.keys(dateFilter).length > 0 && { renewalDate: dateFilter }),
+    };
+
+    const renewals = await prisma.membershipRenewal.findMany({
+      where: renewalWhere,
+    });
+
+    for (const renewal of renewals) {
+      const paidAmount = Number(renewal.paidAmount || 0);
+      if (paidAmount > 0 && (!paymentFor || paymentFor === 'REGULAR')) {
+        paymentItems.push({
+          id: renewal.id,
+          paymentDate: renewal.renewalDate,
+          source: 'RENEWAL',
+          paymentFor: 'REGULAR',
+          amount: paidAmount,
+          paymentMode: renewal.paymentMode || undefined,
+          renewalNumber: renewal.renewalNumber,
+          notes: renewal.notes || undefined,
+          packageName: coursePackageName,
+          createdAt: renewal.createdAt,
+        });
+      }
+    }
+
+    // 2. Balance payments
+    const balanceWhere: any = {
+      memberId,
+      isActive: true,
+      ...(Object.keys(dateFilter).length > 0 && { paymentDate: dateFilter }),
+      ...(paymentFor && { paymentFor }),
+    };
+
+    const balancePayments = await prisma.memberBalancePayment.findMany({
+      where: balanceWhere,
+    });
+
+    for (const payment of balancePayments) {
+      paymentItems.push({
+        id: payment.id,
+        paymentDate: payment.paymentDate,
+        source: 'BALANCE_PAYMENT',
+        paymentFor: payment.paymentFor as PaymentFor,
+        amount: Number(payment.paidFees),
+        paymentMode: payment.payMode || undefined,
+        receiptNo: payment.receiptNo,
+        notes: payment.notes || undefined,
+        createdAt: payment.createdAt,
+      });
+    }
+
+    // Sort by payment date
+    paymentItems.sort((a, b) => {
+      const aTime = a.paymentDate.getTime();
+      const bTime = b.paymentDate.getTime();
+      return sortOrder === 'desc' ? bTime - aTime : aTime - bTime;
+    });
+
+    // Calculate summary
+    const summary = paymentItems.reduce(
+      (acc, p) => ({
+        totalPaidAmount: acc.totalPaidAmount + p.amount,
+        regularPayments: acc.regularPayments + (p.paymentFor === 'REGULAR' ? p.amount : 0),
+        ptPayments: acc.ptPayments + (p.paymentFor === 'PT' ? p.amount : 0),
+        paymentCount: acc.paymentCount + 1,
+      }),
+      {
+        totalPaidAmount: 0,
+        regularPayments: 0,
+        ptPayments: 0,
+        paymentCount: 0,
+      }
+    );
+
+    // Apply pagination
+    const total = paymentItems.length;
+    const paginatedItems = paymentItems.slice(skip, skip + limit);
+
+    return {
+      memberId: member.id,
+      memberName: member.name || member.user.name,
+      memberCode: member.memberId || member.id.substring(0, 8),
+      items: paginatedItems,
+      total,
+      page,
+      limit,
+      summary,
     };
   }
 }

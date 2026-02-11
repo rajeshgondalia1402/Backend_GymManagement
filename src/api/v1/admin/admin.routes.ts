@@ -10,6 +10,8 @@ import {
   updateGymSchema,
   createGymOwnerSchema,
   updateGymOwnerSchema,
+  createPlanCategorySchema,
+  updatePlanCategorySchema,
   createOccupationSchema,
   updateOccupationSchema,
   createEnquiryTypeSchema,
@@ -866,6 +868,185 @@ router.delete('/occupations/:id', validate(idParamSchema, 'params'), adminContro
  *         description: Occupation not found
  */
 router.get('/occupations/:id/usage', validate(idParamSchema, 'params'), adminController.getOccupationUsage);
+
+// Plan Category Master CRUD
+/**
+ * @swagger
+ * /api/v1/admin/plan-categories:
+ *   get:
+ *     summary: Get all plan categories
+ *     tags: [Admin - Plan Categories]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Plan categories retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       categoryName:
+ *                         type: string
+ *                       description:
+ *                         type: string
+ *                       isActive:
+ *                         type: boolean
+ */
+router.get('/plan-categories', adminController.getPlanCategories);
+
+/**
+ * @swagger
+ * /api/v1/admin/plan-categories/{id}:
+ *   get:
+ *     summary: Get plan category by ID
+ *     tags: [Admin - Plan Categories]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Plan Category ID
+ *     responses:
+ *       200:
+ *         description: Plan category retrieved successfully
+ *       404:
+ *         description: Plan category not found
+ */
+router.get('/plan-categories/:id', validate(idParamSchema, 'params'), adminController.getPlanCategoryById);
+
+/**
+ * @swagger
+ * /api/v1/admin/plan-categories:
+ *   post:
+ *     summary: Create a new plan category
+ *     tags: [Admin - Plan Categories]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - categoryName
+ *             properties:
+ *               categoryName:
+ *                 type: string
+ *                 minLength: 2
+ *               description:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Plan category created successfully
+ *       409:
+ *         description: Plan category with this name already exists
+ */
+router.post('/plan-categories', validate(createPlanCategorySchema), adminController.createPlanCategory);
+
+/**
+ * @swagger
+ * /api/v1/admin/plan-categories/{id}:
+ *   put:
+ *     summary: Update a plan category
+ *     tags: [Admin - Plan Categories]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Plan Category ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               categoryName:
+ *                 type: string
+ *                 minLength: 2
+ *               description:
+ *                 type: string
+ *               isActive:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Plan category updated successfully
+ *       404:
+ *         description: Plan category not found
+ *       409:
+ *         description: Plan category with this name already exists
+ */
+router.put('/plan-categories/:id', validate(idParamSchema, 'params'), validate(updatePlanCategorySchema), adminController.updatePlanCategory);
+
+/**
+ * @swagger
+ * /api/v1/admin/plan-categories/{id}:
+ *   delete:
+ *     summary: Delete a plan category (soft delete)
+ *     tags: [Admin - Plan Categories]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Plan Category ID
+ *     responses:
+ *       200:
+ *         description: Plan category deleted successfully
+ *       404:
+ *         description: Plan category not found
+ *       409:
+ *         description: Cannot delete - plan category is in use
+ */
+router.delete('/plan-categories/:id', validate(idParamSchema, 'params'), adminController.deletePlanCategory);
+
+/**
+ * @swagger
+ * /api/v1/admin/plan-categories/{id}/usage:
+ *   get:
+ *     summary: Check plan category usage
+ *     tags: [Admin - Plan Categories]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Plan Category ID
+ *     responses:
+ *       200:
+ *         description: Usage info retrieved successfully
+ *       404:
+ *         description: Plan category not found
+ */
+router.get('/plan-categories/:id/usage', validate(idParamSchema, 'params'), adminController.getPlanCategoryUsage);
 
 // Enquiry Type Master CRUD
 /**

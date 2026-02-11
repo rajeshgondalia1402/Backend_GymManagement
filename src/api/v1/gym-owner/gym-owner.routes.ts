@@ -69,6 +69,10 @@ import {
   createSalarySettlementSchema,
   updateSalarySettlementSchema,
   salarySettlementPaginationSchema,
+  // Report schemas
+  expenseReportQuerySchema,
+  incomeReportQuerySchema,
+  memberPaymentDetailsQuerySchema,
 } from '../../../common/middleware';
 
 const router = Router();
@@ -4531,5 +4535,415 @@ router.get('/subscription-history', validate(paginationSchema, 'query'), gymOwne
  *         description: Current subscription retrieved successfully
  */
 router.get('/current-subscription', gymOwnerController.getCurrentSubscription.bind(gymOwnerController));
+
+// =============================================
+// Report Routes
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/reports/expenses:
+ *   get:
+ *     summary: Get combined expense report (Expenses + Salary Settlements)
+ *     description: |
+ *       Returns a combined report of all expenses and salary settlements.
+ *       Supports filtering by:
+ *       - Year and/or month
+ *       - Custom date range (dateFrom, dateTo)
+ *       - Expense type (EXPENSE or SALARY)
+ *       - Expense group (for expenses only)
+ *       - Payment mode
+ *     tags: [Gym Owner - Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Items per page
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search in expense name, description, trainer name
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           default: date
+ *         description: Sort field
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           default: desc
+ *       - in: query
+ *         name: year
+ *         schema:
+ *           type: integer
+ *         description: Filter by year (e.g., 2025)
+ *       - in: query
+ *         name: month
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 12
+ *         description: Filter by month (1-12). Works with year filter.
+ *       - in: query
+ *         name: dateFrom
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter from date (YYYY-MM-DD)
+ *       - in: query
+ *         name: dateTo
+ *         schema:
+ *           type: string
+ *           format: date
+ *         description: Filter to date (YYYY-MM-DD)
+ *       - in: query
+ *         name: expenseType
+ *         schema:
+ *           type: string
+ *           enum: [EXPENSE, SALARY]
+ *         description: Filter by expense type
+ *       - in: query
+ *         name: expenseGroupId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filter by expense group (for EXPENSE type only)
+ *       - in: query
+ *         name: paymentMode
+ *         schema:
+ *           type: string
+ *           enum: [CASH, CARD, UPI, BANK_TRANSFER, CHEQUE, NET_BANKING, OTHER]
+ *         description: Filter by payment mode
+ *     responses:
+ *       200:
+ *         description: Expense report retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       date:
+ *                         type: string
+ *                         format: date-time
+ *                       name:
+ *                         type: string
+ *                       description:
+ *                         type: string
+ *                       category:
+ *                         type: string
+ *                       amount:
+ *                         type: number
+ *                       paymentMode:
+ *                         type: string
+ *                       type:
+ *                         type: string
+ *                         enum: [EXPENSE, SALARY]
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *                     total:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *                 summary:
+ *                   type: object
+ *                   properties:
+ *                     totalExpenseAmount:
+ *                       type: number
+ *                     totalSalaryAmount:
+ *                       type: number
+ *                     grandTotal:
+ *                       type: number
+ *                     expenseCount:
+ *                       type: integer
+ *                     salaryCount:
+ *                       type: integer
+ */
+router.get('/reports/expenses', validate(expenseReportQuerySchema, 'query'), gymOwnerController.getExpenseReport.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/reports/income:
+ *   get:
+ *     summary: Get income report (Members with total payments)
+ *     description: |
+ *       Returns a report of all members with their payment summaries.
+ *       Shows initial payments, renewal payments, and balance payments.
+ *       Click on a member to get detailed payment history.
+ *     tags: [Gym Owner - Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search by member code, name, email, or phone
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           enum: [totalPaidAmount, lastPaymentDate, memberName, memberCode]
+ *           default: totalPaidAmount
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           default: desc
+ *       - in: query
+ *         name: year
+ *         schema:
+ *           type: integer
+ *         description: Filter payments by year
+ *       - in: query
+ *         name: month
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 12
+ *         description: Filter payments by month (1-12)
+ *       - in: query
+ *         name: dateFrom
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: dateTo
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: paymentStatus
+ *         schema:
+ *           type: string
+ *           enum: [PAID, PENDING, PARTIAL]
+ *       - in: query
+ *         name: membershipStatus
+ *         schema:
+ *           type: string
+ *           enum: [ACTIVE, EXPIRED, CANCELLED]
+ *     responses:
+ *       200:
+ *         description: Income report retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       memberId:
+ *                         type: string
+ *                       memberCode:
+ *                         type: string
+ *                       memberName:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *                       phone:
+ *                         type: string
+ *                       membershipStatus:
+ *                         type: string
+ *                       initialPayment:
+ *                         type: number
+ *                       renewalPayments:
+ *                         type: number
+ *                       balancePayments:
+ *                         type: number
+ *                       totalPaidAmount:
+ *                         type: number
+ *                       totalPendingAmount:
+ *                         type: number
+ *                       lastPaymentDate:
+ *                         type: string
+ *                         format: date-time
+ *                       paymentCount:
+ *                         type: integer
+ *                 pagination:
+ *                   type: object
+ *                 summary:
+ *                   type: object
+ *                   properties:
+ *                     totalInitialPayments:
+ *                       type: number
+ *                     totalRenewalPayments:
+ *                       type: number
+ *                     totalBalancePayments:
+ *                       type: number
+ *                     grandTotal:
+ *                       type: number
+ *                     totalPending:
+ *                       type: number
+ *                     memberCount:
+ *                       type: integer
+ */
+router.get('/reports/income', validate(incomeReportQuerySchema, 'query'), gymOwnerController.getIncomeReport.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/reports/income/{memberId}/payments:
+ *   get:
+ *     summary: Get detailed payment history for a member
+ *     description: |
+ *       Returns date-wise payment details for a specific member.
+ *       Includes initial payment, renewal payments, and balance payments.
+ *       Use this API for the payment details popup.
+ *     tags: [Gym Owner - Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: memberId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Member ID
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           default: desc
+ *         description: Sort by payment date
+ *       - in: query
+ *         name: dateFrom
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: dateTo
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: paymentFor
+ *         schema:
+ *           type: string
+ *           enum: [REGULAR, PT]
+ *         description: Filter by payment type
+ *     responses:
+ *       200:
+ *         description: Member payment details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     memberId:
+ *                       type: string
+ *                     memberName:
+ *                       type: string
+ *                     memberCode:
+ *                       type: string
+ *                     payments:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           paymentDate:
+ *                             type: string
+ *                             format: date-time
+ *                           source:
+ *                             type: string
+ *                             enum: [INITIAL, RENEWAL, BALANCE_PAYMENT]
+ *                           paymentFor:
+ *                             type: string
+ *                             enum: [REGULAR, PT]
+ *                           amount:
+ *                             type: number
+ *                           paymentMode:
+ *                             type: string
+ *                           receiptNo:
+ *                             type: string
+ *                           renewalNumber:
+ *                             type: string
+ *                           notes:
+ *                             type: string
+ *                           packageName:
+ *                             type: string
+ *                 pagination:
+ *                   type: object
+ *                 summary:
+ *                   type: object
+ *                   properties:
+ *                     totalPaidAmount:
+ *                       type: number
+ *                     regularPayments:
+ *                       type: number
+ *                     ptPayments:
+ *                       type: number
+ *                     paymentCount:
+ *                       type: integer
+ *       404:
+ *         description: Member not found
+ */
+router.get('/reports/income/:memberId/payments', validate(memberIdParamSchema, 'params'), validate(memberPaymentDetailsQuerySchema, 'query'), gymOwnerController.getMemberPaymentDetails.bind(gymOwnerController));
 
 export default router;
