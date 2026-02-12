@@ -94,6 +94,90 @@ router.use(authenticate, authorize('GYM_OWNER'));
  */
 router.get('/dashboard', gymOwnerController.getDashboard.bind(gymOwnerController));
 
+// Dashboard Report Routes
+/**
+ * @swagger
+ * /api/v1/gym-owner/dashboard/active-members:
+ *   get:
+ *     summary: Get paginated list of active members for dashboard
+ *     tags: [Gym Owner - Dashboard Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Active members retrieved successfully
+ */
+router.get('/dashboard/active-members', validate(paginationSchema, 'query'), gymOwnerController.getDashboardActiveMembers.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/dashboard/active-trainers:
+ *   get:
+ *     summary: Get paginated list of active trainers for dashboard
+ *     tags: [Gym Owner - Dashboard Reports]
+ */
+router.get('/dashboard/active-trainers', validate(paginationSchema, 'query'), gymOwnerController.getDashboardActiveTrainers.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/dashboard/follow-up-inquiries:
+ *   get:
+ *     summary: Get paginated list of today's follow-up inquiries
+ *     tags: [Gym Owner - Dashboard Reports]
+ */
+router.get('/dashboard/follow-up-inquiries', validate(paginationSchema, 'query'), gymOwnerController.getDashboardFollowUpInquiries.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/dashboard/expiring-regular:
+ *   get:
+ *     summary: Get paginated list of regular members expiring in 7 days
+ *     tags: [Gym Owner - Dashboard Reports]
+ */
+router.get('/dashboard/expiring-regular', validate(paginationSchema, 'query'), gymOwnerController.getDashboardExpiringRegularMembers.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/dashboard/expiring-pt:
+ *   get:
+ *     summary: Get paginated list of PT members expiring in 7 days
+ *     tags: [Gym Owner - Dashboard Reports]
+ */
+router.get('/dashboard/expiring-pt', validate(paginationSchema, 'query'), gymOwnerController.getDashboardExpiringPTMembers.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/dashboard/expenses-summary:
+ *   get:
+ *     summary: Get paginated list of recent expenses (current + last month)
+ *     tags: [Gym Owner - Dashboard Reports]
+ */
+router.get('/dashboard/expenses-summary', validate(paginationSchema, 'query'), gymOwnerController.getDashboardExpensesSummary.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/dashboard/today-renewals:
+ *   get:
+ *     summary: Get paginated list of members whose membership ends today (for renewal)
+ *     tags: [Gym Owner - Dashboard Reports]
+ */
+router.get('/dashboard/today-renewals', validate(paginationSchema, 'query'), gymOwnerController.getDashboardTodayRenewals.bind(gymOwnerController));
+
 // Trainers
 /**
  * @swagger

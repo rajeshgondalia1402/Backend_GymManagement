@@ -23,6 +23,112 @@ class GymOwnerController {
     }
   }
 
+  // Dashboard Report Methods
+  async getDashboardActiveMembers(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { page = 1, limit = 10, search } = req.query as any;
+      const result = await gymOwnerService.getDashboardActiveMembers(gymId, {
+        page: Number(page),
+        limit: Number(limit),
+        search,
+      });
+      paginatedResponse(res, result.items, Number(page), Number(limit), result.total, 'Active members retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getDashboardActiveTrainers(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { page = 1, limit = 10, search } = req.query as any;
+      const result = await gymOwnerService.getDashboardActiveTrainers(gymId, {
+        page: Number(page),
+        limit: Number(limit),
+        search,
+      });
+      paginatedResponse(res, result.items, Number(page), Number(limit), result.total, 'Active trainers retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getDashboardFollowUpInquiries(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { page = 1, limit = 10, search } = req.query as any;
+      const result = await gymOwnerService.getDashboardFollowUpInquiries(gymId, {
+        page: Number(page),
+        limit: Number(limit),
+        search,
+      });
+      paginatedResponse(res, result.items, Number(page), Number(limit), result.total, 'Follow-up inquiries retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getDashboardExpiringRegularMembers(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { page = 1, limit = 10, search } = req.query as any;
+      const result = await gymOwnerService.getDashboardExpiringRegularMembers(gymId, {
+        page: Number(page),
+        limit: Number(limit),
+        search,
+      });
+      paginatedResponse(res, result.items, Number(page), Number(limit), result.total, 'Expiring regular members retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getDashboardExpiringPTMembers(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { page = 1, limit = 10, search } = req.query as any;
+      const result = await gymOwnerService.getDashboardExpiringPTMembers(gymId, {
+        page: Number(page),
+        limit: Number(limit),
+        search,
+      });
+      paginatedResponse(res, result.items, Number(page), Number(limit), result.total, 'Expiring PT members retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getDashboardExpensesSummary(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { page = 1, limit = 10, search } = req.query as any;
+      const result = await gymOwnerService.getDashboardExpensesSummary(gymId, {
+        page: Number(page),
+        limit: Number(limit),
+        search,
+      });
+      paginatedResponse(res, result.items, Number(page), Number(limit), result.total, 'Expenses summary retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getDashboardTodayRenewals(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { page = 1, limit = 10, search } = req.query as any;
+      const result = await gymOwnerService.getDashboardTodayRenewals(gymId, {
+        page: Number(page),
+        limit: Number(limit),
+        search,
+      });
+      paginatedResponse(res, result.items, Number(page), Number(limit), result.total, 'Today\'s renewals retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // Trainers
   async getTrainers(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
