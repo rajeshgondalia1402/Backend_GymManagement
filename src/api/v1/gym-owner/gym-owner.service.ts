@@ -119,55 +119,632 @@ import {
   MemberPaymentDetailItem,
   MemberPaymentDetailResponse,
   PaymentSource,
+  // Dashboard Report Types
+  DashboardMemberItem,
+  DashboardTrainerItem,
+  DashboardFollowUpInquiryItem,
+  DashboardExpenseItem,
+  DashboardRenewalItem,
+  DashboardReportParams,
+  DashboardReportResponse,
 } from './gym-owner.types';
 
 class GymOwnerService {
   // Dashboard
   async getDashboardStats(gymId: string): Promise<GymOwnerDashboardStats> {
-    const [totalMembers, totalTrainers, totalDietPlans, totalExercisePlans, totalPTMembers, totalInquiries, newInquiries] =
-      await Promise.all([
-        prisma.member.count({ where: { gymId } }),
-        prisma.trainer.count({ where: { gymId } }),
-        prisma.dietPlan.count({ where: { gymId } }),
-        prisma.exercisePlan.count({ where: { gymId } }),
-        prisma.pTMember.count({ where: { gymId } }),
-        prisma.inquiry.count({ where: { gymId } }),
-        prisma.inquiry.count({ where: { gymId, status: 'NEW' } }),
-      ]);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    // Get active members
-    const activeMembers = await prisma.member.count({
-      where: {
-        gymId,
-        membershipStatus: 'ACTIVE',
-        user: { isActive: true }
-      }
-    });
+    const todayEnd = new Date(today);
+    todayEnd.setHours(23, 59, 59, 999);
 
-    // Calculate expiring memberships (next 7 days)
-    const sevenDaysFromNow = new Date();
+    const sevenDaysFromNow = new Date(today);
     sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+    sevenDaysFromNow.setHours(23, 59, 59, 999);
 
-    const expiringMemberships = await prisma.member.count({
-      where: {
-        gymId,
-        membershipEnd: {
-          gte: new Date(),
-          lte: sevenDaysFromNow,
+    // Get first day of current month and last month
+    const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59, 999);
+
+    const [
+      totalActiveMembers,
+      totalActiveTrainers,
+      todayFollowUpInquiries,
+      expiringRegularMembers,
+      expiringPTMembers,
+      expensesCurrentMonth,
+      expensesLastMonth,
+      gym,
+    ] = await Promise.all([
+      // Total Active Members (isActive=true AND membershipStatus=ACTIVE)
+      prisma.member.count({
+        where: {
+          gymId,
+          isActive: true,
+          membershipStatus: 'ACTIVE',
         },
-      },
-    });
+      }),
+      // Total Active Trainers
+      prisma.trainer.count({
+        where: {
+          gymId,
+          isActive: true,
+        },
+      }),
+      // Today's Follow-up Inquiries
+      prisma.memberInquiry.count({
+        where: {
+          gymId,
+          isActive: true,
+          followUp: true,
+          followUpDate: {
+            gte: today,
+            lte: todayEnd,
+          },
+        },
+      }),
+      // Expiring Regular Members (7 days) - memberType=REGULAR and NOT hasPTAddon
+      prisma.member.count({
+        where: {
+          gymId,
+          isActive: true,
+          memberType: 'REGULAR',
+          hasPTAddon: { not: true },
+          membershipEnd: {
+            gte: today,
+            lte: sevenDaysFromNow,
+          },
+        },
+      }),
+      // Expiring PT Members (7 days) - hasPTAddon=true OR memberType in PT/REGULAR_PT
+      prisma.member.count({
+        where: {
+          gymId,
+          isActive: true,
+          OR: [
+            { hasPTAddon: true },
+            { memberType: 'PT' },
+            { memberType: 'REGULAR_PT' },
+          ],
+          membershipEnd: {
+            gte: today,
+            lte: sevenDaysFromNow,
+          },
+        },
+      }),
+      // Current month expenses
+      prisma.expenseMaster.aggregate({
+        where: {
+          gymId,
+          isActive: true,
+          expenseDate: {
+            gte: currentMonthStart,
+            lte: todayEnd,
+          },
+        },
+        _sum: { amount: true },
+      }),
+      // Last month expenses
+      prisma.expenseMaster.aggregate({
+        where: {
+          gymId,
+          isActive: true,
+          expenseDate: {
+            gte: lastMonthStart,
+            lte: lastMonthEnd,
+          },
+        },
+        _sum: { amount: true },
+      }),
+      // Get gym details
+      prisma.gym.findUnique({
+        where: { id: gymId },
+        include: {
+          subscriptionPlan: {
+            select: {
+              id: true,
+              name: true,
+              price: true,
+              durationDays: true,
+            },
+          },
+        },
+      }),
+    ]);
 
     return {
-      totalMembers,
-      totalTrainers,
-      activeMembers,
-      expiringMemberships,
-      totalDietPlans,
-      totalExercisePlans,
-      totalPTMembers,
-      totalInquiries,
-      newInquiries,
+      totalActiveMembers,
+      totalActiveTrainers,
+      todayFollowUpInquiries,
+      expiringRegularMembers,
+      expiringPTMembers,
+      expensesCurrentMonth: Number(expensesCurrentMonth._sum.amount || 0),
+      expensesLastMonth: Number(expensesLastMonth._sum.amount || 0),
+      gym: {
+        id: gym?.id || '',
+        name: gym?.name || '',
+        address1: gym?.address1 || undefined,
+        address2: gym?.address2 || undefined,
+        city: gym?.city || undefined,
+        state: gym?.state || undefined,
+        zipcode: gym?.zipcode || undefined,
+        mobileNo: gym?.mobileNo || undefined,
+        phoneNo: gym?.phoneNo || undefined,
+        email: gym?.email || undefined,
+        gymLogo: gym?.gymLogo || undefined,
+        subscriptionPlanId: gym?.subscriptionPlanId || undefined,
+        subscriptionPlan: gym?.subscriptionPlan ? {
+          id: gym.subscriptionPlan.id,
+          name: gym.subscriptionPlan.name,
+          price: Number(gym.subscriptionPlan.price),
+          durationDays: gym.subscriptionPlan.durationDays,
+        } : undefined,
+        subscriptionStart: gym?.subscriptionStart || undefined,
+        subscriptionEnd: gym?.subscriptionEnd || undefined,
+      },
+    };
+  }
+
+  // Dashboard Report Methods
+  async getDashboardActiveMembers(
+    gymId: string,
+    params: DashboardReportParams
+  ): Promise<DashboardReportResponse<DashboardMemberItem>> {
+    const { page = 1, limit = 10, search } = params;
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      gymId,
+      isActive: true,
+      membershipStatus: 'ACTIVE',
+    };
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' as const } },
+        { email: { contains: search, mode: 'insensitive' as const } },
+        { phone: { contains: search, mode: 'insensitive' as const } },
+        { memberId: { contains: search, mode: 'insensitive' as const } },
+      ];
+    }
+
+    const [members, total] = await Promise.all([
+      prisma.member.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          memberId: true,
+          name: true,
+          email: true,
+          phone: true,
+          memberType: true,
+          membershipEnd: true,
+          memberPhoto: true,
+        },
+      }),
+      prisma.member.count({ where }),
+    ]);
+
+    return {
+      items: members.map((m) => {
+        const nameParts = (m.name || '').split(' ');
+        return {
+          id: m.id,
+          memberId: m.memberId || undefined,
+          firstName: nameParts[0] || '',
+          lastName: nameParts.slice(1).join(' ') || '',
+          email: m.email || '',
+          phone: m.phone || undefined,
+          memberType: m.memberType as 'REGULAR' | 'PT' | 'REGULAR_PT',
+          membershipEnd: m.membershipEnd || undefined,
+          memberPhoto: m.memberPhoto || undefined,
+        };
+      }),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  async getDashboardActiveTrainers(
+    gymId: string,
+    params: DashboardReportParams
+  ): Promise<DashboardReportResponse<DashboardTrainerItem>> {
+    const { page = 1, limit = 10, search } = params;
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      gymId,
+      isActive: true,
+    };
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' as const } },
+        { email: { contains: search, mode: 'insensitive' as const } },
+        { phone: { contains: search, mode: 'insensitive' as const } },
+      ];
+    }
+
+    const [trainers, total] = await Promise.all([
+      prisma.trainer.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          specialization: true,
+          trainerPhoto: true,
+          _count: { select: { ptMembers: true } },
+        },
+      }),
+      prisma.trainer.count({ where }),
+    ]);
+
+    return {
+      items: trainers.map((t) => ({
+        id: t.id,
+        name: t.name || '',
+        email: t.email || '',
+        phone: t.phone || undefined,
+        specialization: t.specialization || undefined,
+        trainerPhoto: t.trainerPhoto || undefined,
+        ptMemberCount: t._count.ptMembers,
+      })),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  async getDashboardFollowUpInquiries(
+    gymId: string,
+    params: DashboardReportParams
+  ): Promise<DashboardReportResponse<DashboardFollowUpInquiryItem>> {
+    const { page = 1, limit = 10, search } = params;
+    const skip = (page - 1) * limit;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(today);
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const where: any = {
+      gymId,
+      isActive: true,
+      followUp: true,
+      followUpDate: {
+        gte: today,
+        lte: todayEnd,
+      },
+    };
+
+    if (search) {
+      where.OR = [
+        { fullName: { contains: search, mode: 'insensitive' as const } },
+        { contactNo: { contains: search, mode: 'insensitive' as const } },
+      ];
+    }
+
+    const [inquiries, total] = await Promise.all([
+      prisma.memberInquiry.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { followUpDate: 'asc' },
+        select: {
+          id: true,
+          fullName: true,
+          contactNo: true,
+          followUpDate: true,
+          comments: true,
+          heardAbout: true,
+        },
+      }),
+      prisma.memberInquiry.count({ where }),
+    ]);
+
+    return {
+      items: inquiries.map((i) => ({
+        id: i.id,
+        fullName: i.fullName,
+        contactNo: i.contactNo,
+        followUpDate: i.followUpDate!,
+        comments: i.comments || undefined,
+        heardAbout: i.heardAbout || undefined,
+      })),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  async getDashboardExpiringRegularMembers(
+    gymId: string,
+    params: DashboardReportParams
+  ): Promise<DashboardReportResponse<DashboardMemberItem>> {
+    const { page = 1, limit = 10, search } = params;
+    const skip = (page - 1) * limit;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const sevenDaysFromNow = new Date(today);
+    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+    sevenDaysFromNow.setHours(23, 59, 59, 999);
+
+    const where: any = {
+      gymId,
+      isActive: true,
+      memberType: 'REGULAR',
+      hasPTAddon: { not: true },
+      membershipEnd: {
+        gte: today,
+        lte: sevenDaysFromNow,
+      },
+    };
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' as const } },
+        { email: { contains: search, mode: 'insensitive' as const } },
+        { phone: { contains: search, mode: 'insensitive' as const } },
+      ];
+    }
+
+    const [members, total] = await Promise.all([
+      prisma.member.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { membershipEnd: 'asc' },
+        select: {
+          id: true,
+          memberId: true,
+          name: true,
+          email: true,
+          phone: true,
+          memberType: true,
+          membershipEnd: true,
+          memberPhoto: true,
+        },
+      }),
+      prisma.member.count({ where }),
+    ]);
+
+    return {
+      items: members.map((m) => {
+        const nameParts = (m.name || '').split(' ');
+        return {
+          id: m.id,
+          memberId: m.memberId || undefined,
+          firstName: nameParts[0] || '',
+          lastName: nameParts.slice(1).join(' ') || '',
+          email: m.email || '',
+          phone: m.phone || undefined,
+          memberType: m.memberType as 'REGULAR' | 'PT' | 'REGULAR_PT',
+          membershipEnd: m.membershipEnd || undefined,
+          memberPhoto: m.memberPhoto || undefined,
+        };
+      }),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  async getDashboardExpiringPTMembers(
+    gymId: string,
+    params: DashboardReportParams
+  ): Promise<DashboardReportResponse<DashboardMemberItem>> {
+    const { page = 1, limit = 10, search } = params;
+    const skip = (page - 1) * limit;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const sevenDaysFromNow = new Date(today);
+    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+    sevenDaysFromNow.setHours(23, 59, 59, 999);
+
+    const where: any = {
+      gymId,
+      isActive: true,
+      OR: [
+        { hasPTAddon: true },
+        { memberType: 'PT' },
+        { memberType: 'REGULAR_PT' },
+      ],
+      membershipEnd: {
+        gte: today,
+        lte: sevenDaysFromNow,
+      },
+    };
+
+    if (search) {
+      // Need to handle search differently since OR is already used
+      where.AND = [
+        {
+          OR: [
+            { name: { contains: search, mode: 'insensitive' as const } },
+            { email: { contains: search, mode: 'insensitive' as const } },
+            { phone: { contains: search, mode: 'insensitive' as const } },
+          ],
+        },
+      ];
+    }
+
+    const [members, total] = await Promise.all([
+      prisma.member.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { membershipEnd: 'asc' },
+        select: {
+          id: true,
+          memberId: true,
+          name: true,
+          email: true,
+          phone: true,
+          memberType: true,
+          membershipEnd: true,
+          memberPhoto: true,
+          hasPTAddon: true,
+        },
+      }),
+      prisma.member.count({ where }),
+    ]);
+
+    return {
+      items: members.map((m) => {
+        const nameParts = (m.name || '').split(' ');
+        return {
+          id: m.id,
+          memberId: m.memberId || undefined,
+          firstName: nameParts[0] || '',
+          lastName: nameParts.slice(1).join(' ') || '',
+          email: m.email || '',
+          phone: m.phone || undefined,
+          memberType: m.memberType as 'REGULAR' | 'PT' | 'REGULAR_PT',
+          membershipEnd: m.membershipEnd || undefined,
+          memberPhoto: m.memberPhoto || undefined,
+        };
+      }),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  async getDashboardExpensesSummary(
+    gymId: string,
+    params: DashboardReportParams
+  ): Promise<DashboardReportResponse<DashboardExpenseItem>> {
+    const { page = 1, limit = 10, search } = params;
+    const skip = (page - 1) * limit;
+
+    const today = new Date();
+    const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+
+    const where: any = {
+      gymId,
+      isActive: true,
+      expenseDate: {
+        gte: lastMonthStart,
+      },
+    };
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' as const } },
+        { expenseGroup: { expenseGroupName: { contains: search, mode: 'insensitive' as const } } },
+      ];
+    }
+
+    const [expenses, total] = await Promise.all([
+      prisma.expenseMaster.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { expenseDate: 'desc' },
+        include: {
+          expenseGroup: {
+            select: { expenseGroupName: true },
+          },
+        },
+      }),
+      prisma.expenseMaster.count({ where }),
+    ]);
+
+    return {
+      items: expenses.map((e) => ({
+        id: e.id,
+        expenseDate: e.expenseDate,
+        name: e.name,
+        amount: Number(e.amount),
+        expenseGroupName: e.expenseGroup?.expenseGroupName || undefined,
+        paymentMode: e.paymentMode as PaymentMode,
+      })),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  async getDashboardTodayRenewals(
+    gymId: string,
+    params: DashboardReportParams
+  ): Promise<DashboardReportResponse<DashboardRenewalItem>> {
+    const { page = 1, limit = 10, search } = params;
+    const skip = (page - 1) * limit;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(today);
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const where: any = {
+      gymId,
+      isActive: true,
+      membershipEnd: {
+        gte: today,
+        lte: todayEnd,
+      },
+    };
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' as const } },
+        { email: { contains: search, mode: 'insensitive' as const } },
+        { phone: { contains: search, mode: 'insensitive' as const } },
+      ];
+    }
+
+    const [members, total] = await Promise.all([
+      prisma.member.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { membershipEnd: 'asc' },
+        select: {
+          id: true,
+          memberId: true,
+          name: true,
+          email: true,
+          phone: true,
+          membershipEnd: true,
+          memberType: true,
+          memberPhoto: true,
+        },
+      }),
+      prisma.member.count({ where }),
+    ]);
+
+    return {
+      items: members.map((m) => {
+        const nameParts = (m.name || '').split(' ');
+        return {
+          id: m.id,
+          memberId: m.memberId || undefined,
+          firstName: nameParts[0] || '',
+          lastName: nameParts.slice(1).join(' ') || '',
+          email: m.email || '',
+          phone: m.phone || undefined,
+          membershipEnd: m.membershipEnd!,
+          memberType: m.memberType as 'REGULAR' | 'PT' | 'REGULAR_PT',
+          memberPhoto: m.memberPhoto || undefined,
+        };
+      }),
+      total,
+      page,
+      limit,
     };
   }
 
