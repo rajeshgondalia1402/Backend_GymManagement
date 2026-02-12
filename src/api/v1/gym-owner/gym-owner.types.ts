@@ -27,7 +27,7 @@ export interface CreateTrainerRequest {
   firstName: string;
   lastName: string;
   email: string;
-  password: string;
+  password?: string;
   phone: string;
   specialization?: string;
   experience?: number;

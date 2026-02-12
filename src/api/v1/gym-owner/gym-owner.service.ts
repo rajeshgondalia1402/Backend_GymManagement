@@ -268,7 +268,9 @@ class GymOwnerService {
     const trainerRole = await prisma.rolemaster.findFirst({ where: { rolename: 'TRAINER' } });
     if (!trainerRole) throw new NotFoundException('TRAINER role not found');
 
-    const hashedPassword = await bcrypt.hash(data.password, 10);
+    // Generate random password if not provided
+    const password = data.password || Math.random().toString(36).slice(-10) + 'A1!';
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create user and trainer in transaction
     const result = await prisma.$transaction(async (tx) => {
@@ -287,7 +289,7 @@ class GymOwnerService {
           gymId,
           name: `${data.firstName} ${data.lastName}`,
           email: data.email,
-          password: hashedPassword, // Store hashed password in Trainer table
+          password: data.password ? hashedPassword : null, // Store hashed password only if provided
           phone: data.phone,
           specialization: data.specialization,
           experience: data.experience,
