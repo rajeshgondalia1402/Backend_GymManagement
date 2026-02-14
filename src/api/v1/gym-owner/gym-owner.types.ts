@@ -27,7 +27,7 @@ export interface CreateTrainerRequest {
   firstName: string;
   lastName: string;
   email: string;
-  password: string;
+  password?: string;
   phone: string;
   specialization?: string;
   experience?: number;
@@ -548,15 +548,101 @@ export interface AssignPlanRequest {
 }
 
 export interface GymOwnerDashboardStats {
-  totalMembers: number;
-  totalTrainers: number;
-  activeMembers: number;
-  expiringMemberships: number;
-  totalDietPlans: number;
-  totalExercisePlans: number;
-  totalPTMembers: number;
-  totalInquiries: number;
-  newInquiries: number;
+  totalActiveMembers: number;
+  totalActiveTrainers: number;
+  todayFollowUpInquiries: number;
+  expiringRegularMembers: number;
+  expiringPTMembers: number;
+  expensesLastMonth: number;
+  expensesCurrentMonth: number;
+  gym: {
+    id: string;
+    name: string;
+    address1?: string;
+    address2?: string;
+    city?: string;
+    state?: string;
+    zipcode?: string;
+    mobileNo?: string;
+    phoneNo?: string;
+    email?: string;
+    gymLogo?: string;
+    subscriptionPlanId?: string;
+    subscriptionPlan?: {
+      id: string;
+      name: string;
+      price: number;
+      durationDays: number;
+    };
+    subscriptionStart?: Date;
+    subscriptionEnd?: Date;
+  };
+}
+
+// Dashboard Report Item Types
+export interface DashboardMemberItem {
+  id: string;
+  memberId?: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  memberType: 'REGULAR' | 'PT' | 'REGULAR_PT';
+  membershipEnd?: Date;
+  memberPhoto?: string;
+}
+
+export interface DashboardTrainerItem {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  specialization?: string;
+  trainerPhoto?: string;
+  ptMemberCount: number;
+}
+
+export interface DashboardFollowUpInquiryItem {
+  id: string;
+  fullName: string;
+  contactNo: string;
+  followUpDate: Date;
+  comments?: string;
+  heardAbout?: string;
+}
+
+export interface DashboardExpenseItem {
+  id: string;
+  expenseDate: Date;
+  name: string;
+  amount: number;
+  expenseGroupName?: string;
+  paymentMode: PaymentMode;
+}
+
+export interface DashboardRenewalItem {
+  id: string;
+  memberId?: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  membershipEnd: Date;
+  memberType: 'REGULAR' | 'PT' | 'REGULAR_PT';
+  memberPhoto?: string;
+}
+
+export interface DashboardReportParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
+export interface DashboardReportResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
 }
 
 export interface PaginationParams {
@@ -1498,4 +1584,152 @@ export interface TrainerSalarySlip {
   // Additional
   remarks?: string;
   createdAt: Date;
+}
+
+// =============================================
+// Expense Report Types (Combined Expenses + Salary Settlements)
+// =============================================
+
+export type ExpenseType = 'EXPENSE' | 'SALARY';
+
+export interface ExpenseReportParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  // Filters
+  year?: number;
+  month?: number; // 1-12
+  dateFrom?: string;
+  dateTo?: string;
+  expenseType?: ExpenseType; // Filter by type: EXPENSE or SALARY
+  expenseGroupId?: string; // Only for EXPENSE type
+  paymentMode?: PaymentMode;
+}
+
+export interface ExpenseReportItem {
+  id: string;
+  date: Date;
+  name: string;
+  description?: string;
+  category: string; // Expense group name or "Salary"
+  amount: number;
+  paymentMode: PaymentMode;
+  type: ExpenseType;
+  // Additional details based on type
+  expenseGroupId?: string; // For EXPENSE type
+  trainerId?: string; // For SALARY type
+  trainerName?: string; // For SALARY type
+  salaryMonth?: string; // For SALARY type (YYYY-MM)
+  attachments?: string[]; // For EXPENSE type
+  createdAt: Date;
+}
+
+export interface ExpenseReportResponse {
+  items: ExpenseReportItem[];
+  total: number;
+  page: number;
+  limit: number;
+  summary: {
+    totalExpenseAmount: number;
+    totalSalaryAmount: number;
+    grandTotal: number;
+    expenseCount: number;
+    salaryCount: number;
+  };
+}
+
+// =============================================
+// Income Report Types (Member Payments)
+// =============================================
+
+export interface IncomeReportParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  // Filters
+  year?: number;
+  month?: number; // 1-12
+  dateFrom?: string;
+  dateTo?: string;
+  paymentStatus?: PaymentStatus; // PAID, PENDING, PARTIAL
+  membershipStatus?: 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
+}
+
+export interface MemberIncomeItem {
+  memberId: string;
+  memberCode: string;
+  memberName: string;
+  email?: string;
+  phone?: string;
+  memberPhoto?: string;
+  membershipStatus: string;
+  // Payment summary
+  initialPayment: number;
+  renewalPayments: number;
+  balancePayments: number;
+  totalPaidAmount: number;
+  totalPendingAmount: number;
+  lastPaymentDate?: Date;
+  paymentCount: number;
+}
+
+export interface IncomeReportResponse {
+  items: MemberIncomeItem[];
+  total: number;
+  page: number;
+  limit: number;
+  summary: {
+    totalInitialPayments: number;
+    totalRenewalPayments: number;
+    totalBalancePayments: number;
+    grandTotal: number;
+    totalPending: number;
+    memberCount: number;
+  };
+}
+
+// Member Payment Details (for popup)
+export interface MemberPaymentDetailParams {
+  page?: number;
+  limit?: number;
+  sortOrder?: 'asc' | 'desc';
+  dateFrom?: string;
+  dateTo?: string;
+  paymentFor?: PaymentFor; // REGULAR, PT
+}
+
+export type PaymentSource = 'INITIAL' | 'RENEWAL' | 'BALANCE_PAYMENT';
+
+export interface MemberPaymentDetailItem {
+  id: string;
+  paymentDate: Date;
+  source: PaymentSource;
+  paymentFor: PaymentFor;
+  amount: number;
+  paymentMode?: string;
+  receiptNo?: string;
+  renewalNumber?: string;
+  notes?: string;
+  packageName?: string;
+  createdAt: Date;
+}
+
+export interface MemberPaymentDetailResponse {
+  memberId: string;
+  memberName: string;
+  memberCode: string;
+  items: MemberPaymentDetailItem[];
+  total: number;
+  page: number;
+  limit: number;
+  summary: {
+    totalPaidAmount: number;
+    regularPayments: number;
+    ptPayments: number;
+    paymentCount: number;
+  };
 }

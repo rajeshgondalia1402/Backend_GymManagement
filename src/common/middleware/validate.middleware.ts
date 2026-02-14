@@ -97,6 +97,16 @@ export const createGymSchema = z.object({
 
 export const updateGymSchema = createGymSchema.partial();
 
+// Plan Category Master validation schemas
+export const createPlanCategorySchema = z.object({
+  categoryName: z.string().min(2, 'Category name must be at least 2 characters'),
+  description: z.string().optional(),
+});
+
+export const updatePlanCategorySchema = createPlanCategorySchema.partial().extend({
+  isActive: z.boolean().optional(),
+});
+
 // Occupation Master validation schemas
 export const createOccupationSchema = z.object({
   occupationName: z.string().min(2, 'Occupation name must be at least 2 characters'),
@@ -251,7 +261,7 @@ export const createTrainerSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
   email: z.string().email('Invalid email format'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string().min(6, 'Password must be at least 6 characters').optional(),
   phone: z.string().min(10, 'Phone must be at least 10 characters'),
   specialization: z.string().optional(),
   experience: z.union([z.number(), z.string().transform(val => parseInt(val, 10))]).optional(),
@@ -420,16 +430,35 @@ export const createDietPlanSchema = z.object({
 
 export const updateDietPlanSchema = createDietPlanSchema.partial();
 
+// Exercise item schema (reusable)
+const exerciseItemSchema = z.object({
+  name: z.string(),
+  sets: z.number(),
+  reps: z.number(),
+  restTime: z.number().optional(),
+  notes: z.string().optional(),
+});
+
+// Daily exercises schema (object with day keys)
+const dailyExercisesSchema = z.object({
+  monday: z.array(exerciseItemSchema).optional(),
+  tuesday: z.array(exerciseItemSchema).optional(),
+  wednesday: z.array(exerciseItemSchema).optional(),
+  thursday: z.array(exerciseItemSchema).optional(),
+  friday: z.array(exerciseItemSchema).optional(),
+  saturday: z.array(exerciseItemSchema).optional(),
+  sunday: z.array(exerciseItemSchema).optional(),
+});
+
 export const createExercisePlanSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   description: z.string().optional(),
-  exercises: z.array(z.object({
-    name: z.string(),
-    sets: z.number(),
-    reps: z.number(),
-    restTime: z.number().optional(),
-    notes: z.string().optional(),
-  })).optional(),
+  type: z.enum(['general', 'daily']).optional(),
+  // Exercises can be either an array (general plan) or object with day keys (daily plan)
+  exercises: z.union([
+    z.array(exerciseItemSchema),
+    dailyExercisesSchema
+  ]).optional(),
   durationMinutes: z.number().optional(),
   difficulty: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']).optional(),
   isActive: z.boolean().optional().default(true),
@@ -993,6 +1022,82 @@ export const gymInquiryPaginationSchema = z.object({
   sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
   subscriptionPlanId: z.string().uuid().optional(),
   isActive: z.string().optional().transform((val) => val === 'true' ? true : val === 'false' ? false : undefined),
+});
+
+// Admin Members List validation schema
+export const adminMembersQuerySchema = z.object({
+  page: z.string().optional().transform((val) => parseInt(val || '1', 10)),
+  limit: z.string().optional().transform((val) => parseInt(val || '10', 10)),
+  search: z.string().optional(),
+  sortBy: z.string().optional().default('createdAt'),
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+  gymId: z.string().uuid('Invalid gym ID').optional(),
+  gymOwnerId: z.string().uuid('Invalid gym owner ID').optional(),
+  membershipStatus: z.enum(['ACTIVE', 'EXPIRED', 'CANCELLED']).optional(),
+  memberType: z.enum(['REGULAR', 'PT', 'REGULAR_PT']).optional(),
+  isActive: z.string().optional().transform((val) => val === 'true' ? true : val === 'false' ? false : undefined),
+}).refine(
+  (data) => data.gymId || data.gymOwnerId,
+  { message: 'Either gymId or gymOwnerId is required', path: ['gymId'] }
+);
+
+// =============================================
+// Report Validation Schemas
+// =============================================
+
+// Expense Report query schema (Combined Expenses + Salary Settlements)
+export const expenseReportQuerySchema = z.object({
+  page: z.string().optional().transform((val) => parseInt(val || '1', 10)),
+  limit: z.string().optional().transform((val) => parseInt(val || '10', 10)),
+  search: z.string().optional(),
+  sortBy: z.string().optional().default('date'),
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+  // Date filters
+  year: z.string().optional().transform((val) => val ? parseInt(val, 10) : undefined),
+  month: z.string().optional().transform((val) => {
+    if (!val) return undefined;
+    const num = parseInt(val, 10);
+    if (num < 1 || num > 12) throw new Error('Month must be between 1 and 12');
+    return num;
+  }),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
+  // Type filter
+  expenseType: z.enum(['EXPENSE', 'SALARY']).optional(),
+  expenseGroupId: z.string().uuid('Invalid expense group ID').optional(),
+  paymentMode: z.enum(['CASH', 'CARD', 'UPI', 'BANK_TRANSFER', 'CHEQUE', 'NET_BANKING', 'OTHER']).optional(),
+});
+
+// Income Report query schema (Members with Total Payments)
+export const incomeReportQuerySchema = z.object({
+  page: z.string().optional().transform((val) => parseInt(val || '1', 10)),
+  limit: z.string().optional().transform((val) => parseInt(val || '10', 10)),
+  search: z.string().optional(),
+  sortBy: z.string().optional().default('totalPaidAmount'),
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+  // Date filters
+  year: z.string().optional().transform((val) => val ? parseInt(val, 10) : undefined),
+  month: z.string().optional().transform((val) => {
+    if (!val) return undefined;
+    const num = parseInt(val, 10);
+    if (num < 1 || num > 12) throw new Error('Month must be between 1 and 12');
+    return num;
+  }),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
+  // Additional filters
+  paymentStatus: z.enum(['PAID', 'PENDING', 'PARTIAL']).optional(),
+  membershipStatus: z.enum(['ACTIVE', 'EXPIRED', 'CANCELLED']).optional(),
+});
+
+// Member Payment Details query schema (for popup)
+export const memberPaymentDetailsQuerySchema = z.object({
+  page: z.string().optional().transform((val) => parseInt(val || '1', 10)),
+  limit: z.string().optional().transform((val) => parseInt(val || '10', 10)),
+  sortOrder: z.enum(['asc', 'desc']).optional().default('desc'),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
+  paymentFor: z.enum(['REGULAR', 'PT']).optional(),
 });
 
 // Validation middleware factory

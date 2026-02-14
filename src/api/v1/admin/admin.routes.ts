@@ -10,6 +10,8 @@ import {
   updateGymSchema,
   createGymOwnerSchema,
   updateGymOwnerSchema,
+  createPlanCategorySchema,
+  updatePlanCategorySchema,
   createOccupationSchema,
   updateOccupationSchema,
   createEnquiryTypeSchema,
@@ -27,6 +29,7 @@ import {
   updateGymInquirySchema,
   createGymInquiryFollowupSchema,
   gymInquiryPaginationSchema,
+  adminMembersQuerySchema,
 } from '../../../common/middleware';
 
 const router = Router();
@@ -866,6 +869,185 @@ router.delete('/occupations/:id', validate(idParamSchema, 'params'), adminContro
  */
 router.get('/occupations/:id/usage', validate(idParamSchema, 'params'), adminController.getOccupationUsage);
 
+// Plan Category Master CRUD
+/**
+ * @swagger
+ * /api/v1/admin/plan-categories:
+ *   get:
+ *     summary: Get all plan categories
+ *     tags: [Admin - Plan Categories]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Plan categories retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       categoryName:
+ *                         type: string
+ *                       description:
+ *                         type: string
+ *                       isActive:
+ *                         type: boolean
+ */
+router.get('/plan-categories', adminController.getPlanCategories);
+
+/**
+ * @swagger
+ * /api/v1/admin/plan-categories/{id}:
+ *   get:
+ *     summary: Get plan category by ID
+ *     tags: [Admin - Plan Categories]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Plan Category ID
+ *     responses:
+ *       200:
+ *         description: Plan category retrieved successfully
+ *       404:
+ *         description: Plan category not found
+ */
+router.get('/plan-categories/:id', validate(idParamSchema, 'params'), adminController.getPlanCategoryById);
+
+/**
+ * @swagger
+ * /api/v1/admin/plan-categories:
+ *   post:
+ *     summary: Create a new plan category
+ *     tags: [Admin - Plan Categories]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - categoryName
+ *             properties:
+ *               categoryName:
+ *                 type: string
+ *                 minLength: 2
+ *               description:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Plan category created successfully
+ *       409:
+ *         description: Plan category with this name already exists
+ */
+router.post('/plan-categories', validate(createPlanCategorySchema), adminController.createPlanCategory);
+
+/**
+ * @swagger
+ * /api/v1/admin/plan-categories/{id}:
+ *   put:
+ *     summary: Update a plan category
+ *     tags: [Admin - Plan Categories]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Plan Category ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               categoryName:
+ *                 type: string
+ *                 minLength: 2
+ *               description:
+ *                 type: string
+ *               isActive:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Plan category updated successfully
+ *       404:
+ *         description: Plan category not found
+ *       409:
+ *         description: Plan category with this name already exists
+ */
+router.put('/plan-categories/:id', validate(idParamSchema, 'params'), validate(updatePlanCategorySchema), adminController.updatePlanCategory);
+
+/**
+ * @swagger
+ * /api/v1/admin/plan-categories/{id}:
+ *   delete:
+ *     summary: Delete a plan category (soft delete)
+ *     tags: [Admin - Plan Categories]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Plan Category ID
+ *     responses:
+ *       200:
+ *         description: Plan category deleted successfully
+ *       404:
+ *         description: Plan category not found
+ *       409:
+ *         description: Cannot delete - plan category is in use
+ */
+router.delete('/plan-categories/:id', validate(idParamSchema, 'params'), adminController.deletePlanCategory);
+
+/**
+ * @swagger
+ * /api/v1/admin/plan-categories/{id}/usage:
+ *   get:
+ *     summary: Check plan category usage
+ *     tags: [Admin - Plan Categories]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Plan Category ID
+ *     responses:
+ *       200:
+ *         description: Usage info retrieved successfully
+ *       404:
+ *         description: Plan category not found
+ */
+router.get('/plan-categories/:id/usage', validate(idParamSchema, 'params'), adminController.getPlanCategoryUsage);
+
 // Enquiry Type Master CRUD
 /**
  * @swagger
@@ -1329,5 +1511,184 @@ router.put('/gym-inquiries/:id', validate(idParamSchema, 'params'), validate(upd
 router.patch('/gym-inquiries/:id/toggle-status', validate(idParamSchema, 'params'), adminController.toggleGymInquiryStatus);
 router.get('/gym-inquiries/:id/followups', validate(idParamSchema, 'params'), adminController.getGymInquiryFollowups);
 router.post('/gym-inquiries/:id/followups', validate(idParamSchema, 'params'), validate(createGymInquiryFollowupSchema), adminController.createGymInquiryFollowup);
+
+// Admin Members List by Gym/GymOwner
+/**
+ * @swagger
+ * /api/v1/admin/members:
+ *   get:
+ *     summary: Get all members for a specific gym or gym owner
+ *     description: |
+ *       Lists all members with comprehensive details including subscription info,
+ *       payment summary, assigned trainer, diet plan, and PT details.
+ *       Either gymId or gymOwnerId must be provided.
+ *     tags: [Admin - Members]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: gymId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Gym ID (either gymId or gymOwnerId required)
+ *       - in: query
+ *         name: gymOwnerId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Gym Owner ID (either gymId or gymOwnerId required)
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Items per page
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search by member name, email, phone, or member ID
+ *       - in: query
+ *         name: membershipStatus
+ *         schema:
+ *           type: string
+ *           enum: [ACTIVE, EXPIRED, CANCELLED]
+ *         description: Filter by membership status
+ *       - in: query
+ *         name: memberType
+ *         schema:
+ *           type: string
+ *           enum: [REGULAR, PT, REGULAR_PT]
+ *         description: Filter by member type
+ *       - in: query
+ *         name: isActive
+ *         schema:
+ *           type: boolean
+ *         description: Filter by active status
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           default: createdAt
+ *         description: Field to sort by
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           default: desc
+ *         description: Sort order
+ *     responses:
+ *       200:
+ *         description: Members retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     items:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           memberId:
+ *                             type: string
+ *                           name:
+ *                             type: string
+ *                           email:
+ *                             type: string
+ *                           phone:
+ *                             type: string
+ *                           memberType:
+ *                             type: string
+ *                           user:
+ *                             type: object
+ *                             properties:
+ *                               email:
+ *                                 type: string
+ *                               passwordHint:
+ *                                 type: string
+ *                           subscription:
+ *                             type: object
+ *                             properties:
+ *                               membershipStart:
+ *                                 type: string
+ *                                 format: date-time
+ *                               membershipEnd:
+ *                                 type: string
+ *                                 format: date-time
+ *                               membershipStatus:
+ *                                 type: string
+ *                               daysRemaining:
+ *                                 type: integer
+ *                           package:
+ *                             type: object
+ *                             properties:
+ *                               coursePackageName:
+ *                                 type: string
+ *                               packageFees:
+ *                                 type: number
+ *                               finalFees:
+ *                                 type: number
+ *                           payment:
+ *                             type: object
+ *                             properties:
+ *                               totalAmount:
+ *                                 type: number
+ *                               totalPaid:
+ *                                 type: number
+ *                               totalPending:
+ *                                 type: number
+ *                               paymentStatus:
+ *                                 type: string
+ *                           trainer:
+ *                             type: object
+ *                             nullable: true
+ *                             properties:
+ *                               name:
+ *                                 type: string
+ *                               specialization:
+ *                                 type: string
+ *                           dietPlan:
+ *                             type: object
+ *                             nullable: true
+ *                             properties:
+ *                               templateName:
+ *                                 type: string
+ *                               meals:
+ *                                 type: array
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         page:
+ *                           type: integer
+ *                         limit:
+ *                           type: integer
+ *                         total:
+ *                           type: integer
+ *                         totalPages:
+ *                           type: integer
+ *       400:
+ *         description: Either gymId or gymOwnerId is required
+ *       404:
+ *         description: Gym not found
+ */
+router.get('/members', validate(adminMembersQuerySchema, 'query'), adminController.getMembersByGymOrOwner);
 
 export default router;

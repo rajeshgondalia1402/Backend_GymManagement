@@ -801,6 +801,7 @@ export class TrainerService {
       memberId: pt.memberId,
       memberName: pt.member.user.name,
       memberEmail: pt.member.user.email,
+      memberPhone: pt.member.phone,
       packageName: pt.packageName,
       sessionsTotal: pt.sessionsTotal,
       sessionsUsed: pt.sessionsUsed,

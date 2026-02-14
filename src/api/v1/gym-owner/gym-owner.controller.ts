@@ -23,6 +23,112 @@ class GymOwnerController {
     }
   }
 
+  // Dashboard Report Methods
+  async getDashboardActiveMembers(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { page = 1, limit = 10, search } = req.query as any;
+      const result = await gymOwnerService.getDashboardActiveMembers(gymId, {
+        page: Number(page),
+        limit: Number(limit),
+        search,
+      });
+      paginatedResponse(res, result.items, Number(page), Number(limit), result.total, 'Active members retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getDashboardActiveTrainers(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { page = 1, limit = 10, search } = req.query as any;
+      const result = await gymOwnerService.getDashboardActiveTrainers(gymId, {
+        page: Number(page),
+        limit: Number(limit),
+        search,
+      });
+      paginatedResponse(res, result.items, Number(page), Number(limit), result.total, 'Active trainers retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getDashboardFollowUpInquiries(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { page = 1, limit = 10, search } = req.query as any;
+      const result = await gymOwnerService.getDashboardFollowUpInquiries(gymId, {
+        page: Number(page),
+        limit: Number(limit),
+        search,
+      });
+      paginatedResponse(res, result.items, Number(page), Number(limit), result.total, 'Follow-up inquiries retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getDashboardExpiringRegularMembers(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { page = 1, limit = 10, search } = req.query as any;
+      const result = await gymOwnerService.getDashboardExpiringRegularMembers(gymId, {
+        page: Number(page),
+        limit: Number(limit),
+        search,
+      });
+      paginatedResponse(res, result.items, Number(page), Number(limit), result.total, 'Expiring regular members retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getDashboardExpiringPTMembers(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { page = 1, limit = 10, search } = req.query as any;
+      const result = await gymOwnerService.getDashboardExpiringPTMembers(gymId, {
+        page: Number(page),
+        limit: Number(limit),
+        search,
+      });
+      paginatedResponse(res, result.items, Number(page), Number(limit), result.total, 'Expiring PT members retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getDashboardExpensesSummary(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { page = 1, limit = 10, search } = req.query as any;
+      const result = await gymOwnerService.getDashboardExpensesSummary(gymId, {
+        page: Number(page),
+        limit: Number(limit),
+        search,
+      });
+      paginatedResponse(res, result.items, Number(page), Number(limit), result.total, 'Expenses summary retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getDashboardTodayRenewals(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { page = 1, limit = 10, search } = req.query as any;
+      const result = await gymOwnerService.getDashboardTodayRenewals(gymId, {
+        page: Number(page),
+        limit: Number(limit),
+        search,
+      });
+      paginatedResponse(res, result.items, Number(page), Number(limit), result.total, 'Today\'s renewals retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // Trainers
   async getTrainers(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -374,6 +480,39 @@ class GymOwnerController {
       const gymId = this.getGymId(req);
       await gymOwnerService.deleteExercisePlan(gymId, req.params.id);
       successResponse(res, null, 'Exercise plan deleted successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async toggleExercisePlanStatus(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const plan = await gymOwnerService.toggleExercisePlanStatus(gymId, req.params.id);
+      successResponse(res, plan, 'Exercise plan status updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async bulkAssignExercisePlan(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const userId = req.user?.id;
+      if (!userId) throw new Error('User ID not found');
+      const result = await gymOwnerService.bulkAssignExercisePlan(gymId, userId, req.body);
+      successResponse(res, result.results, `Exercise plan assigned to ${result.assignedCount} member(s) successfully`, 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async bulkRemoveExercisePlanAssignments(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { memberExerciseIds } = req.body;
+      const result = await gymOwnerService.bulkRemoveExercisePlanAssignments(gymId, memberExerciseIds);
+      successResponse(res, result, `${result.deletedCount} assignment(s) removed successfully`);
     } catch (error) {
       next(error);
     }
@@ -1655,6 +1794,88 @@ class GymOwnerController {
       const gymId = this.getGymId(req);
       const subscription = await gymOwnerService.getCurrentSubscription(gymId);
       successResponse(res, subscription, 'Current subscription retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // =============================================
+  // Report Methods
+  // =============================================
+
+  // Expense Report (Combined Expenses + Salary Settlements)
+  async getExpenseReport(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const params = req.query as any;
+      const result = await gymOwnerService.getExpenseReport(gymId, params);
+
+      res.status(200).json({
+        success: true,
+        message: 'Expense report retrieved successfully',
+        data: result.items,
+        pagination: {
+          page: result.page,
+          limit: result.limit,
+          total: result.total,
+          totalPages: Math.ceil(result.total / result.limit),
+        },
+        summary: result.summary,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Income Report (Members with Total Payments)
+  async getIncomeReport(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const params = req.query as any;
+      const result = await gymOwnerService.getIncomeReport(gymId, params);
+
+      res.status(200).json({
+        success: true,
+        message: 'Income report retrieved successfully',
+        data: result.items,
+        pagination: {
+          page: result.page,
+          limit: result.limit,
+          total: result.total,
+          totalPages: Math.ceil(result.total / result.limit),
+        },
+        summary: result.summary,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Member Payment Details (for popup)
+  async getMemberPaymentDetails(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { memberId } = req.params;
+      const params = req.query as any;
+      const result = await gymOwnerService.getMemberPaymentDetails(gymId, memberId, params);
+
+      res.status(200).json({
+        success: true,
+        message: 'Member payment details retrieved successfully',
+        data: {
+          memberId: result.memberId,
+          memberName: result.memberName,
+          memberCode: result.memberCode,
+          payments: result.items,
+        },
+        pagination: {
+          page: result.page,
+          limit: result.limit,
+          total: result.total,
+          totalPages: Math.ceil(result.total / result.limit),
+        },
+        summary: result.summary,
+      });
     } catch (error) {
       next(error);
     }

@@ -107,55 +107,644 @@ import {
   SalarySlipEarnings,
   SalarySlipAttendance,
   SalarySlipPaymentDetails,
+  // Report Types
+  ExpenseReportParams,
+  ExpenseReportItem,
+  ExpenseReportResponse,
+  ExpenseType,
+  IncomeReportParams,
+  MemberIncomeItem,
+  IncomeReportResponse,
+  MemberPaymentDetailParams,
+  MemberPaymentDetailItem,
+  MemberPaymentDetailResponse,
+  PaymentSource,
+  // Dashboard Report Types
+  DashboardMemberItem,
+  DashboardTrainerItem,
+  DashboardFollowUpInquiryItem,
+  DashboardExpenseItem,
+  DashboardRenewalItem,
+  DashboardReportParams,
+  DashboardReportResponse,
 } from './gym-owner.types';
 
 class GymOwnerService {
   // Dashboard
   async getDashboardStats(gymId: string): Promise<GymOwnerDashboardStats> {
-    const [totalMembers, totalTrainers, totalDietPlans, totalExercisePlans, totalPTMembers, totalInquiries, newInquiries] =
-      await Promise.all([
-        prisma.member.count({ where: { gymId } }),
-        prisma.trainer.count({ where: { gymId } }),
-        prisma.dietPlan.count({ where: { gymId } }),
-        prisma.exercisePlan.count({ where: { gymId } }),
-        prisma.pTMember.count({ where: { gymId } }),
-        prisma.inquiry.count({ where: { gymId } }),
-        prisma.inquiry.count({ where: { gymId, status: 'NEW' } }),
-      ]);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
 
-    // Get active members
-    const activeMembers = await prisma.member.count({
-      where: {
-        gymId,
-        membershipStatus: 'ACTIVE',
-        user: { isActive: true }
-      }
-    });
+    const todayEnd = new Date(today);
+    todayEnd.setHours(23, 59, 59, 999);
 
-    // Calculate expiring memberships (next 7 days)
-    const sevenDaysFromNow = new Date();
+    const sevenDaysFromNow = new Date(today);
     sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+    sevenDaysFromNow.setHours(23, 59, 59, 999);
 
-    const expiringMemberships = await prisma.member.count({
-      where: {
-        gymId,
-        membershipEnd: {
-          gte: new Date(),
-          lte: sevenDaysFromNow,
+    // Get first day of current month and last month
+    const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0, 23, 59, 59, 999);
+
+    const [
+      totalActiveMembers,
+      totalActiveTrainers,
+      todayFollowUpInquiries,
+      expiringRegularMembers,
+      expiringPTMembers,
+      expensesCurrentMonth,
+      expensesLastMonth,
+      gym,
+    ] = await Promise.all([
+      // Total Active Members (isActive=true AND membershipStatus=ACTIVE)
+      prisma.member.count({
+        where: {
+          gymId,
+          isActive: true,
+          membershipStatus: 'ACTIVE',
         },
-      },
-    });
+      }),
+      // Total Active Trainers
+      prisma.trainer.count({
+        where: {
+          gymId,
+          isActive: true,
+        },
+      }),
+      // Today's Follow-up Inquiries
+      prisma.memberInquiry.count({
+        where: {
+          gymId,
+          isActive: true,
+          followUp: true,
+          followUpDate: {
+            gte: today,
+            lte: todayEnd,
+          },
+        },
+      }),
+      // Expiring Regular Members (7 days) - memberType=REGULAR and NOT hasPTAddon
+      prisma.member.count({
+        where: {
+          gymId,
+          isActive: true,
+          memberType: 'REGULAR',
+          hasPTAddon: { not: true },
+          membershipEnd: {
+            gte: today,
+            lte: sevenDaysFromNow,
+          },
+        },
+      }),
+      // Expiring PT Members (7 days) - hasPTAddon=true OR memberType in PT/REGULAR_PT
+      prisma.member.count({
+        where: {
+          gymId,
+          isActive: true,
+          OR: [
+            { hasPTAddon: true },
+            { memberType: 'PT' },
+            { memberType: 'REGULAR_PT' },
+          ],
+          membershipEnd: {
+            gte: today,
+            lte: sevenDaysFromNow,
+          },
+        },
+      }),
+      // Current month expenses
+      prisma.expenseMaster.aggregate({
+        where: {
+          gymId,
+          isActive: true,
+          expenseDate: {
+            gte: currentMonthStart,
+            lte: todayEnd,
+          },
+        },
+        _sum: { amount: true },
+      }),
+      // Last month expenses
+      prisma.expenseMaster.aggregate({
+        where: {
+          gymId,
+          isActive: true,
+          expenseDate: {
+            gte: lastMonthStart,
+            lte: lastMonthEnd,
+          },
+        },
+        _sum: { amount: true },
+      }),
+      // Get gym details
+      prisma.gym.findUnique({
+        where: { id: gymId },
+        include: {
+          subscriptionPlan: {
+            select: {
+              id: true,
+              name: true,
+              price: true,
+              durationDays: true,
+            },
+          },
+        },
+      }),
+    ]);
 
     return {
-      totalMembers,
-      totalTrainers,
-      activeMembers,
-      expiringMemberships,
-      totalDietPlans,
-      totalExercisePlans,
-      totalPTMembers,
-      totalInquiries,
-      newInquiries,
+      totalActiveMembers,
+      totalActiveTrainers,
+      todayFollowUpInquiries,
+      expiringRegularMembers,
+      expiringPTMembers,
+      expensesCurrentMonth: Number(expensesCurrentMonth._sum.amount || 0),
+      expensesLastMonth: Number(expensesLastMonth._sum.amount || 0),
+      gym: {
+        id: gym?.id || '',
+        name: gym?.name || '',
+        address1: gym?.address1 || undefined,
+        address2: gym?.address2 || undefined,
+        city: gym?.city || undefined,
+        state: gym?.state || undefined,
+        zipcode: gym?.zipcode || undefined,
+        mobileNo: gym?.mobileNo || undefined,
+        phoneNo: gym?.phoneNo || undefined,
+        email: gym?.email || undefined,
+        gymLogo: gym?.gymLogo || undefined,
+        subscriptionPlanId: gym?.subscriptionPlanId || undefined,
+        subscriptionPlan: gym?.subscriptionPlan ? {
+          id: gym.subscriptionPlan.id,
+          name: gym.subscriptionPlan.name,
+          price: Number(gym.subscriptionPlan.price),
+          durationDays: gym.subscriptionPlan.durationDays,
+        } : undefined,
+        subscriptionStart: gym?.subscriptionStart || undefined,
+        subscriptionEnd: gym?.subscriptionEnd || undefined,
+      },
+    };
+  }
+
+  // Dashboard Report Methods
+  async getDashboardActiveMembers(
+    gymId: string,
+    params: DashboardReportParams
+  ): Promise<DashboardReportResponse<DashboardMemberItem>> {
+    const { page = 1, limit = 10, search } = params;
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      gymId,
+      isActive: true,
+      membershipStatus: 'ACTIVE',
+    };
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' as const } },
+        { email: { contains: search, mode: 'insensitive' as const } },
+        { phone: { contains: search, mode: 'insensitive' as const } },
+        { memberId: { contains: search, mode: 'insensitive' as const } },
+      ];
+    }
+
+    const [members, total] = await Promise.all([
+      prisma.member.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          memberId: true,
+          name: true,
+          email: true,
+          phone: true,
+          memberType: true,
+          membershipEnd: true,
+          memberPhoto: true,
+        },
+      }),
+      prisma.member.count({ where }),
+    ]);
+
+    return {
+      items: members.map((m) => {
+        const nameParts = (m.name || '').split(' ');
+        return {
+          id: m.id,
+          memberId: m.memberId || undefined,
+          firstName: nameParts[0] || '',
+          lastName: nameParts.slice(1).join(' ') || '',
+          email: m.email || '',
+          phone: m.phone || undefined,
+          memberType: m.memberType as 'REGULAR' | 'PT' | 'REGULAR_PT',
+          membershipEnd: m.membershipEnd || undefined,
+          memberPhoto: m.memberPhoto || undefined,
+        };
+      }),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  async getDashboardActiveTrainers(
+    gymId: string,
+    params: DashboardReportParams
+  ): Promise<DashboardReportResponse<DashboardTrainerItem>> {
+    const { page = 1, limit = 10, search } = params;
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      gymId,
+      isActive: true,
+    };
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' as const } },
+        { email: { contains: search, mode: 'insensitive' as const } },
+        { phone: { contains: search, mode: 'insensitive' as const } },
+      ];
+    }
+
+    const [trainers, total] = await Promise.all([
+      prisma.trainer.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          specialization: true,
+          trainerPhoto: true,
+          _count: { select: { ptMembers: true } },
+        },
+      }),
+      prisma.trainer.count({ where }),
+    ]);
+
+    return {
+      items: trainers.map((t) => ({
+        id: t.id,
+        name: t.name || '',
+        email: t.email || '',
+        phone: t.phone || undefined,
+        specialization: t.specialization || undefined,
+        trainerPhoto: t.trainerPhoto || undefined,
+        ptMemberCount: t._count.ptMembers,
+      })),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  async getDashboardFollowUpInquiries(
+    gymId: string,
+    params: DashboardReportParams
+  ): Promise<DashboardReportResponse<DashboardFollowUpInquiryItem>> {
+    const { page = 1, limit = 10, search } = params;
+    const skip = (page - 1) * limit;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(today);
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const where: any = {
+      gymId,
+      isActive: true,
+      followUp: true,
+      followUpDate: {
+        gte: today,
+        lte: todayEnd,
+      },
+    };
+
+    if (search) {
+      where.OR = [
+        { fullName: { contains: search, mode: 'insensitive' as const } },
+        { contactNo: { contains: search, mode: 'insensitive' as const } },
+      ];
+    }
+
+    const [inquiries, total] = await Promise.all([
+      prisma.memberInquiry.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { followUpDate: 'asc' },
+        select: {
+          id: true,
+          fullName: true,
+          contactNo: true,
+          followUpDate: true,
+          comments: true,
+          heardAbout: true,
+        },
+      }),
+      prisma.memberInquiry.count({ where }),
+    ]);
+
+    return {
+      items: inquiries.map((i) => ({
+        id: i.id,
+        fullName: i.fullName,
+        contactNo: i.contactNo,
+        followUpDate: i.followUpDate!,
+        comments: i.comments || undefined,
+        heardAbout: i.heardAbout || undefined,
+      })),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  async getDashboardExpiringRegularMembers(
+    gymId: string,
+    params: DashboardReportParams
+  ): Promise<DashboardReportResponse<DashboardMemberItem>> {
+    const { page = 1, limit = 10, search } = params;
+    const skip = (page - 1) * limit;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const sevenDaysFromNow = new Date(today);
+    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+    sevenDaysFromNow.setHours(23, 59, 59, 999);
+
+    const where: any = {
+      gymId,
+      isActive: true,
+      memberType: 'REGULAR',
+      hasPTAddon: { not: true },
+      membershipEnd: {
+        gte: today,
+        lte: sevenDaysFromNow,
+      },
+    };
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' as const } },
+        { email: { contains: search, mode: 'insensitive' as const } },
+        { phone: { contains: search, mode: 'insensitive' as const } },
+      ];
+    }
+
+    const [members, total] = await Promise.all([
+      prisma.member.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { membershipEnd: 'asc' },
+        select: {
+          id: true,
+          memberId: true,
+          name: true,
+          email: true,
+          phone: true,
+          memberType: true,
+          membershipEnd: true,
+          memberPhoto: true,
+        },
+      }),
+      prisma.member.count({ where }),
+    ]);
+
+    return {
+      items: members.map((m) => {
+        const nameParts = (m.name || '').split(' ');
+        return {
+          id: m.id,
+          memberId: m.memberId || undefined,
+          firstName: nameParts[0] || '',
+          lastName: nameParts.slice(1).join(' ') || '',
+          email: m.email || '',
+          phone: m.phone || undefined,
+          memberType: m.memberType as 'REGULAR' | 'PT' | 'REGULAR_PT',
+          membershipEnd: m.membershipEnd || undefined,
+          memberPhoto: m.memberPhoto || undefined,
+        };
+      }),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  async getDashboardExpiringPTMembers(
+    gymId: string,
+    params: DashboardReportParams
+  ): Promise<DashboardReportResponse<DashboardMemberItem>> {
+    const { page = 1, limit = 10, search } = params;
+    const skip = (page - 1) * limit;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const sevenDaysFromNow = new Date(today);
+    sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+    sevenDaysFromNow.setHours(23, 59, 59, 999);
+
+    const where: any = {
+      gymId,
+      isActive: true,
+      OR: [
+        { hasPTAddon: true },
+        { memberType: 'PT' },
+        { memberType: 'REGULAR_PT' },
+      ],
+      membershipEnd: {
+        gte: today,
+        lte: sevenDaysFromNow,
+      },
+    };
+
+    if (search) {
+      // Need to handle search differently since OR is already used
+      where.AND = [
+        {
+          OR: [
+            { name: { contains: search, mode: 'insensitive' as const } },
+            { email: { contains: search, mode: 'insensitive' as const } },
+            { phone: { contains: search, mode: 'insensitive' as const } },
+          ],
+        },
+      ];
+    }
+
+    const [members, total] = await Promise.all([
+      prisma.member.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { membershipEnd: 'asc' },
+        select: {
+          id: true,
+          memberId: true,
+          name: true,
+          email: true,
+          phone: true,
+          memberType: true,
+          membershipEnd: true,
+          memberPhoto: true,
+          hasPTAddon: true,
+        },
+      }),
+      prisma.member.count({ where }),
+    ]);
+
+    return {
+      items: members.map((m) => {
+        const nameParts = (m.name || '').split(' ');
+        return {
+          id: m.id,
+          memberId: m.memberId || undefined,
+          firstName: nameParts[0] || '',
+          lastName: nameParts.slice(1).join(' ') || '',
+          email: m.email || '',
+          phone: m.phone || undefined,
+          memberType: m.memberType as 'REGULAR' | 'PT' | 'REGULAR_PT',
+          membershipEnd: m.membershipEnd || undefined,
+          memberPhoto: m.memberPhoto || undefined,
+        };
+      }),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  async getDashboardExpensesSummary(
+    gymId: string,
+    params: DashboardReportParams
+  ): Promise<DashboardReportResponse<DashboardExpenseItem>> {
+    const { page = 1, limit = 10, search } = params;
+    const skip = (page - 1) * limit;
+
+    const today = new Date();
+    const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+
+    const where: any = {
+      gymId,
+      isActive: true,
+      expenseDate: {
+        gte: lastMonthStart,
+      },
+    };
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' as const } },
+        { expenseGroup: { expenseGroupName: { contains: search, mode: 'insensitive' as const } } },
+      ];
+    }
+
+    const [expenses, total] = await Promise.all([
+      prisma.expenseMaster.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { expenseDate: 'desc' },
+        include: {
+          expenseGroup: {
+            select: { expenseGroupName: true },
+          },
+        },
+      }),
+      prisma.expenseMaster.count({ where }),
+    ]);
+
+    return {
+      items: expenses.map((e) => ({
+        id: e.id,
+        expenseDate: e.expenseDate,
+        name: e.name,
+        amount: Number(e.amount),
+        expenseGroupName: e.expenseGroup?.expenseGroupName || undefined,
+        paymentMode: e.paymentMode as PaymentMode,
+      })),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  async getDashboardTodayRenewals(
+    gymId: string,
+    params: DashboardReportParams
+  ): Promise<DashboardReportResponse<DashboardRenewalItem>> {
+    const { page = 1, limit = 10, search } = params;
+    const skip = (page - 1) * limit;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(today);
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const where: any = {
+      gymId,
+      isActive: true,
+      membershipEnd: {
+        gte: today,
+        lte: todayEnd,
+      },
+    };
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' as const } },
+        { email: { contains: search, mode: 'insensitive' as const } },
+        { phone: { contains: search, mode: 'insensitive' as const } },
+      ];
+    }
+
+    const [members, total] = await Promise.all([
+      prisma.member.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { membershipEnd: 'asc' },
+        select: {
+          id: true,
+          memberId: true,
+          name: true,
+          email: true,
+          phone: true,
+          membershipEnd: true,
+          memberType: true,
+          memberPhoto: true,
+        },
+      }),
+      prisma.member.count({ where }),
+    ]);
+
+    return {
+      items: members.map((m) => {
+        const nameParts = (m.name || '').split(' ');
+        return {
+          id: m.id,
+          memberId: m.memberId || undefined,
+          firstName: nameParts[0] || '',
+          lastName: nameParts.slice(1).join(' ') || '',
+          email: m.email || '',
+          phone: m.phone || undefined,
+          membershipEnd: m.membershipEnd!,
+          memberType: m.memberType as 'REGULAR' | 'PT' | 'REGULAR_PT',
+          memberPhoto: m.memberPhoto || undefined,
+        };
+      }),
+      total,
+      page,
+      limit,
     };
   }
 
@@ -256,7 +845,9 @@ class GymOwnerService {
     const trainerRole = await prisma.rolemaster.findFirst({ where: { rolename: 'TRAINER' } });
     if (!trainerRole) throw new NotFoundException('TRAINER role not found');
 
-    const hashedPassword = await bcrypt.hash(data.password, 10);
+    // Generate random password if not provided
+    const password = data.password || Math.random().toString(36).slice(-10) + 'A1!';
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create user and trainer in transaction
     const result = await prisma.$transaction(async (tx) => {
@@ -275,7 +866,7 @@ class GymOwnerService {
           gymId,
           name: `${data.firstName} ${data.lastName}`,
           email: data.email,
-          password: hashedPassword, // Store hashed password in Trainer table
+          password: data.password ? hashedPassword : null, // Store hashed password only if provided
           phone: data.phone,
           specialization: data.specialization,
           experience: data.experience,
@@ -1297,20 +1888,49 @@ class GymOwnerService {
         skip,
         take: limit,
         orderBy: { [sortBy]: sortOrder },
+        include: {
+          assignments: {
+            where: { isActive: true },
+            include: {
+              member: {
+                include: {
+                  user: { select: { name: true, email: true } },
+                },
+              },
+            },
+          },
+          _count: {
+            select: { assignments: { where: { isActive: true } } },
+          },
+        },
       }),
       prisma.exercisePlan.count({ where }),
     ]);
 
-    const plans: ExercisePlan[] = dbPlans.map((p) => ({
+    const plans = dbPlans.map((p) => ({
       id: p.id,
       name: p.name,
       description: p.description || undefined,
-      exercises: p.exercises as any[],
+      type: p.type || undefined,
+      exercises: p.exercises as any,
       durationMinutes: undefined,
       difficulty: p.type || undefined,
       isActive: p.isActive,
       gymId: p.gymId,
       createdAt: p.createdAt,
+      _count: { assignments: p._count.assignments },
+      assignedMembers: p.assignments.map((a) => ({
+        memberExerciseId: a.id,
+        memberId: a.member.id,
+        memberCode: a.member.memberId || '',
+        memberName: a.member.user.name,
+        memberEmail: a.member.user.email || '',
+        mobileNo: a.member.phone || '',
+        memberType: a.member.memberType,
+        hasPTAddon: a.member.hasPTAddon,
+        startDate: a.startDate,
+        endDate: a.endDate,
+      })),
     }));
 
     return { plans, total };
@@ -1386,6 +2006,140 @@ class GymOwnerService {
   async deleteExercisePlan(gymId: string, planId: string): Promise<void> {
     await this.getExercisePlanById(gymId, planId);
     await prisma.exercisePlan.delete({ where: { id: planId } });
+  }
+
+  async toggleExercisePlanStatus(gymId: string, planId: string): Promise<ExercisePlan> {
+    const plan = await this.getExercisePlanById(gymId, planId);
+    const updated = await prisma.exercisePlan.update({
+      where: { id: planId },
+      data: { isActive: !plan.isActive },
+    });
+    return {
+      id: updated.id,
+      name: updated.name,
+      description: updated.description || undefined,
+      exercises: updated.exercises as any[],
+      durationMinutes: undefined,
+      difficulty: updated.type || undefined,
+      isActive: updated.isActive,
+      gymId: updated.gymId,
+      createdAt: updated.createdAt,
+    };
+  }
+
+  async bulkAssignExercisePlan(
+    gymId: string,
+    userId: string,
+    data: {
+      memberIds: string[];
+      exercisePlanId: string;
+      startDate: string;
+      endDate?: string;
+      notes?: string;
+    }
+  ): Promise<{ assignedCount: number; results: any[] }> {
+    // Validate exercise plan exists and belongs to gym
+    const exercisePlan = await prisma.exercisePlan.findFirst({
+      where: { id: data.exercisePlanId, gymId },
+    });
+    if (!exercisePlan) {
+      throw new NotFoundException('Exercise plan not found');
+    }
+
+    // Validate all members belong to this gym
+    const members = await prisma.member.findMany({
+      where: {
+        id: { in: data.memberIds },
+        gymId,
+        isActive: true,
+      },
+      include: {
+        user: { select: { name: true, email: true } },
+      },
+    });
+
+    if (members.length === 0) {
+      throw new BadRequestException('No valid members found');
+    }
+
+    const results: any[] = [];
+    const startDate = new Date(data.startDate);
+    const endDate = data.endDate ? new Date(data.endDate) : undefined;
+
+    // Deactivate existing assignments for these members to this plan
+    await prisma.memberExerciseAssignment.updateMany({
+      where: {
+        memberId: { in: members.map((m) => m.id) },
+        exercisePlanId: data.exercisePlanId,
+        isActive: true,
+      },
+      data: { isActive: false },
+    });
+
+    // Create new assignments for all members
+    for (const member of members) {
+      const assignment = await prisma.memberExerciseAssignment.create({
+        data: {
+          memberId: member.id,
+          exercisePlanId: data.exercisePlanId,
+          startDate,
+          endDate,
+          isActive: true,
+        },
+      });
+
+      results.push({
+        id: assignment.id,
+        memberId: member.id,
+        memberName: member.user.name,
+        memberEmail: member.user.email,
+        exercisePlanId: data.exercisePlanId,
+        exercisePlanName: exercisePlan.name,
+        startDate: assignment.startDate,
+        endDate: assignment.endDate,
+        isActive: assignment.isActive,
+        assignedAt: assignment.assignedAt,
+      });
+    }
+
+    return { assignedCount: results.length, results };
+  }
+
+  async bulkRemoveExercisePlanAssignments(
+    gymId: string,
+    memberExerciseIds: string[]
+  ): Promise<{ deletedCount: number; deletedIds: string[] }> {
+    if (!memberExerciseIds || memberExerciseIds.length === 0) {
+      throw new BadRequestException('No assignment IDs provided');
+    }
+
+    // Get assignments to validate they belong to this gym's exercise plans
+    const assignments = await prisma.memberExerciseAssignment.findMany({
+      where: {
+        id: { in: memberExerciseIds },
+        isActive: true,
+      },
+      include: {
+        exercisePlan: { select: { gymId: true } },
+      },
+    });
+
+    // Filter to only assignments that belong to this gym
+    const validAssignments = assignments.filter((a) => a.exercisePlan.gymId === gymId);
+
+    if (validAssignments.length === 0) {
+      throw new BadRequestException('No valid assignments found to remove');
+    }
+
+    const validIds = validAssignments.map((a) => a.id);
+
+    // Deactivate the assignments (soft delete)
+    await prisma.memberExerciseAssignment.updateMany({
+      where: { id: { in: validIds } },
+      data: { isActive: false },
+    });
+
+    return { deletedCount: validIds.length, deletedIds: validIds };
   }
 
   // Assign Plans
@@ -6601,6 +7355,557 @@ class GymOwnerService {
             pendingAmount: activeHistory.pendingAmount ? Number(activeHistory.pendingAmount) : null,
           }
         : null,
+    };
+  }
+
+  // =============================================
+  // Expense Report (Combined Expenses + Salary Settlements)
+  // =============================================
+
+  async getExpenseReport(gymId: string, params: ExpenseReportParams): Promise<ExpenseReportResponse> {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      sortBy = 'date',
+      sortOrder = 'desc',
+      year,
+      month,
+      dateFrom,
+      dateTo,
+      expenseType,
+      expenseGroupId,
+      paymentMode,
+    } = params;
+
+    const skip = (page - 1) * limit;
+
+    // Build date filters
+    let dateFilter: { gte?: Date; lte?: Date } = {};
+
+    if (year && month) {
+      // Specific month of a year
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+      dateFilter = { gte: startDate, lte: endDate };
+    } else if (year) {
+      // Entire year
+      const startDate = new Date(year, 0, 1);
+      const endDate = new Date(year, 11, 31, 23, 59, 59, 999);
+      dateFilter = { gte: startDate, lte: endDate };
+    } else if (dateFrom || dateTo) {
+      // Custom date range
+      if (dateFrom) {
+        dateFilter.gte = new Date(dateFrom);
+      }
+      if (dateTo) {
+        const endDate = new Date(dateTo);
+        endDate.setHours(23, 59, 59, 999);
+        dateFilter.lte = endDate;
+      }
+    }
+
+    // Fetch expenses if not filtering for SALARY only
+    let expenses: ExpenseReportItem[] = [];
+    let expenseTotal = 0;
+    let expenseCount = 0;
+    let totalExpenseAmount = 0;
+
+    if (!expenseType || expenseType === 'EXPENSE') {
+      const expenseWhere: any = {
+        gymId,
+        isActive: true,
+        ...(Object.keys(dateFilter).length > 0 && { expenseDate: dateFilter }),
+        ...(expenseGroupId && { expenseGroupId }),
+        ...(paymentMode && { paymentMode }),
+        ...(search && {
+          OR: [
+            { name: { contains: search, mode: 'insensitive' } },
+            { description: { contains: search, mode: 'insensitive' } },
+            { expenseGroup: { expenseGroupName: { contains: search, mode: 'insensitive' } } },
+          ],
+        }),
+      };
+
+      const [expenseRecords, expenseCountResult, expenseSum] = await Promise.all([
+        prisma.expenseMaster.findMany({
+          where: expenseWhere,
+          include: { expenseGroup: true },
+          orderBy: sortBy === 'date' ? { expenseDate: sortOrder } : { [sortBy]: sortOrder },
+        }),
+        prisma.expenseMaster.count({ where: expenseWhere }),
+        prisma.expenseMaster.aggregate({
+          where: expenseWhere,
+          _sum: { amount: true },
+        }),
+      ]);
+
+      expenseCount = expenseCountResult;
+      totalExpenseAmount = Number(expenseSum._sum.amount || 0);
+
+      expenses = expenseRecords.map((e): ExpenseReportItem => ({
+        id: e.id,
+        date: e.expenseDate,
+        name: e.name,
+        description: e.description || undefined,
+        category: e.expenseGroup.expenseGroupName,
+        amount: Number(e.amount),
+        paymentMode: e.paymentMode as PaymentMode,
+        type: 'EXPENSE',
+        expenseGroupId: e.expenseGroupId,
+        attachments: e.attachments,
+        createdAt: e.createdAt,
+      }));
+    }
+
+    // Fetch salary settlements if not filtering for EXPENSE only
+    let salaries: ExpenseReportItem[] = [];
+    let salaryCount = 0;
+    let totalSalaryAmount = 0;
+
+    if (!expenseType || expenseType === 'SALARY') {
+      // For salary, filter by salarySentDate or createdAt
+      const salaryWhere: any = {
+        gymId,
+        ...(Object.keys(dateFilter).length > 0 && { salarySentDate: dateFilter }),
+        ...(paymentMode && { paymentMode }),
+        ...(search && {
+          OR: [
+            { trainerName: { contains: search, mode: 'insensitive' } },
+            { remarks: { contains: search, mode: 'insensitive' } },
+          ],
+        }),
+      };
+
+      const [salaryRecords, salaryCountResult, salarySum] = await Promise.all([
+        prisma.trainerSalarySettlement.findMany({
+          where: salaryWhere,
+          orderBy: sortBy === 'date' ? { salarySentDate: sortOrder } : { createdAt: sortOrder },
+        }),
+        prisma.trainerSalarySettlement.count({ where: salaryWhere }),
+        prisma.trainerSalarySettlement.aggregate({
+          where: salaryWhere,
+          _sum: { finalPayableAmount: true },
+        }),
+      ]);
+
+      salaryCount = salaryCountResult;
+      totalSalaryAmount = Number(salarySum._sum.finalPayableAmount || 0);
+
+      salaries = salaryRecords.map((s): ExpenseReportItem => ({
+        id: s.id,
+        date: s.salarySentDate || s.createdAt,
+        name: `Salary - ${s.trainerName}`,
+        description: s.remarks || undefined,
+        category: 'Salary Settlement',
+        amount: Number(s.finalPayableAmount),
+        paymentMode: s.paymentMode as PaymentMode,
+        type: 'SALARY',
+        trainerId: s.trainerId,
+        trainerName: s.trainerName,
+        salaryMonth: s.salaryMonth,
+        createdAt: s.createdAt,
+      }));
+    }
+
+    // Combine and sort
+    let allItems = [...expenses, ...salaries];
+
+    // Sort combined items
+    allItems.sort((a, b) => {
+      const aDate = a.date.getTime();
+      const bDate = b.date.getTime();
+      return sortOrder === 'desc' ? bDate - aDate : aDate - bDate;
+    });
+
+    // Apply pagination to combined results
+    const total = allItems.length;
+    const paginatedItems = allItems.slice(skip, skip + limit);
+
+    return {
+      items: paginatedItems,
+      total,
+      page,
+      limit,
+      summary: {
+        totalExpenseAmount,
+        totalSalaryAmount,
+        grandTotal: totalExpenseAmount + totalSalaryAmount,
+        expenseCount,
+        salaryCount,
+      },
+    };
+  }
+
+  // =============================================
+  // Income Report (Member Payments)
+  // =============================================
+
+  async getIncomeReport(gymId: string, params: IncomeReportParams): Promise<IncomeReportResponse> {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      sortBy = 'totalPaidAmount',
+      sortOrder = 'desc',
+      year,
+      month,
+      dateFrom,
+      dateTo,
+      paymentStatus,
+      membershipStatus,
+    } = params;
+
+    const skip = (page - 1) * limit;
+
+    // Build date filters for payments
+    let dateFilter: { gte?: Date; lte?: Date } = {};
+
+    if (year && month) {
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+      dateFilter = { gte: startDate, lte: endDate };
+    } else if (year) {
+      const startDate = new Date(year, 0, 1);
+      const endDate = new Date(year, 11, 31, 23, 59, 59, 999);
+      dateFilter = { gte: startDate, lte: endDate };
+    } else if (dateFrom || dateTo) {
+      if (dateFrom) {
+        dateFilter.gte = new Date(dateFrom);
+      }
+      if (dateTo) {
+        const endDate = new Date(dateTo);
+        endDate.setHours(23, 59, 59, 999);
+        dateFilter.lte = endDate;
+      }
+    }
+
+    // Build member where clause
+    const memberWhere: any = {
+      gymId,
+      ...(membershipStatus && { membershipStatus }),
+      ...(search && {
+        OR: [
+          { memberId: { contains: search, mode: 'insensitive' } },
+          { name: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } },
+          { phone: { contains: search, mode: 'insensitive' } },
+        ],
+      }),
+    };
+
+    // Get all members with their payments
+    const members = await prisma.member.findMany({
+      where: memberWhere,
+      include: {
+        user: { select: { name: true, email: true } },
+        balancePayments: {
+          where: {
+            isActive: true,
+            // Don't date-filter balance payments here - we need ALL of them to calculate correct pending amounts
+            // Date filtering for paid amounts is done in-memory below
+          },
+        },
+        membershipRenewals: {
+          where: {
+            isActive: true,
+            ...(paymentStatus && { paymentStatus }),
+            ...(Object.keys(dateFilter).length > 0 && { renewalDate: dateFilter }),
+          },
+        },
+      },
+    });
+
+    // Calculate payment summaries for each member
+    const hasDateFilter = Object.keys(dateFilter).length > 0;
+    let memberIncomeItems: MemberIncomeItem[] = members.map((member) => {
+      // Note: Initial payment is not stored separately on Member model
+      // It's tracked through balance payments or the finalFees field
+      const initialPayment = 0; // No separate initial payment field in schema
+
+      // Renewal payments (already date-filtered from query)
+      const renewalPayments = member.membershipRenewals.reduce((sum, r) => sum + Number(r.paidAmount || 0), 0);
+      const renewalPending = member.membershipRenewals.reduce((sum, r) => sum + Number(r.pendingAmount || 0), 0);
+
+      // Separate balance payments by date filter for display vs all for pending calc
+      const allBalancePayments = member.balancePayments;
+      const filteredBalancePayments = hasDateFilter
+        ? allBalancePayments.filter(p => {
+            const payDate = p.paymentDate.getTime();
+            if (dateFilter.gte && payDate < dateFilter.gte.getTime()) return false;
+            if (dateFilter.lte && payDate > dateFilter.lte.getTime()) return false;
+            return true;
+          })
+        : allBalancePayments;
+
+      // Balance payments within period (for paid amount display)
+      const balancePayments = filteredBalancePayments.reduce((sum, p) => sum + Number(p.paidFees || 0), 0);
+
+      // Calculate initial membership pending using ALL balance payments (not date-filtered)
+      const totalRegularBalancePaid = allBalancePayments
+        .filter(p => p.paymentFor === 'REGULAR')
+        .reduce((sum, p) => sum + Number(p.paidFees || 0), 0);
+      const totalPTBalancePaid = allBalancePayments
+        .filter(p => p.paymentFor === 'PT')
+        .reduce((sum, p) => sum + Number(p.paidFees || 0), 0);
+
+      const initialRegularPending = Math.max(0, Number(member.finalFees || 0) - totalRegularBalancePaid);
+      const initialPTPending = member.hasPTAddon
+        ? Math.max(0, Number(member.ptFinalFees || 0) - totalPTBalancePaid)
+        : 0;
+
+      // Total pending = initial membership pending + renewal pending
+      const totalPendingAmount = initialRegularPending + initialPTPending + renewalPending;
+
+      // Calculate last payment date
+      const paymentDates: Date[] = [];
+      member.membershipRenewals.forEach(r => {
+        if (r.paidAmount && Number(r.paidAmount) > 0) paymentDates.push(r.renewalDate);
+      });
+      filteredBalancePayments.forEach(p => paymentDates.push(p.paymentDate));
+
+      const lastPaymentDate = paymentDates.length > 0
+        ? new Date(Math.max(...paymentDates.map(d => d.getTime())))
+        : undefined;
+
+      const totalPaidAmount = renewalPayments + balancePayments;
+      const paymentCount = member.membershipRenewals.length + filteredBalancePayments.length;
+
+      return {
+        memberId: member.id,
+        memberCode: member.memberId || member.id.substring(0, 8), // memberId is the member code
+        memberName: member.name || member.user.name,
+        email: member.email || member.user.email || undefined,
+        phone: member.phone || undefined,
+        memberPhoto: member.memberPhoto || undefined,
+        membershipStatus: member.membershipStatus,
+        initialPayment,
+        renewalPayments,
+        balancePayments,
+        totalPaidAmount,
+        totalPendingAmount,
+        lastPaymentDate,
+        paymentCount,
+      };
+    });
+
+    // Filter out members with no payments if date filter is applied
+    if (Object.keys(dateFilter).length > 0) {
+      memberIncomeItems = memberIncomeItems.filter(m => m.totalPaidAmount > 0 || m.totalPendingAmount > 0);
+    }
+
+    // Sort
+    memberIncomeItems.sort((a, b) => {
+      let aVal: any, bVal: any;
+      switch (sortBy) {
+        case 'totalPaidAmount':
+          aVal = a.totalPaidAmount;
+          bVal = b.totalPaidAmount;
+          break;
+        case 'lastPaymentDate':
+          aVal = a.lastPaymentDate?.getTime() || 0;
+          bVal = b.lastPaymentDate?.getTime() || 0;
+          break;
+        case 'memberName':
+          aVal = a.memberName.toLowerCase();
+          bVal = b.memberName.toLowerCase();
+          break;
+        case 'memberCode':
+          aVal = a.memberCode;
+          bVal = b.memberCode;
+          break;
+        default:
+          aVal = a.totalPaidAmount;
+          bVal = b.totalPaidAmount;
+      }
+      if (typeof aVal === 'string') {
+        return sortOrder === 'desc' ? bVal.localeCompare(aVal) : aVal.localeCompare(bVal);
+      }
+      return sortOrder === 'desc' ? bVal - aVal : aVal - bVal;
+    });
+
+    // Calculate summary totals
+    const summary = memberIncomeItems.reduce(
+      (acc, m) => ({
+        totalInitialPayments: acc.totalInitialPayments + m.initialPayment,
+        totalRenewalPayments: acc.totalRenewalPayments + m.renewalPayments,
+        totalBalancePayments: acc.totalBalancePayments + m.balancePayments,
+        grandTotal: acc.grandTotal + m.totalPaidAmount,
+        totalPending: acc.totalPending + m.totalPendingAmount,
+        memberCount: acc.memberCount + 1,
+      }),
+      {
+        totalInitialPayments: 0,
+        totalRenewalPayments: 0,
+        totalBalancePayments: 0,
+        grandTotal: 0,
+        totalPending: 0,
+        memberCount: 0,
+      }
+    );
+
+    // Apply pagination
+    const total = memberIncomeItems.length;
+    const paginatedItems = memberIncomeItems.slice(skip, skip + limit);
+
+    return {
+      items: paginatedItems,
+      total,
+      page,
+      limit,
+      summary,
+    };
+  }
+
+  // =============================================
+  // Member Payment Details (for popup)
+  // =============================================
+
+  async getMemberPaymentDetails(
+    gymId: string,
+    memberId: string,
+    params: MemberPaymentDetailParams
+  ): Promise<MemberPaymentDetailResponse> {
+    const {
+      page = 1,
+      limit = 10,
+      sortOrder = 'desc',
+      dateFrom,
+      dateTo,
+      paymentFor,
+    } = params;
+
+    const skip = (page - 1) * limit;
+
+    // Build date filter
+    let dateFilter: { gte?: Date; lte?: Date } = {};
+    if (dateFrom) {
+      dateFilter.gte = new Date(dateFrom);
+    }
+    if (dateTo) {
+      const endDate = new Date(dateTo);
+      endDate.setHours(23, 59, 59, 999);
+      dateFilter.lte = endDate;
+    }
+
+    // Get member with basic info
+    const member = await prisma.member.findFirst({
+      where: { id: memberId, gymId },
+      include: {
+        user: { select: { name: true } },
+      },
+    });
+
+    if (!member) {
+      throw new NotFoundException('Member not found');
+    }
+
+    // Get course package name if exists
+    let coursePackageName: string | undefined;
+    if (member.coursePackageId) {
+      const pkg = await prisma.coursePackage.findUnique({
+        where: { id: member.coursePackageId },
+        select: { packageName: true },
+      });
+      coursePackageName = pkg?.packageName;
+    }
+
+    const paymentItems: MemberPaymentDetailItem[] = [];
+
+    // Note: Initial payment is not stored separately on Member model
+    // All payments are tracked through balance payments or renewals
+
+    // 1. Renewal payments
+    const renewalWhere: any = {
+      memberId,
+      isActive: true,
+      ...(Object.keys(dateFilter).length > 0 && { renewalDate: dateFilter }),
+    };
+
+    const renewals = await prisma.membershipRenewal.findMany({
+      where: renewalWhere,
+    });
+
+    for (const renewal of renewals) {
+      const paidAmount = Number(renewal.paidAmount || 0);
+      if (paidAmount > 0 && (!paymentFor || paymentFor === 'REGULAR')) {
+        paymentItems.push({
+          id: renewal.id,
+          paymentDate: renewal.renewalDate,
+          source: 'RENEWAL',
+          paymentFor: 'REGULAR',
+          amount: paidAmount,
+          paymentMode: renewal.paymentMode || undefined,
+          renewalNumber: renewal.renewalNumber,
+          notes: renewal.notes || undefined,
+          packageName: coursePackageName,
+          createdAt: renewal.createdAt,
+        });
+      }
+    }
+
+    // 2. Balance payments
+    const balanceWhere: any = {
+      memberId,
+      isActive: true,
+      ...(Object.keys(dateFilter).length > 0 && { paymentDate: dateFilter }),
+      ...(paymentFor && { paymentFor }),
+    };
+
+    const balancePayments = await prisma.memberBalancePayment.findMany({
+      where: balanceWhere,
+    });
+
+    for (const payment of balancePayments) {
+      paymentItems.push({
+        id: payment.id,
+        paymentDate: payment.paymentDate,
+        source: 'BALANCE_PAYMENT',
+        paymentFor: payment.paymentFor as PaymentFor,
+        amount: Number(payment.paidFees),
+        paymentMode: payment.payMode || undefined,
+        receiptNo: payment.receiptNo,
+        notes: payment.notes || undefined,
+        createdAt: payment.createdAt,
+      });
+    }
+
+    // Sort by payment date
+    paymentItems.sort((a, b) => {
+      const aTime = a.paymentDate.getTime();
+      const bTime = b.paymentDate.getTime();
+      return sortOrder === 'desc' ? bTime - aTime : aTime - bTime;
+    });
+
+    // Calculate summary
+    const summary = paymentItems.reduce(
+      (acc, p) => ({
+        totalPaidAmount: acc.totalPaidAmount + p.amount,
+        regularPayments: acc.regularPayments + (p.paymentFor === 'REGULAR' ? p.amount : 0),
+        ptPayments: acc.ptPayments + (p.paymentFor === 'PT' ? p.amount : 0),
+        paymentCount: acc.paymentCount + 1,
+      }),
+      {
+        totalPaidAmount: 0,
+        regularPayments: 0,
+        ptPayments: 0,
+        paymentCount: 0,
+      }
+    );
+
+    // Apply pagination
+    const total = paymentItems.length;
+    const paginatedItems = paymentItems.slice(skip, skip + limit);
+
+    return {
+      memberId: member.id,
+      memberName: member.name || member.user.name,
+      memberCode: member.memberId || member.id.substring(0, 8),
+      items: paginatedItems,
+      total,
+      page,
+      limit,
+      summary,
     };
   }
 }
