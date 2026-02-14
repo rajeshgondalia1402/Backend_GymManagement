@@ -1,11 +1,12 @@
 import { Router } from 'express';
 import memberController from './member.controller';
-import { authenticate, authorize, validate, updateProfileSchema } from '../../../common/middleware';
+import { authenticate, authorize, validate, updateProfileSchema, paginationSchema } from '../../../common/middleware';
 
 const router = Router();
 
 // Apply authentication and member authorization to all routes
-router.use(authenticate, authorize('MEMBER'));
+// Both MEMBER and PT_MEMBER roles can access member routes
+router.use(authenticate, authorize('MEMBER', 'PT_MEMBER'));
 
 /**
  * @swagger
@@ -20,6 +21,41 @@ router.use(authenticate, authorize('MEMBER'));
  *         description: Dashboard statistics retrieved successfully
  */
 router.get('/dashboard', memberController.getDashboard);
+
+/**
+ * @swagger
+ * /api/v1/member/dashboard-details:
+ *   get:
+ *     summary: Get comprehensive member dashboard with all details
+ *     tags: [Member]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Comprehensive dashboard retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 memberInfo:
+ *                   type: object
+ *                 membership:
+ *                   type: object
+ *                 fees:
+ *                   type: object
+ *                 nextPayment:
+ *                   type: object
+ *                 trainer:
+ *                   type: object
+ *                 todayExercise:
+ *                   type: object
+ *                 dietPlan:
+ *                   type: object
+ *                 gym:
+ *                   type: object
+ */
+router.get('/dashboard-details', memberController.getComprehensiveDashboard);
 
 /**
  * @swagger
@@ -219,6 +255,273 @@ router.get('/my-diet-plan', memberController.getMyDietPlan);
  *                         type: boolean
  */
 router.get('/my-diet-plan/history', memberController.getMyDietPlanHistory);
+
+/**
+ * @swagger
+ * /api/v1/member/my-diet-plan/list:
+ *   get:
+ *     summary: Get assigned diet plans list with pagination and search
+ *     description: Retrieves all diet plans assigned to the member by gym owner with pagination and search filter
+ *     tags: [Member]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Number of items per page
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search term to filter by diet template name, meal titles, or descriptions
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           default: createdAt
+ *         description: Field to sort by
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           default: desc
+ *         description: Sort order
+ *       - in: query
+ *         name: isActive
+ *         schema:
+ *           type: string
+ *           enum: ['true', 'false']
+ *         description: Filter by active status
+ *     responses:
+ *       200:
+ *         description: Diet plans retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     items:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           dietTemplateId:
+ *                             type: string
+ *                           dietTemplateName:
+ *                             type: string
+ *                           dietTemplateDescription:
+ *                             type: string
+ *                           startDate:
+ *                             type: string
+ *                             format: date-time
+ *                           endDate:
+ *                             type: string
+ *                             format: date-time
+ *                           isActive:
+ *                             type: boolean
+ *                           notes:
+ *                             type: string
+ *                           assignedBy:
+ *                             type: string
+ *                           meals:
+ *                             type: array
+ *                             items:
+ *                               type: object
+ *                               properties:
+ *                                 id:
+ *                                   type: string
+ *                                 mealNo:
+ *                                   type: integer
+ *                                 title:
+ *                                   type: string
+ *                                 description:
+ *                                   type: string
+ *                                 time:
+ *                                   type: string
+ *                           createdAt:
+ *                             type: string
+ *                             format: date-time
+ *                           updatedAt:
+ *                             type: string
+ *                             format: date-time
+ *                     pagination:
+ *                       type: object
+ *                       properties:
+ *                         page:
+ *                           type: integer
+ *                         limit:
+ *                           type: integer
+ *                         total:
+ *                           type: integer
+ *                         totalPages:
+ *                           type: integer
+ *       404:
+ *         description: Member not found
+ */
+router.get('/my-diet-plan/list', validate(paginationSchema, 'query'), memberController.getMyDietPlanList);
+
+/**
+ * @swagger
+ * /api/v1/member/my-complete-details:
+ *   get:
+ *     summary: Get complete member details
+ *     description: Retrieves comprehensive member information including personal details, membership info, package details, payment history, renewal history, and pending amounts
+ *     tags: [Member]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Member details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     memberInfo:
+ *                       type: object
+ *                       description: Basic member information
+ *                     gym:
+ *                       type: object
+ *                       description: Gym information
+ *                     trainer:
+ *                       type: object
+ *                       description: Assigned trainer information
+ *                     membership:
+ *                       type: object
+ *                       description: Current membership status and expiry details
+ *                       properties:
+ *                         startDate:
+ *                           type: string
+ *                           format: date-time
+ *                         endDate:
+ *                           type: string
+ *                           format: date-time
+ *                         status:
+ *                           type: string
+ *                         daysRemaining:
+ *                           type: integer
+ *                         daysSinceExpiry:
+ *                           type: integer
+ *                         isExpired:
+ *                           type: boolean
+ *                         expiryStatus:
+ *                           type: string
+ *                           enum: [ACTIVE, EXPIRING_SOON, EXPIRED]
+ *                     currentPackage:
+ *                       type: object
+ *                       description: Current course package details
+ *                     regularFees:
+ *                       type: object
+ *                       description: Regular membership fee structure
+ *                     ptFees:
+ *                       type: object
+ *                       description: PT addon fee structure (if applicable)
+ *                     paymentSummary:
+ *                       type: object
+ *                       description: Payment summary with totals and pending amounts
+ *                       properties:
+ *                         regular:
+ *                           type: object
+ *                           properties:
+ *                             finalFees:
+ *                               type: number
+ *                             totalPaid:
+ *                               type: number
+ *                             pendingAmount:
+ *                               type: number
+ *                             paymentStatus:
+ *                               type: string
+ *                               enum: [PAID, PARTIAL, PENDING]
+ *                         pt:
+ *                           type: object
+ *                         grandTotal:
+ *                           type: object
+ *                           properties:
+ *                             totalFees:
+ *                               type: number
+ *                             totalPaid:
+ *                               type: number
+ *                             totalPending:
+ *                               type: number
+ *                             overallStatus:
+ *                               type: string
+ *                     paymentHistory:
+ *                       type: array
+ *                       description: All payment transactions
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           receiptNo:
+ *                             type: string
+ *                           paymentFor:
+ *                             type: string
+ *                             enum: [REGULAR, PT]
+ *                           paymentDate:
+ *                             type: string
+ *                             format: date-time
+ *                           paidAmount:
+ *                             type: number
+ *                           paymentMode:
+ *                             type: string
+ *                     renewalHistory:
+ *                       type: array
+ *                       description: Membership renewal history
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           id:
+ *                             type: string
+ *                           renewalNumber:
+ *                             type: string
+ *                           renewalDate:
+ *                             type: string
+ *                             format: date-time
+ *                           renewalType:
+ *                             type: string
+ *                           previousMembershipEnd:
+ *                             type: string
+ *                             format: date-time
+ *                           newMembershipEnd:
+ *                             type: string
+ *                             format: date-time
+ *                           package:
+ *                             type: object
+ *                           fees:
+ *                             type: object
+ *                           payment:
+ *                             type: object
+ *       404:
+ *         description: Member not found
+ */
+router.get('/my-complete-details', memberController.getMyCompleteDetails);
 
 /**
  * @swagger

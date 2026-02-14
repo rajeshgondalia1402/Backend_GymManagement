@@ -1888,20 +1888,49 @@ class GymOwnerService {
         skip,
         take: limit,
         orderBy: { [sortBy]: sortOrder },
+        include: {
+          assignments: {
+            where: { isActive: true },
+            include: {
+              member: {
+                include: {
+                  user: { select: { name: true, email: true } },
+                },
+              },
+            },
+          },
+          _count: {
+            select: { assignments: { where: { isActive: true } } },
+          },
+        },
       }),
       prisma.exercisePlan.count({ where }),
     ]);
 
-    const plans: ExercisePlan[] = dbPlans.map((p) => ({
+    const plans = dbPlans.map((p) => ({
       id: p.id,
       name: p.name,
       description: p.description || undefined,
-      exercises: p.exercises as any[],
+      type: p.type || undefined,
+      exercises: p.exercises as any,
       durationMinutes: undefined,
       difficulty: p.type || undefined,
       isActive: p.isActive,
       gymId: p.gymId,
       createdAt: p.createdAt,
+      _count: { assignments: p._count.assignments },
+      assignedMembers: p.assignments.map((a) => ({
+        memberExerciseId: a.id,
+        memberId: a.member.id,
+        memberCode: a.member.memberId || '',
+        memberName: a.member.user.name,
+        memberEmail: a.member.user.email || '',
+        mobileNo: a.member.phone || '',
+        memberType: a.member.memberType,
+        hasPTAddon: a.member.hasPTAddon,
+        startDate: a.startDate,
+        endDate: a.endDate,
+      })),
     }));
 
     return { plans, total };
@@ -1977,6 +2006,140 @@ class GymOwnerService {
   async deleteExercisePlan(gymId: string, planId: string): Promise<void> {
     await this.getExercisePlanById(gymId, planId);
     await prisma.exercisePlan.delete({ where: { id: planId } });
+  }
+
+  async toggleExercisePlanStatus(gymId: string, planId: string): Promise<ExercisePlan> {
+    const plan = await this.getExercisePlanById(gymId, planId);
+    const updated = await prisma.exercisePlan.update({
+      where: { id: planId },
+      data: { isActive: !plan.isActive },
+    });
+    return {
+      id: updated.id,
+      name: updated.name,
+      description: updated.description || undefined,
+      exercises: updated.exercises as any[],
+      durationMinutes: undefined,
+      difficulty: updated.type || undefined,
+      isActive: updated.isActive,
+      gymId: updated.gymId,
+      createdAt: updated.createdAt,
+    };
+  }
+
+  async bulkAssignExercisePlan(
+    gymId: string,
+    userId: string,
+    data: {
+      memberIds: string[];
+      exercisePlanId: string;
+      startDate: string;
+      endDate?: string;
+      notes?: string;
+    }
+  ): Promise<{ assignedCount: number; results: any[] }> {
+    // Validate exercise plan exists and belongs to gym
+    const exercisePlan = await prisma.exercisePlan.findFirst({
+      where: { id: data.exercisePlanId, gymId },
+    });
+    if (!exercisePlan) {
+      throw new NotFoundException('Exercise plan not found');
+    }
+
+    // Validate all members belong to this gym
+    const members = await prisma.member.findMany({
+      where: {
+        id: { in: data.memberIds },
+        gymId,
+        isActive: true,
+      },
+      include: {
+        user: { select: { name: true, email: true } },
+      },
+    });
+
+    if (members.length === 0) {
+      throw new BadRequestException('No valid members found');
+    }
+
+    const results: any[] = [];
+    const startDate = new Date(data.startDate);
+    const endDate = data.endDate ? new Date(data.endDate) : undefined;
+
+    // Deactivate existing assignments for these members to this plan
+    await prisma.memberExerciseAssignment.updateMany({
+      where: {
+        memberId: { in: members.map((m) => m.id) },
+        exercisePlanId: data.exercisePlanId,
+        isActive: true,
+      },
+      data: { isActive: false },
+    });
+
+    // Create new assignments for all members
+    for (const member of members) {
+      const assignment = await prisma.memberExerciseAssignment.create({
+        data: {
+          memberId: member.id,
+          exercisePlanId: data.exercisePlanId,
+          startDate,
+          endDate,
+          isActive: true,
+        },
+      });
+
+      results.push({
+        id: assignment.id,
+        memberId: member.id,
+        memberName: member.user.name,
+        memberEmail: member.user.email,
+        exercisePlanId: data.exercisePlanId,
+        exercisePlanName: exercisePlan.name,
+        startDate: assignment.startDate,
+        endDate: assignment.endDate,
+        isActive: assignment.isActive,
+        assignedAt: assignment.assignedAt,
+      });
+    }
+
+    return { assignedCount: results.length, results };
+  }
+
+  async bulkRemoveExercisePlanAssignments(
+    gymId: string,
+    memberExerciseIds: string[]
+  ): Promise<{ deletedCount: number; deletedIds: string[] }> {
+    if (!memberExerciseIds || memberExerciseIds.length === 0) {
+      throw new BadRequestException('No assignment IDs provided');
+    }
+
+    // Get assignments to validate they belong to this gym's exercise plans
+    const assignments = await prisma.memberExerciseAssignment.findMany({
+      where: {
+        id: { in: memberExerciseIds },
+        isActive: true,
+      },
+      include: {
+        exercisePlan: { select: { gymId: true } },
+      },
+    });
+
+    // Filter to only assignments that belong to this gym
+    const validAssignments = assignments.filter((a) => a.exercisePlan.gymId === gymId);
+
+    if (validAssignments.length === 0) {
+      throw new BadRequestException('No valid assignments found to remove');
+    }
+
+    const validIds = validAssignments.map((a) => a.id);
+
+    // Deactivate the assignments (soft delete)
+    await prisma.memberExerciseAssignment.updateMany({
+      where: { id: { in: validIds } },
+      data: { isActive: false },
+    });
+
+    return { deletedCount: validIds.length, deletedIds: validIds };
   }
 
   // Assign Plans

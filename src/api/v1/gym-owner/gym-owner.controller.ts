@@ -485,6 +485,39 @@ class GymOwnerController {
     }
   }
 
+  async toggleExercisePlanStatus(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const plan = await gymOwnerService.toggleExercisePlanStatus(gymId, req.params.id);
+      successResponse(res, plan, 'Exercise plan status updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async bulkAssignExercisePlan(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const userId = req.user?.id;
+      if (!userId) throw new Error('User ID not found');
+      const result = await gymOwnerService.bulkAssignExercisePlan(gymId, userId, req.body);
+      successResponse(res, result.results, `Exercise plan assigned to ${result.assignedCount} member(s) successfully`, 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async bulkRemoveExercisePlanAssignments(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const { memberExerciseIds } = req.body;
+      const result = await gymOwnerService.bulkRemoveExercisePlanAssignments(gymId, memberExerciseIds);
+      successResponse(res, result, `${result.deletedCount} assignment(s) removed successfully`);
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // Assignments
   async assignDietPlan(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
