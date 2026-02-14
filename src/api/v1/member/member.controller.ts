@@ -1,6 +1,6 @@
 import { Response, NextFunction } from 'express';
 import memberService from './member.service';
-import { successResponse } from '../../../common/utils';
+import { successResponse, paginatedResponse } from '../../../common/utils';
 import { AuthRequest } from '../../../common/middleware';
 
 class MemberController {
@@ -102,6 +102,44 @@ class MemberController {
     try {
       const ptMembership = await memberService.getMyPTMembership(req.user!.id);
       successResponse(res, ptMembership, 'PT membership retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Get assigned diet plans list with pagination and search
+  async getMyDietPlanList(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { page = 1, limit = 10, search, sortBy, sortOrder, isActive } = req.query as any;
+      const { dietPlans, total } = await memberService.getMyDietPlanList(req.user!.id, {
+        page: Number(page),
+        limit: Number(limit),
+        search,
+        sortBy,
+        sortOrder,
+        isActive, // Already transformed to boolean by paginationSchema validation
+      });
+      paginatedResponse(res, dietPlans, Number(page), Number(limit), total, 'Diet plans retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Get complete member details including payments, renewals, and membership info
+  async getMyCompleteDetails(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const details = await memberService.getMyCompleteDetails(req.user!.id);
+      successResponse(res, details, 'Member details retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Get comprehensive dashboard data
+  async getComprehensiveDashboard(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const dashboard = await memberService.getComprehensiveDashboard(req.user!.id);
+      successResponse(res, dashboard, 'Dashboard retrieved successfully');
     } catch (error) {
       next(error);
     }

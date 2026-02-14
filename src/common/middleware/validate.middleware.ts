@@ -430,16 +430,35 @@ export const createDietPlanSchema = z.object({
 
 export const updateDietPlanSchema = createDietPlanSchema.partial();
 
+// Exercise item schema (reusable)
+const exerciseItemSchema = z.object({
+  name: z.string(),
+  sets: z.number(),
+  reps: z.number(),
+  restTime: z.number().optional(),
+  notes: z.string().optional(),
+});
+
+// Daily exercises schema (object with day keys)
+const dailyExercisesSchema = z.object({
+  monday: z.array(exerciseItemSchema).optional(),
+  tuesday: z.array(exerciseItemSchema).optional(),
+  wednesday: z.array(exerciseItemSchema).optional(),
+  thursday: z.array(exerciseItemSchema).optional(),
+  friday: z.array(exerciseItemSchema).optional(),
+  saturday: z.array(exerciseItemSchema).optional(),
+  sunday: z.array(exerciseItemSchema).optional(),
+});
+
 export const createExercisePlanSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   description: z.string().optional(),
-  exercises: z.array(z.object({
-    name: z.string(),
-    sets: z.number(),
-    reps: z.number(),
-    restTime: z.number().optional(),
-    notes: z.string().optional(),
-  })).optional(),
+  type: z.enum(['general', 'daily']).optional(),
+  // Exercises can be either an array (general plan) or object with day keys (daily plan)
+  exercises: z.union([
+    z.array(exerciseItemSchema),
+    dailyExercisesSchema
+  ]).optional(),
   durationMinutes: z.number().optional(),
   difficulty: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']).optional(),
   isActive: z.boolean().optional().default(true),

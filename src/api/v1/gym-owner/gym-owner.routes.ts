@@ -950,13 +950,93 @@ router.delete('/diet-plans/:id', validate(idParamSchema, 'params'), gymOwnerCont
  */
 router.get('/exercise-plans', validate(paginationSchema, 'query'), gymOwnerController.getExercisePlans.bind(gymOwnerController));
 
-router.get('/exercise-plans/:id', validate(idParamSchema, 'params'), gymOwnerController.getExercisePlanById.bind(gymOwnerController));
-
 router.post('/exercise-plans', validate(createExercisePlanSchema), gymOwnerController.createExercisePlan.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/exercise-plans/bulk-assign:
+ *   post:
+ *     summary: Bulk assign exercise plan to multiple members
+ *     tags: [Gym Owner]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               memberIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               exercisePlanId:
+ *                 type: string
+ *               startDate:
+ *                 type: string
+ *                 format: date
+ *               endDate:
+ *                 type: string
+ *                 format: date
+ *               notes:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Exercise plan assigned to members successfully
+ */
+router.post('/exercise-plans/bulk-assign', gymOwnerController.bulkAssignExercisePlan.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/exercise-plans/bulk-remove:
+ *   delete:
+ *     summary: Bulk remove exercise plan assignments
+ *     tags: [Gym Owner]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               memberExerciseIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Assignments removed successfully
+ */
+router.delete('/exercise-plans/bulk-remove', gymOwnerController.bulkRemoveExercisePlanAssignments.bind(gymOwnerController));
+
+router.get('/exercise-plans/:id', validate(idParamSchema, 'params'), gymOwnerController.getExercisePlanById.bind(gymOwnerController));
 
 router.put('/exercise-plans/:id', validate(idParamSchema, 'params'), validate(updateExercisePlanSchema), gymOwnerController.updateExercisePlan.bind(gymOwnerController));
 
 router.delete('/exercise-plans/:id', validate(idParamSchema, 'params'), gymOwnerController.deleteExercisePlan.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/exercise-plans/{id}/toggle-status:
+ *   patch:
+ *     summary: Toggle exercise plan active status
+ *     tags: [Gym Owner]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Exercise plan status toggled successfully
+ */
+router.patch('/exercise-plans/:id/toggle-status', validate(idParamSchema, 'params'), gymOwnerController.toggleExercisePlanStatus.bind(gymOwnerController));
 
 // Assignments
 /**
