@@ -25,6 +25,7 @@ model User {
   createdDietTemplates    DietTemplate[]  @relation("DietTemplateCreator")
   assignedMemberDiets     MemberDiet[]    @relation("MemberDietAssigner")
   passwordResetHistory    PasswordResetHistory[]
+  adminExpenses           AdminExpenseMaster[]
 
   @@index([email])
   @@index([roleId])
@@ -1042,4 +1043,42 @@ model PasswordResetHistory {
   @@index([roleName])
   @@index([gymId])
   @@index([createdAt])
+}
+
+// =============================================
+// Admin Expense Management
+// =============================================
+
+model AdminExpenseGroupMaster {
+  id               String               @id @default(uuid())
+  expenseGroupName String               @unique
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  expenses         AdminExpenseMaster[]
+
+  @@map("admin_expense_group_master")
+  @@index([expenseGroupName])
+}
+
+model AdminExpenseMaster {
+  id              String                  @id @default(uuid())
+  expenseDate     DateTime                @default(now())
+  name            String
+  expenseGroupId  String
+  description     String?
+  paymentMode     PaymentMode
+  amount          Decimal                 @db.Decimal(10, 2)
+  attachments     String[]                @default([])
+  createdBy       String
+  isActive        Boolean                 @default(true)
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  expenseGroup    AdminExpenseGroupMaster  @relation(fields: [expenseGroupId], references: [id], onDelete: Restrict)
+  creator         User                    @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@map("admin_expense_master")
+  @@index([expenseGroupId])
+  @@index([expenseDate])
+  @@index([isActive])
+  @@index([createdBy])
 }

@@ -133,6 +133,171 @@ export interface DashboardStats {
   revenueThisMonth: number;
 }
 
+// =============================================
+// Admin Dashboard V2 Types
+// =============================================
+
+export interface AdminDashboardCounts {
+  totalActiveGyms: number;
+  totalActiveGymInquiries: number;
+  todaysFollowupGymInquiries: number;
+  twoDaysLeftExpiredGyms: number;
+  totalExpiredGyms: number;
+  totalRenewalGyms: number;
+  totalMembers: number;
+  mostPopularSubscriptionPlan: {
+    planId: string;
+    planName: string;
+    activeGymCount: number;
+  } | null;
+  recentRegisteredGyms: number; // Last 7 days
+  totalIncome: number;
+  totalExpense: number;
+  thisMonthsIncome: number;
+  thisMonthsExpense: number;
+}
+
+export interface DashboardDetailParams {
+  page: number;
+  limit: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface ActiveGymDetail {
+  id: string;
+  name: string;
+  email?: string | null;
+  mobileNo?: string | null;
+  city?: string | null;
+  state?: string | null;
+  isActive: boolean;
+  subscriptionPlanName?: string | null;
+  subscriptionStart?: Date | null;
+  subscriptionEnd?: Date | null;
+  ownerName?: string | null;
+  ownerEmail?: string | null;
+  memberCount: number;
+  createdAt: Date;
+}
+
+export interface GymInquiryDetail {
+  id: string;
+  gymName: string;
+  mobileNo: string;
+  email?: string | null;
+  city?: string | null;
+  state?: string | null;
+  subscriptionPlanName?: string | null;
+  enquiryTypeName?: string | null;
+  sellerName?: string | null;
+  nextFollowupDate?: Date | null;
+  memberSize?: number | null;
+  note?: string | null;
+  followupCount: number;
+  isActive: boolean;
+  createdAt: Date;
+}
+
+export interface ExpiringGymDetail {
+  id: string;
+  name: string;
+  email?: string | null;
+  mobileNo?: string | null;
+  city?: string | null;
+  state?: string | null;
+  subscriptionPlanName?: string | null;
+  subscriptionStart?: Date | null;
+  subscriptionEnd?: Date | null;
+  daysLeft: number;
+  ownerName?: string | null;
+  ownerEmail?: string | null;
+}
+
+export interface ExpiredGymDetail {
+  id: string;
+  name: string;
+  email?: string | null;
+  mobileNo?: string | null;
+  city?: string | null;
+  state?: string | null;
+  subscriptionPlanName?: string | null;
+  subscriptionStart?: Date | null;
+  subscriptionEnd?: Date | null;
+  expiredDaysAgo: number;
+  ownerName?: string | null;
+  ownerEmail?: string | null;
+}
+
+export interface RenewalGymDetail {
+  id: string;
+  subscriptionNumber: string;
+  gymName: string;
+  subscriptionPlanName: string;
+  renewalType: string;
+  renewalDate: Date;
+  subscriptionStart: Date;
+  subscriptionEnd: Date;
+  amount: number;
+  paidAmount?: number | null;
+  pendingAmount?: number | null;
+  paymentStatus: string;
+  paymentMode?: string | null;
+}
+
+export interface MemberDetail {
+  id: string;
+  memberId?: string | null;
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  gender?: string | null;
+  memberType: string;
+  membershipStatus: string;
+  membershipStart: Date;
+  membershipEnd: Date;
+  gymName: string;
+  isActive: boolean;
+  createdAt: Date;
+}
+
+export interface PopularPlanGymDetail {
+  id: string;
+  name: string;
+  email?: string | null;
+  mobileNo?: string | null;
+  city?: string | null;
+  state?: string | null;
+  subscriptionStart?: Date | null;
+  subscriptionEnd?: Date | null;
+  ownerName?: string | null;
+}
+
+export interface IncomeDetail {
+  id: string;
+  subscriptionNumber: string;
+  gymName: string;
+  subscriptionPlanName: string;
+  amount: number;
+  paidAmount?: number | null;
+  paymentMode?: string | null;
+  paymentStatus: string;
+  renewalType: string;
+  renewalDate: Date;
+}
+
+export interface ExpenseDetail {
+  id: string;
+  name: string;
+  expenseGroupName?: string;
+  description?: string | null;
+  amount: number;
+  paymentMode: string;
+  expenseDate: Date;
+  createdAt: Date;
+}
+
 export interface PaginationParams {
   page: number;
   limit: number;
@@ -462,4 +627,86 @@ export interface AdminMemberDetails {
 
   createdAt: Date;
   updatedAt: Date;
+}
+
+// =============================================
+// Admin Expense Group Master Types
+// =============================================
+
+export interface AdminExpenseGroup {
+  id: string;
+  expenseGroupName: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateAdminExpenseGroupRequest {
+  expenseGroupName: string;
+}
+
+export interface UpdateAdminExpenseGroupRequest {
+  expenseGroupName: string;
+}
+
+// =============================================
+// Admin Expense Management Types
+// =============================================
+
+export type AdminPaymentMode = 'CASH' | 'CARD' | 'UPI' | 'BANK_TRANSFER' | 'CHEQUE' | 'NET_BANKING' | 'OTHER';
+
+export interface AdminExpense {
+  id: string;
+  expenseDate: Date;
+  name: string;
+  expenseGroupId: string;
+  expenseGroupName?: string;
+  description?: string;
+  paymentMode: AdminPaymentMode;
+  amount: number;
+  attachments?: string[];
+  createdBy: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CreateAdminExpenseRequest {
+  expenseDate?: string;
+  name: string;
+  expenseGroupId: string;
+  description?: string;
+  paymentMode: AdminPaymentMode;
+  amount: number;
+}
+
+export interface UpdateAdminExpenseRequest {
+  expenseDate?: string;
+  name?: string;
+  expenseGroupId?: string;
+  description?: string;
+  paymentMode?: AdminPaymentMode;
+  amount?: number;
+  isActive?: boolean;
+  keepAttachments?: string;
+}
+
+export interface AdminExpenseListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  year?: number;
+  dateFrom?: string;
+  dateTo?: string;
+  expenseGroupId?: string;
+  paymentMode?: AdminPaymentMode;
+}
+
+export interface AdminExpenseListResponse {
+  expenses: AdminExpense[];
+  total: number;
+  page: number;
+  limit: number;
+  totalAmount: number;
 }

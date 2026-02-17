@@ -1733,3 +1733,60 @@ export interface MemberPaymentDetailResponse {
     paymentCount: number;
   };
 }
+
+// Gym Owner Profile Types
+export interface GymOwnerProfile {
+  // User Info (from User table)
+  userId: string;
+  email: string;
+  name: string;
+  isActive: boolean;
+  createdAt: Date;
+
+  // Gym Info (from Gym table)
+  gym: {
+    id: string;
+    name: string;
+    address1?: string;
+    address2?: string;
+    city?: string;
+    state?: string;
+    zipcode?: string;
+    mobileNo?: string;
+    phoneNo?: string;
+    email?: string;
+    gstRegNo?: string;
+    website?: string;
+    memberSize?: number;
+    note?: string;
+    gymLogo?: string;
+    isActive: boolean;
+    createdAt: Date;
+    // Subscription Info
+    subscriptionPlan?: {
+      id: string;
+      name: string;
+      description?: string;
+    };
+    subscriptionStart?: Date;
+    subscriptionEnd?: Date;
+  };
+}
+
+export interface UpdateGymOwnerProfileRequest {
+  // User fields (name only - email cannot be updated)
+  name?: string;
+
+  // Gym fields (email and mobileNo cannot be updated)
+  gymName?: string;
+  address1?: string;
+  address2?: string;
+  city?: string;
+  state?: string;
+  zipcode?: string;
+  phoneNo?: string;
+  gstRegNo?: string;
+  website?: string;
+  memberSize?: number;
+  note?: string;
+}

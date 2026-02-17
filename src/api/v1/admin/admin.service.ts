@@ -1,6 +1,8 @@
 import bcrypt from 'bcryptjs';
+import fs from 'fs';
+import path from 'path';
 import { prisma } from '../../../config/database';
-import { NotFoundException, ConflictException } from '../../../common/exceptions';
+import { NotFoundException, ConflictException, BadRequestException } from '../../../common/exceptions';
 import { maskPassword, generateTempPassword } from '../../../common/utils';
 import {
   SubscriptionPlan,
@@ -35,6 +37,26 @@ import {
   GymInquiryParams,
   AdminMembersParams,
   AdminMemberDetails,
+  AdminExpenseGroup,
+  CreateAdminExpenseGroupRequest,
+  UpdateAdminExpenseGroupRequest,
+  AdminExpense,
+  CreateAdminExpenseRequest,
+  UpdateAdminExpenseRequest,
+  AdminExpenseListParams,
+  AdminExpenseListResponse,
+  AdminPaymentMode,
+  AdminDashboardCounts,
+  DashboardDetailParams,
+  ActiveGymDetail,
+  GymInquiryDetail,
+  ExpiringGymDetail,
+  ExpiredGymDetail,
+  RenewalGymDetail,
+  MemberDetail,
+  PopularPlanGymDetail,
+  IncomeDetail,
+  ExpenseDetail,
 } from './admin.types';
 
 class AdminService {
@@ -2042,6 +2064,1122 @@ class AdminService {
     });
 
     return { members, total };
+  }
+
+  // =============================================
+  // Admin Expense Group Master CRUD
+  // =============================================
+
+  async getAdminExpenseGroups(): Promise<AdminExpenseGroup[]> {
+    const expenseGroups = await prisma.adminExpenseGroupMaster.findMany({
+      orderBy: { expenseGroupName: 'asc' },
+    });
+    return expenseGroups;
+  }
+
+  async getAdminExpenseGroupById(id: string): Promise<AdminExpenseGroup> {
+    const expenseGroup = await prisma.adminExpenseGroupMaster.findUnique({
+      where: { id },
+    });
+    if (!expenseGroup) throw new NotFoundException('Expense group not found');
+    return expenseGroup;
+  }
+
+  async createAdminExpenseGroup(data: CreateAdminExpenseGroupRequest): Promise<AdminExpenseGroup> {
+    // Check if expense group with same name exists
+    const existing = await prisma.adminExpenseGroupMaster.findFirst({
+      where: { expenseGroupName: data.expenseGroupName },
+    });
+    if (existing) {
+      throw new ConflictException('Expense group with this name already exists');
+    }
+
+    const expenseGroup = await prisma.adminExpenseGroupMaster.create({
+      data: {
+        expenseGroupName: data.expenseGroupName,
+      },
+    });
+    return expenseGroup;
+  }
+
+  async updateAdminExpenseGroup(id: string, data: UpdateAdminExpenseGroupRequest): Promise<AdminExpenseGroup> {
+    await this.getAdminExpenseGroupById(id);
+
+    // Check for duplicate name
+    if (data.expenseGroupName) {
+      const existing = await prisma.adminExpenseGroupMaster.findFirst({
+        where: {
+          expenseGroupName: data.expenseGroupName,
+          NOT: { id },
+        },
+      });
+      if (existing) {
+        throw new ConflictException('Expense group with this name already exists');
+      }
+    }
+
+    const expenseGroup = await prisma.adminExpenseGroupMaster.update({
+      where: { id },
+      data: {
+        expenseGroupName: data.expenseGroupName,
+      },
+    });
+    return expenseGroup;
+  }
+
+  async deleteAdminExpenseGroup(id: string): Promise<void> {
+    await this.getAdminExpenseGroupById(id);
+
+    // Check if expense group has active expenses
+    const expenseCount = await prisma.adminExpenseMaster.count({
+      where: { expenseGroupId: id, isActive: true },
+    });
+
+    if (expenseCount > 0) {
+      throw new BadRequestException(
+        `Cannot delete expense group. It has ${expenseCount} active expense(s) associated with it.`
+      );
+    }
+
+    await prisma.adminExpenseGroupMaster.delete({
+      where: { id },
+    });
+  }
+
+  // =============================================
+  // Admin Expense Management CRUD
+  // =============================================
+
+  async createAdminExpense(
+    userId: string,
+    data: CreateAdminExpenseRequest,
+    attachmentPaths?: string[]
+  ): Promise<AdminExpense> {
+    // Verify expense group exists
+    const expenseGroup = await prisma.adminExpenseGroupMaster.findUnique({
+      where: { id: data.expenseGroupId },
+    });
+    if (!expenseGroup) {
+      throw new NotFoundException('Expense group not found');
+    }
+
+    const expense = await prisma.adminExpenseMaster.create({
+      data: {
+        expenseDate: data.expenseDate ? new Date(data.expenseDate) : new Date(),
+        name: data.name,
+        expenseGroupId: data.expenseGroupId,
+        description: data.description,
+        paymentMode: data.paymentMode,
+        amount: data.amount,
+        attachments: attachmentPaths || [],
+        createdBy: userId,
+      },
+      include: {
+        expenseGroup: true,
+      },
+    });
+
+    return {
+      id: expense.id,
+      expenseDate: expense.expenseDate,
+      name: expense.name,
+      expenseGroupId: expense.expenseGroupId,
+      expenseGroupName: expense.expenseGroup.expenseGroupName,
+      description: expense.description || undefined,
+      paymentMode: expense.paymentMode as AdminPaymentMode,
+      amount: Number(expense.amount),
+      attachments: expense.attachments || undefined,
+      createdBy: expense.createdBy,
+      isActive: expense.isActive,
+      createdAt: expense.createdAt,
+      updatedAt: expense.updatedAt,
+    };
+  }
+
+  async updateAdminExpense(
+    expenseId: string,
+    data: UpdateAdminExpenseRequest,
+    newAttachmentPaths?: string[]
+  ): Promise<AdminExpense> {
+    const existing = await prisma.adminExpenseMaster.findUnique({
+      where: { id: expenseId },
+    });
+    if (!existing) {
+      throw new NotFoundException('Expense not found');
+    }
+
+    // If updating expense group, verify it exists
+    if (data.expenseGroupId) {
+      const expenseGroup = await prisma.adminExpenseGroupMaster.findUnique({
+        where: { id: data.expenseGroupId },
+      });
+      if (!expenseGroup) {
+        throw new NotFoundException('Expense group not found');
+      }
+    }
+
+    // Handle attachments update
+    let finalAttachments: string[] = [];
+
+    const deleteAttachmentFile = (filePath: string | null | undefined): void => {
+      if (filePath) {
+        const fullPath = path.join(process.cwd(), filePath);
+        if (fs.existsSync(fullPath)) {
+          try {
+            fs.unlinkSync(fullPath);
+          } catch (error) {
+            console.error('Error deleting expense attachment:', error);
+          }
+        }
+      }
+    };
+
+    if (data.keepAttachments) {
+      const keepAttachmentsArray = typeof data.keepAttachments === 'string'
+        ? data.keepAttachments.split(',').filter(Boolean)
+        : [];
+
+      const attachmentsToDelete = existing.attachments.filter(
+        (att: string) => !keepAttachmentsArray.includes(att)
+      );
+      attachmentsToDelete.forEach((att: string) => deleteAttachmentFile(att));
+      finalAttachments = keepAttachmentsArray;
+    } else if (newAttachmentPaths && newAttachmentPaths.length > 0) {
+      existing.attachments.forEach((att: string) => deleteAttachmentFile(att));
+      finalAttachments = [];
+    } else {
+      finalAttachments = existing.attachments;
+    }
+
+    if (newAttachmentPaths && newAttachmentPaths.length > 0) {
+      finalAttachments = [...finalAttachments, ...newAttachmentPaths];
+    }
+
+    const expense = await prisma.adminExpenseMaster.update({
+      where: { id: expenseId },
+      data: {
+        ...(data.expenseDate && { expenseDate: new Date(data.expenseDate) }),
+        ...(data.name && { name: data.name }),
+        ...(data.expenseGroupId && { expenseGroupId: data.expenseGroupId }),
+        ...(data.description !== undefined && { description: data.description }),
+        ...(data.paymentMode && { paymentMode: data.paymentMode }),
+        ...(data.amount !== undefined && { amount: data.amount }),
+        ...(data.isActive !== undefined && { isActive: data.isActive }),
+        attachments: finalAttachments,
+      },
+      include: {
+        expenseGroup: true,
+      },
+    });
+
+    return {
+      id: expense.id,
+      expenseDate: expense.expenseDate,
+      name: expense.name,
+      expenseGroupId: expense.expenseGroupId,
+      expenseGroupName: expense.expenseGroup.expenseGroupName,
+      description: expense.description || undefined,
+      paymentMode: expense.paymentMode as AdminPaymentMode,
+      amount: Number(expense.amount),
+      attachments: expense.attachments || undefined,
+      createdBy: expense.createdBy,
+      isActive: expense.isActive,
+      createdAt: expense.createdAt,
+      updatedAt: expense.updatedAt,
+    };
+  }
+
+  async softDeleteAdminExpense(expenseId: string, deleteFiles: boolean = true): Promise<void> {
+    const expense = await prisma.adminExpenseMaster.findUnique({
+      where: { id: expenseId },
+    });
+    if (!expense) {
+      throw new NotFoundException('Expense not found');
+    }
+
+    if (deleteFiles && expense.attachments && expense.attachments.length > 0) {
+      expense.attachments.forEach((filePath: string) => {
+        if (filePath) {
+          const fullPath = path.join(process.cwd(), filePath);
+          if (fs.existsSync(fullPath)) {
+            try {
+              fs.unlinkSync(fullPath);
+            } catch (error) {
+              console.error('Error deleting expense attachment:', error);
+            }
+          }
+        }
+      });
+    }
+
+    await prisma.adminExpenseMaster.update({
+      where: { id: expenseId },
+      data: { isActive: false },
+    });
+  }
+
+  async getAdminExpenseById(expenseId: string): Promise<AdminExpense> {
+    const expense = await prisma.adminExpenseMaster.findFirst({
+      where: { id: expenseId },
+      include: {
+        expenseGroup: true,
+      },
+    });
+    if (!expense) {
+      throw new NotFoundException('Expense not found');
+    }
+
+    return {
+      id: expense.id,
+      expenseDate: expense.expenseDate,
+      name: expense.name,
+      expenseGroupId: expense.expenseGroupId,
+      expenseGroupName: expense.expenseGroup.expenseGroupName,
+      description: expense.description || undefined,
+      paymentMode: expense.paymentMode as AdminPaymentMode,
+      amount: Number(expense.amount),
+      attachments: expense.attachments || undefined,
+      createdBy: expense.createdBy,
+      isActive: expense.isActive,
+      createdAt: expense.createdAt,
+      updatedAt: expense.updatedAt,
+    };
+  }
+
+  async getAdminExpenses(params: AdminExpenseListParams): Promise<AdminExpenseListResponse> {
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      sortBy = 'expenseDate',
+      sortOrder = 'desc',
+      year,
+      dateFrom,
+      dateTo,
+      expenseGroupId,
+      paymentMode,
+    } = params;
+
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      isActive: true,
+    };
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' as const } },
+        { description: { contains: search, mode: 'insensitive' as const } },
+        { expenseGroup: { expenseGroupName: { contains: search, mode: 'insensitive' as const } } },
+      ];
+    }
+
+    if (year) {
+      const yearStart = new Date(year, 0, 1);
+      const yearEnd = new Date(year, 11, 31, 23, 59, 59);
+      where.expenseDate = {
+        gte: yearStart,
+        lte: yearEnd,
+      };
+    }
+
+    if (dateFrom || dateTo) {
+      where.expenseDate = {};
+      if (dateFrom) {
+        const fromDateObj = new Date(dateFrom);
+        fromDateObj.setHours(0, 0, 0, 0);
+        where.expenseDate.gte = fromDateObj;
+      }
+      if (dateTo) {
+        const toDateObj = new Date(dateTo);
+        toDateObj.setHours(23, 59, 59, 999);
+        where.expenseDate.lte = toDateObj;
+      }
+    }
+
+    if (expenseGroupId) {
+      where.expenseGroupId = expenseGroupId;
+    }
+
+    if (paymentMode) {
+      where.paymentMode = paymentMode;
+    }
+
+    const [expenseRecords, total, totalAmountResult] = await Promise.all([
+      prisma.adminExpenseMaster.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          expenseGroup: true,
+        },
+      }),
+      prisma.adminExpenseMaster.count({ where }),
+      prisma.adminExpenseMaster.aggregate({
+        where,
+        _sum: { amount: true },
+      }),
+    ]);
+
+    const expenses: AdminExpense[] = expenseRecords.map((e) => ({
+      id: e.id,
+      expenseDate: e.expenseDate,
+      name: e.name,
+      expenseGroupId: e.expenseGroupId,
+      expenseGroupName: e.expenseGroup.expenseGroupName,
+      description: e.description || undefined,
+      paymentMode: e.paymentMode as AdminPaymentMode,
+      amount: Number(e.amount),
+      attachments: e.attachments || undefined,
+      createdBy: e.createdBy,
+      isActive: e.isActive,
+      createdAt: e.createdAt,
+      updatedAt: e.updatedAt,
+    }));
+
+    return {
+      expenses,
+      total,
+      page,
+      limit,
+      totalAmount: Number(totalAmountResult._sum.amount || 0),
+    };
+  }
+
+  // =============================================
+  // Admin Dashboard V2 - Counts + Detail APIs
+  // =============================================
+
+  async getAdminDashboardCounts(): Promise<AdminDashboardCounts> {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    const twoDaysFromNow = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    const [
+      totalActiveGyms,
+      totalActiveGymInquiries,
+      todaysFollowupGymInquiries,
+      twoDaysLeftExpiredGyms,
+      totalExpiredGyms,
+      totalRenewalGyms,
+      totalMembers,
+      recentRegisteredGyms,
+      totalIncomeResult,
+      thisMonthsIncomeResult,
+      totalExpenseResult,
+      thisMonthsExpenseResult,
+    ] = await Promise.all([
+      // 1. Total Active Gyms
+      prisma.gym.count({ where: { isActive: true, subscriptionEnd: { gte: now } } }),
+
+      // 2. Total Active Gym Inquiries
+      prisma.gymInquiry.count({ where: { isActive: true } }),
+
+      // 3. Today's Followup Gym Inquiries
+      prisma.gymInquiry.count({
+        where: {
+          isActive: true,
+          nextFollowupDate: { gte: todayStart, lte: todayEnd },
+        },
+      }),
+
+      // 4. Two Days Left Expired Total Gyms (expiring within next 2 days)
+      prisma.gym.count({
+        where: {
+          isActive: true,
+          subscriptionEnd: { gte: now, lte: twoDaysFromNow },
+        },
+      }),
+
+      // 5. Total Expired Gyms
+      prisma.gym.count({
+        where: {
+          subscriptionEnd: { lt: now },
+        },
+      }),
+
+      // 6. Total Renewal Gyms (subscription history with renewal type RENEWAL)
+      prisma.gymSubscriptionHistory.count({
+        where: {
+          renewalType: 'RENEWAL',
+          isActive: true,
+        },
+      }),
+
+      // 7. Total Members
+      prisma.member.count(),
+
+      // 9. Recent Registered New Gyms (Last 7 Days)
+      prisma.gym.count({
+        where: { createdAt: { gte: sevenDaysAgo } },
+      }),
+
+      // 10. Total Income (sum of paidAmount from GymSubscriptionHistory)
+      prisma.gymSubscriptionHistory.aggregate({
+        _sum: { paidAmount: true },
+        where: { isActive: true },
+      }),
+
+      // 12. This Month's Income
+      prisma.gymSubscriptionHistory.aggregate({
+        _sum: { paidAmount: true },
+        where: {
+          isActive: true,
+          renewalDate: { gte: monthStart, lte: monthEnd },
+        },
+      }),
+
+      // 11. Total Expense (sum of admin expenses)
+      prisma.adminExpenseMaster.aggregate({
+        _sum: { amount: true },
+        where: { isActive: true },
+      }),
+
+      // 13. This Month's Expense
+      prisma.adminExpenseMaster.aggregate({
+        _sum: { amount: true },
+        where: {
+          isActive: true,
+          expenseDate: { gte: monthStart, lte: monthEnd },
+        },
+      }),
+    ]);
+
+    // 8. Most Popular Subscription Plan (by active gym count)
+    const popularPlan = await prisma.gymSubscriptionPlan.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        _count: {
+          select: {
+            gyms: {
+              where: { isActive: true, subscriptionEnd: { gte: now } },
+            },
+          },
+        },
+      },
+      orderBy: { gyms: { _count: 'desc' } },
+      take: 1,
+    });
+
+    const mostPopularSubscriptionPlan = popularPlan.length > 0 && popularPlan[0]._count.gyms > 0
+      ? {
+          planId: popularPlan[0].id,
+          planName: popularPlan[0].name,
+          activeGymCount: popularPlan[0]._count.gyms,
+        }
+      : null;
+
+    return {
+      totalActiveGyms,
+      totalActiveGymInquiries,
+      todaysFollowupGymInquiries,
+      twoDaysLeftExpiredGyms,
+      totalExpiredGyms,
+      totalRenewalGyms,
+      totalMembers,
+      mostPopularSubscriptionPlan,
+      recentRegisteredGyms,
+      totalIncome: Number(totalIncomeResult._sum.paidAmount || 0),
+      totalExpense: Number(totalExpenseResult._sum.amount || 0),
+      thisMonthsIncome: Number(thisMonthsIncomeResult._sum.paidAmount || 0),
+      thisMonthsExpense: Number(thisMonthsExpenseResult._sum.amount || 0),
+    };
+  }
+
+  // Detail: Active Gyms
+  async getActiveGymsDetail(params: DashboardDetailParams): Promise<{ items: ActiveGymDetail[]; total: number }> {
+    const { page, limit, search, sortBy = 'createdAt', sortOrder = 'desc' } = params;
+    const skip = (page - 1) * limit;
+    const now = new Date();
+
+    const where: any = {
+      isActive: true,
+      subscriptionEnd: { gte: now },
+    };
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { city: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [gyms, total] = await Promise.all([
+      prisma.gym.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          subscriptionPlan: { select: { name: true } },
+          owner: { select: { name: true, email: true } },
+          _count: { select: { members: true } },
+        },
+      }),
+      prisma.gym.count({ where }),
+    ]);
+
+    const items: ActiveGymDetail[] = gyms.map((g) => ({
+      id: g.id,
+      name: g.name,
+      email: g.email,
+      mobileNo: g.mobileNo,
+      city: g.city,
+      state: g.state,
+      isActive: g.isActive,
+      subscriptionPlanName: g.subscriptionPlan?.name || null,
+      subscriptionStart: g.subscriptionStart,
+      subscriptionEnd: g.subscriptionEnd,
+      ownerName: g.owner?.name || null,
+      ownerEmail: g.owner?.email || null,
+      memberCount: g._count.members,
+      createdAt: g.createdAt,
+    }));
+
+    return { items, total };
+  }
+
+  // Detail: Active Gym Inquiries
+  async getActiveGymInquiriesDetail(params: DashboardDetailParams): Promise<{ items: GymInquiryDetail[]; total: number }> {
+    const { page, limit, search, sortBy = 'createdAt', sortOrder = 'desc' } = params;
+    const skip = (page - 1) * limit;
+
+    const where: any = { isActive: true };
+    if (search) {
+      where.OR = [
+        { gymName: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { mobileNo: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [inquiries, total] = await Promise.all([
+      prisma.gymInquiry.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          subscriptionPlan: { select: { name: true } },
+          enquiryType: { select: { name: true } },
+          _count: { select: { followups: true } },
+        },
+      }),
+      prisma.gymInquiry.count({ where }),
+    ]);
+
+    const items: GymInquiryDetail[] = inquiries.map((i) => ({
+      id: i.id,
+      gymName: i.gymName,
+      mobileNo: i.mobileNo,
+      email: i.email,
+      city: i.city,
+      state: i.state,
+      subscriptionPlanName: i.subscriptionPlan?.name || null,
+      enquiryTypeName: i.enquiryType?.name || null,
+      sellerName: i.sellerName,
+      nextFollowupDate: i.nextFollowupDate,
+      memberSize: i.memberSize,
+      note: i.note,
+      followupCount: i._count.followups,
+      isActive: i.isActive,
+      createdAt: i.createdAt,
+    }));
+
+    return { items, total };
+  }
+
+  // Detail: Today's Followup Gym Inquiries
+  async getTodaysFollowupInquiriesDetail(params: DashboardDetailParams): Promise<{ items: GymInquiryDetail[]; total: number }> {
+    const { page, limit, search, sortBy = 'nextFollowupDate', sortOrder = 'asc' } = params;
+    const skip = (page - 1) * limit;
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+    const where: any = {
+      isActive: true,
+      nextFollowupDate: { gte: todayStart, lte: todayEnd },
+    };
+    if (search) {
+      where.OR = [
+        { gymName: { contains: search, mode: 'insensitive' } },
+        { mobileNo: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [inquiries, total] = await Promise.all([
+      prisma.gymInquiry.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          subscriptionPlan: { select: { name: true } },
+          enquiryType: { select: { name: true } },
+          _count: { select: { followups: true } },
+        },
+      }),
+      prisma.gymInquiry.count({ where }),
+    ]);
+
+    const items: GymInquiryDetail[] = inquiries.map((i) => ({
+      id: i.id,
+      gymName: i.gymName,
+      mobileNo: i.mobileNo,
+      email: i.email,
+      city: i.city,
+      state: i.state,
+      subscriptionPlanName: i.subscriptionPlan?.name || null,
+      enquiryTypeName: i.enquiryType?.name || null,
+      sellerName: i.sellerName,
+      nextFollowupDate: i.nextFollowupDate,
+      memberSize: i.memberSize,
+      note: i.note,
+      followupCount: i._count.followups,
+      isActive: i.isActive,
+      createdAt: i.createdAt,
+    }));
+
+    return { items, total };
+  }
+
+  // Detail: Two Days Left Expiring Gyms
+  async getTwoDaysLeftExpiringGymsDetail(params: DashboardDetailParams): Promise<{ items: ExpiringGymDetail[]; total: number }> {
+    const { page, limit, search, sortBy = 'subscriptionEnd', sortOrder = 'asc' } = params;
+    const skip = (page - 1) * limit;
+    const now = new Date();
+    const twoDaysFromNow = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+
+    const where: any = {
+      isActive: true,
+      subscriptionEnd: { gte: now, lte: twoDaysFromNow },
+    };
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [gyms, total] = await Promise.all([
+      prisma.gym.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          subscriptionPlan: { select: { name: true } },
+          owner: { select: { name: true, email: true } },
+        },
+      }),
+      prisma.gym.count({ where }),
+    ]);
+
+    const items: ExpiringGymDetail[] = gyms.map((g) => {
+      const daysLeft = Math.max(0, Math.ceil((new Date(g.subscriptionEnd!).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+      return {
+        id: g.id,
+        name: g.name,
+        email: g.email,
+        mobileNo: g.mobileNo,
+        city: g.city,
+        state: g.state,
+        subscriptionPlanName: g.subscriptionPlan?.name || null,
+        subscriptionStart: g.subscriptionStart,
+        subscriptionEnd: g.subscriptionEnd,
+        daysLeft,
+        ownerName: g.owner?.name || null,
+        ownerEmail: g.owner?.email || null,
+      };
+    });
+
+    return { items, total };
+  }
+
+  // Detail: Expired Gyms
+  async getExpiredGymsDetail(params: DashboardDetailParams): Promise<{ items: ExpiredGymDetail[]; total: number }> {
+    const { page, limit, search, sortBy = 'subscriptionEnd', sortOrder = 'desc' } = params;
+    const skip = (page - 1) * limit;
+    const now = new Date();
+
+    const where: any = {
+      subscriptionEnd: { lt: now },
+    };
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [gyms, total] = await Promise.all([
+      prisma.gym.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          subscriptionPlan: { select: { name: true } },
+          owner: { select: { name: true, email: true } },
+        },
+      }),
+      prisma.gym.count({ where }),
+    ]);
+
+    const items: ExpiredGymDetail[] = gyms.map((g) => {
+      const expiredDaysAgo = Math.ceil((now.getTime() - new Date(g.subscriptionEnd!).getTime()) / (1000 * 60 * 60 * 24));
+      return {
+        id: g.id,
+        name: g.name,
+        email: g.email,
+        mobileNo: g.mobileNo,
+        city: g.city,
+        state: g.state,
+        subscriptionPlanName: g.subscriptionPlan?.name || null,
+        subscriptionStart: g.subscriptionStart,
+        subscriptionEnd: g.subscriptionEnd,
+        expiredDaysAgo,
+        ownerName: g.owner?.name || null,
+        ownerEmail: g.owner?.email || null,
+      };
+    });
+
+    return { items, total };
+  }
+
+  // Detail: Renewal Gyms
+  async getRenewalGymsDetail(params: DashboardDetailParams): Promise<{ items: RenewalGymDetail[]; total: number }> {
+    const { page, limit, search, sortBy = 'renewalDate', sortOrder = 'desc' } = params;
+    const skip = (page - 1) * limit;
+
+    const where: any = {
+      renewalType: 'RENEWAL',
+      isActive: true,
+    };
+    if (search) {
+      where.gym = { name: { contains: search, mode: 'insensitive' } };
+    }
+
+    const [renewals, total] = await Promise.all([
+      prisma.gymSubscriptionHistory.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          gym: { select: { name: true } },
+          subscriptionPlan: { select: { name: true } },
+        },
+      }),
+      prisma.gymSubscriptionHistory.count({ where }),
+    ]);
+
+    const items: RenewalGymDetail[] = renewals.map((r) => ({
+      id: r.id,
+      subscriptionNumber: r.subscriptionNumber,
+      gymName: r.gym.name,
+      subscriptionPlanName: r.subscriptionPlan.name,
+      renewalType: r.renewalType,
+      renewalDate: r.renewalDate,
+      subscriptionStart: r.subscriptionStart,
+      subscriptionEnd: r.subscriptionEnd,
+      amount: Number(r.amount),
+      paidAmount: r.paidAmount ? Number(r.paidAmount) : null,
+      pendingAmount: r.pendingAmount ? Number(r.pendingAmount) : null,
+      paymentStatus: r.paymentStatus,
+      paymentMode: r.paymentMode,
+    }));
+
+    return { items, total };
+  }
+
+  // Detail: Total Members
+  async getMembersDetail(params: DashboardDetailParams): Promise<{ items: MemberDetail[]; total: number }> {
+    const { page, limit, search, sortBy = 'createdAt', sortOrder = 'desc' } = params;
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { phone: { contains: search, mode: 'insensitive' } },
+        { memberId: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [members, total] = await Promise.all([
+      prisma.member.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          gym: { select: { name: true } },
+        },
+      }),
+      prisma.member.count({ where }),
+    ]);
+
+    const items: MemberDetail[] = members.map((m) => ({
+      id: m.id,
+      memberId: m.memberId,
+      name: m.name,
+      email: m.email,
+      phone: m.phone,
+      gender: m.gender,
+      memberType: m.memberType,
+      membershipStatus: m.membershipStatus,
+      membershipStart: m.membershipStart,
+      membershipEnd: m.membershipEnd,
+      gymName: m.gym.name,
+      isActive: m.isActive,
+      createdAt: m.createdAt,
+    }));
+
+    return { items, total };
+  }
+
+  // Detail: Most Popular Subscription Plan Gyms
+  async getPopularPlanGymsDetail(params: DashboardDetailParams): Promise<{ items: PopularPlanGymDetail[]; total: number; planName: string }> {
+    const { page, limit, search, sortBy = 'createdAt', sortOrder = 'desc' } = params;
+    const skip = (page - 1) * limit;
+    const now = new Date();
+
+    // Find the most popular plan
+    const popularPlan = await prisma.gymSubscriptionPlan.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        name: true,
+        _count: {
+          select: {
+            gyms: {
+              where: { isActive: true, subscriptionEnd: { gte: now } },
+            },
+          },
+        },
+      },
+      orderBy: { gyms: { _count: 'desc' } },
+      take: 1,
+    });
+
+    if (popularPlan.length === 0) {
+      return { items: [], total: 0, planName: 'N/A' };
+    }
+
+    const planId = popularPlan[0].id;
+    const planName = popularPlan[0].name;
+
+    const where: any = {
+      isActive: true,
+      subscriptionEnd: { gte: now },
+      subscriptionPlanId: planId,
+    };
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [gyms, total] = await Promise.all([
+      prisma.gym.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          owner: { select: { name: true } },
+        },
+      }),
+      prisma.gym.count({ where }),
+    ]);
+
+    const items: PopularPlanGymDetail[] = gyms.map((g) => ({
+      id: g.id,
+      name: g.name,
+      email: g.email,
+      mobileNo: g.mobileNo,
+      city: g.city,
+      state: g.state,
+      subscriptionStart: g.subscriptionStart,
+      subscriptionEnd: g.subscriptionEnd,
+      ownerName: g.owner?.name || null,
+    }));
+
+    return { items, total, planName };
+  }
+
+  // Detail: Recent Registered Gyms (Last 7 Days)
+  async getRecentGymsDetail(params: DashboardDetailParams): Promise<{ items: ActiveGymDetail[]; total: number }> {
+    const { page, limit, search, sortBy = 'createdAt', sortOrder = 'desc' } = params;
+    const skip = (page - 1) * limit;
+    const sevenDaysAgo = new Date(new Date().getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const where: any = {
+      createdAt: { gte: sevenDaysAgo },
+    };
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [gyms, total] = await Promise.all([
+      prisma.gym.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          subscriptionPlan: { select: { name: true } },
+          owner: { select: { name: true, email: true } },
+          _count: { select: { members: true } },
+        },
+      }),
+      prisma.gym.count({ where }),
+    ]);
+
+    const items: ActiveGymDetail[] = gyms.map((g) => ({
+      id: g.id,
+      name: g.name,
+      email: g.email,
+      mobileNo: g.mobileNo,
+      city: g.city,
+      state: g.state,
+      isActive: g.isActive,
+      subscriptionPlanName: g.subscriptionPlan?.name || null,
+      subscriptionStart: g.subscriptionStart,
+      subscriptionEnd: g.subscriptionEnd,
+      ownerName: g.owner?.name || null,
+      ownerEmail: g.owner?.email || null,
+      memberCount: g._count.members,
+      createdAt: g.createdAt,
+    }));
+
+    return { items, total };
+  }
+
+  // Detail: Total Income
+  async getIncomeDetail(params: DashboardDetailParams & { thisMonth?: boolean }): Promise<{ items: IncomeDetail[]; total: number; totalAmount: number }> {
+    const { page, limit, search, sortBy = 'renewalDate', sortOrder = 'desc', thisMonth } = params;
+    const skip = (page - 1) * limit;
+
+    const where: any = { isActive: true };
+
+    if (thisMonth) {
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      where.renewalDate = { gte: monthStart, lte: monthEnd };
+    }
+
+    if (search) {
+      where.gym = { name: { contains: search, mode: 'insensitive' } };
+    }
+
+    const [records, total, totalAmountResult] = await Promise.all([
+      prisma.gymSubscriptionHistory.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          gym: { select: { name: true } },
+          subscriptionPlan: { select: { name: true } },
+        },
+      }),
+      prisma.gymSubscriptionHistory.count({ where }),
+      prisma.gymSubscriptionHistory.aggregate({
+        _sum: { paidAmount: true },
+        where,
+      }),
+    ]);
+
+    const items: IncomeDetail[] = records.map((r) => ({
+      id: r.id,
+      subscriptionNumber: r.subscriptionNumber,
+      gymName: r.gym.name,
+      subscriptionPlanName: r.subscriptionPlan.name,
+      amount: Number(r.amount),
+      paidAmount: r.paidAmount ? Number(r.paidAmount) : null,
+      paymentMode: r.paymentMode,
+      paymentStatus: r.paymentStatus,
+      renewalType: r.renewalType,
+      renewalDate: r.renewalDate,
+    }));
+
+    return {
+      items,
+      total,
+      totalAmount: Number(totalAmountResult._sum.paidAmount || 0),
+    };
+  }
+
+  // Detail: Total Expense
+  async getExpenseDetail(params: DashboardDetailParams & { thisMonth?: boolean }): Promise<{ items: ExpenseDetail[]; total: number; totalAmount: number }> {
+    const { page, limit, search, sortBy = 'expenseDate', sortOrder = 'desc', thisMonth } = params;
+    const skip = (page - 1) * limit;
+
+    const where: any = { isActive: true };
+
+    if (thisMonth) {
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      where.expenseDate = { gte: monthStart, lte: monthEnd };
+    }
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [expenses, total, totalAmountResult] = await Promise.all([
+      prisma.adminExpenseMaster.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          expenseGroup: { select: { expenseGroupName: true } },
+        },
+      }),
+      prisma.adminExpenseMaster.count({ where }),
+      prisma.adminExpenseMaster.aggregate({
+        _sum: { amount: true },
+        where,
+      }),
+    ]);
+
+    const items: ExpenseDetail[] = expenses.map((e) => ({
+      id: e.id,
+      name: e.name,
+      expenseGroupName: e.expenseGroup?.expenseGroupName,
+      description: e.description,
+      amount: Number(e.amount),
+      paymentMode: e.paymentMode,
+      expenseDate: e.expenseDate,
+      createdAt: e.createdAt,
+    }));
+
+    return {
+      items,
+      total,
+      totalAmount: Number(totalAmountResult._sum.amount || 0),
+    };
   }
 }
 
