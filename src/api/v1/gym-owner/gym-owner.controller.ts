@@ -1880,6 +1880,36 @@ class GymOwnerController {
       next(error);
     }
   }
+
+  // ================== GYM OWNER PROFILE ==================
+
+  /**
+   * Get gym owner profile
+   */
+  async getProfile(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const userId = req.user!.id;
+      const profile = await gymOwnerService.getGymOwnerProfile(gymId, userId);
+      successResponse(res, profile, 'Profile retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Update gym owner profile
+   */
+  async updateProfile(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const userId = req.user!.id;
+      const profile = await gymOwnerService.updateGymOwnerProfile(gymId, userId, req.body);
+      successResponse(res, profile, 'Profile updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new GymOwnerController();

@@ -634,6 +634,373 @@ class AdminController {
       next(error);
     }
   }
+
+  // =============================================
+  // Admin Expense Group Master CRUD
+  // =============================================
+
+  async getAdminExpenseGroups(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const expenseGroups = await adminService.getAdminExpenseGroups();
+      successResponse(res, expenseGroups, 'Expense groups retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getAdminExpenseGroupById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const expenseGroup = await adminService.getAdminExpenseGroupById(req.params.id);
+      successResponse(res, expenseGroup, 'Expense group retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createAdminExpenseGroup(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const expenseGroup = await adminService.createAdminExpenseGroup(req.body);
+      successResponse(res, expenseGroup, 'Expense group created successfully', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateAdminExpenseGroup(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const expenseGroup = await adminService.updateAdminExpenseGroup(req.params.id, req.body);
+      successResponse(res, expenseGroup, 'Expense group updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteAdminExpenseGroup(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      await adminService.deleteAdminExpenseGroup(req.params.id);
+      successResponse(res, null, 'Expense group deleted successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // =============================================
+  // Admin Expense Management CRUD
+  // =============================================
+
+  async createAdminExpense(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user!.id;
+
+      let attachmentPaths: string[] = [];
+      if (req.files && Array.isArray(req.files)) {
+        attachmentPaths = req.files.map((file: Express.Multer.File) =>
+          `/uploads/expense-attachments/${file.filename}`
+        );
+      }
+
+      const expense = await adminService.createAdminExpense(userId, req.body, attachmentPaths);
+      successResponse(res, expense, 'Expense created successfully', 201);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateAdminExpense(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      let newAttachmentPaths: string[] = [];
+      if (req.files && Array.isArray(req.files)) {
+        newAttachmentPaths = req.files.map((file: Express.Multer.File) =>
+          `/uploads/expense-attachments/${file.filename}`
+        );
+      }
+
+      const expense = await adminService.updateAdminExpense(
+        req.params.id,
+        req.body,
+        newAttachmentPaths.length > 0 ? newAttachmentPaths : undefined
+      );
+      successResponse(res, expense, 'Expense updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async deleteAdminExpense(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      await adminService.softDeleteAdminExpense(req.params.id);
+      successResponse(res, null, 'Expense deleted successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getAdminExpenseById(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const expense = await adminService.getAdminExpenseById(req.params.id);
+      successResponse(res, expense, 'Expense retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getAdminExpenses(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const params = req.query as any;
+      const result = await adminService.getAdminExpenses(params);
+
+      res.status(200).json({
+        status: 'success',
+        message: 'Expenses retrieved successfully',
+        data: result.expenses,
+        pagination: {
+          page: result.page,
+          limit: result.limit,
+          total: result.total,
+          totalPages: Math.ceil(result.total / result.limit),
+        },
+        summary: {
+          totalAmount: result.totalAmount,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // =============================================
+  // Admin Dashboard V2 - Counts + Detail APIs
+  // =============================================
+
+  async getAdminDashboardCounts(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const counts = await adminService.getAdminDashboardCounts();
+      successResponse(res, counts, 'Admin dashboard counts retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getActiveGymsDetail(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { page = 1, limit = 10, search, sortBy, sortOrder } = req.query as any;
+      const { items, total } = await adminService.getActiveGymsDetail({
+        page: Number(page), limit: Number(limit), search, sortBy, sortOrder,
+      });
+      paginatedResponse(res, items, Number(page), Number(limit), total, 'Active gyms retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getActiveGymInquiriesDetail(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { page = 1, limit = 10, search, sortBy, sortOrder } = req.query as any;
+      const { items, total } = await adminService.getActiveGymInquiriesDetail({
+        page: Number(page), limit: Number(limit), search, sortBy, sortOrder,
+      });
+      paginatedResponse(res, items, Number(page), Number(limit), total, 'Active gym inquiries retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getTodaysFollowupInquiriesDetail(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { page = 1, limit = 10, search, sortBy, sortOrder } = req.query as any;
+      const { items, total } = await adminService.getTodaysFollowupInquiriesDetail({
+        page: Number(page), limit: Number(limit), search, sortBy, sortOrder,
+      });
+      paginatedResponse(res, items, Number(page), Number(limit), total, 'Todays followup inquiries retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getTwoDaysLeftExpiringGymsDetail(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { page = 1, limit = 10, search, sortBy, sortOrder } = req.query as any;
+      const { items, total } = await adminService.getTwoDaysLeftExpiringGymsDetail({
+        page: Number(page), limit: Number(limit), search, sortBy, sortOrder,
+      });
+      paginatedResponse(res, items, Number(page), Number(limit), total, 'Expiring gyms retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getExpiredGymsDetail(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { page = 1, limit = 10, search, sortBy, sortOrder } = req.query as any;
+      const { items, total } = await adminService.getExpiredGymsDetail({
+        page: Number(page), limit: Number(limit), search, sortBy, sortOrder,
+      });
+      paginatedResponse(res, items, Number(page), Number(limit), total, 'Expired gyms retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getRenewalGymsDetail(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { page = 1, limit = 10, search, sortBy, sortOrder } = req.query as any;
+      const { items, total } = await adminService.getRenewalGymsDetail({
+        page: Number(page), limit: Number(limit), search, sortBy, sortOrder,
+      });
+      paginatedResponse(res, items, Number(page), Number(limit), total, 'Renewal gyms retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getMembersDetail(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { page = 1, limit = 10, search, sortBy, sortOrder } = req.query as any;
+      const { items, total } = await adminService.getMembersDetail({
+        page: Number(page), limit: Number(limit), search, sortBy, sortOrder,
+      });
+      paginatedResponse(res, items, Number(page), Number(limit), total, 'Members retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getPopularPlanGymsDetail(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { page = 1, limit = 10, search, sortBy, sortOrder } = req.query as any;
+      const { items, total, planName } = await adminService.getPopularPlanGymsDetail({
+        page: Number(page), limit: Number(limit), search, sortBy, sortOrder,
+      });
+      res.status(200).json({
+        success: true,
+        message: 'Popular plan gyms retrieved successfully',
+        data: {
+          planName,
+          items,
+          pagination: {
+            page: Number(page),
+            limit: Number(limit),
+            total,
+            totalPages: Math.ceil(total / Number(limit)),
+          },
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getRecentGymsDetail(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { page = 1, limit = 10, search, sortBy, sortOrder } = req.query as any;
+      const { items, total } = await adminService.getRecentGymsDetail({
+        page: Number(page), limit: Number(limit), search, sortBy, sortOrder,
+      });
+      paginatedResponse(res, items, Number(page), Number(limit), total, 'Recent gyms retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getTotalIncomeDetail(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { page = 1, limit = 10, search, sortBy, sortOrder } = req.query as any;
+      const { items, total, totalAmount } = await adminService.getIncomeDetail({
+        page: Number(page), limit: Number(limit), search, sortBy, sortOrder, thisMonth: false,
+      });
+      res.status(200).json({
+        success: true,
+        message: 'Total income details retrieved successfully',
+        data: {
+          items,
+          pagination: {
+            page: Number(page),
+            limit: Number(limit),
+            total,
+            totalPages: Math.ceil(total / Number(limit)),
+          },
+          summary: { totalAmount },
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getThisMonthIncomeDetail(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { page = 1, limit = 10, search, sortBy, sortOrder } = req.query as any;
+      const { items, total, totalAmount } = await adminService.getIncomeDetail({
+        page: Number(page), limit: Number(limit), search, sortBy, sortOrder, thisMonth: true,
+      });
+      res.status(200).json({
+        success: true,
+        message: 'This months income details retrieved successfully',
+        data: {
+          items,
+          pagination: {
+            page: Number(page),
+            limit: Number(limit),
+            total,
+            totalPages: Math.ceil(total / Number(limit)),
+          },
+          summary: { totalAmount },
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getTotalExpenseDetail(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { page = 1, limit = 10, search, sortBy, sortOrder } = req.query as any;
+      const { items, total, totalAmount } = await adminService.getExpenseDetail({
+        page: Number(page), limit: Number(limit), search, sortBy, sortOrder, thisMonth: false,
+      });
+      res.status(200).json({
+        success: true,
+        message: 'Total expense details retrieved successfully',
+        data: {
+          items,
+          pagination: {
+            page: Number(page),
+            limit: Number(limit),
+            total,
+            totalPages: Math.ceil(total / Number(limit)),
+          },
+          summary: { totalAmount },
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getThisMonthExpenseDetail(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { page = 1, limit = 10, search, sortBy, sortOrder } = req.query as any;
+      const { items, total, totalAmount } = await adminService.getExpenseDetail({
+        page: Number(page), limit: Number(limit), search, sortBy, sortOrder, thisMonth: true,
+      });
+      res.status(200).json({
+        success: true,
+        message: 'This months expense details retrieved successfully',
+        data: {
+          items,
+          pagination: {
+            page: Number(page),
+            limit: Number(limit),
+            total,
+            totalPages: Math.ceil(total / Number(limit)),
+          },
+          summary: { totalAmount },
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export default new AdminController();

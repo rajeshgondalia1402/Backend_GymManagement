@@ -30,6 +30,12 @@ import {
   createGymInquiryFollowupSchema,
   gymInquiryPaginationSchema,
   adminMembersQuerySchema,
+  createExpenseGroupSchema,
+  updateExpenseGroupSchema,
+  createExpenseSchema,
+  updateExpenseSchema,
+  expenseReportSchema,
+  uploadExpenseAttachments,
 } from '../../../common/middleware';
 
 const router = Router();
@@ -1690,5 +1696,785 @@ router.post('/gym-inquiries/:id/followups', validate(idParamSchema, 'params'), v
  *         description: Gym not found
  */
 router.get('/members', validate(adminMembersQuerySchema, 'query'), adminController.getMembersByGymOrOwner);
+
+// =============================================
+// Admin Expense Group Master CRUD
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/admin/expense-groups:
+ *   get:
+ *     summary: Get all admin expense groups
+ *     tags: [Admin - Expense Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Expense groups retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       expenseGroupName:
+ *                         type: string
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
+ *                       updatedAt:
+ *                         type: string
+ *                         format: date-time
+ */
+router.get('/expense-groups', adminController.getAdminExpenseGroups);
+
+/**
+ * @swagger
+ * /api/v1/admin/expense-groups/{id}:
+ *   get:
+ *     summary: Get admin expense group by ID
+ *     tags: [Admin - Expense Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Expense Group ID
+ *     responses:
+ *       200:
+ *         description: Expense group retrieved successfully
+ *       404:
+ *         description: Expense group not found
+ */
+router.get('/expense-groups/:id', validate(idParamSchema, 'params'), adminController.getAdminExpenseGroupById);
+
+/**
+ * @swagger
+ * /api/v1/admin/expense-groups:
+ *   post:
+ *     summary: Create a new admin expense group
+ *     tags: [Admin - Expense Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - expenseGroupName
+ *             properties:
+ *               expenseGroupName:
+ *                 type: string
+ *                 minLength: 2
+ *     responses:
+ *       201:
+ *         description: Expense group created successfully
+ *       409:
+ *         description: Expense group with this name already exists
+ */
+router.post('/expense-groups', validate(createExpenseGroupSchema), adminController.createAdminExpenseGroup);
+
+/**
+ * @swagger
+ * /api/v1/admin/expense-groups/{id}:
+ *   put:
+ *     summary: Update an admin expense group
+ *     tags: [Admin - Expense Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - expenseGroupName
+ *             properties:
+ *               expenseGroupName:
+ *                 type: string
+ *                 minLength: 2
+ *     responses:
+ *       200:
+ *         description: Expense group updated successfully
+ *       404:
+ *         description: Expense group not found
+ *       409:
+ *         description: Expense group with this name already exists
+ */
+router.put('/expense-groups/:id', validate(idParamSchema, 'params'), validate(updateExpenseGroupSchema), adminController.updateAdminExpenseGroup);
+
+/**
+ * @swagger
+ * /api/v1/admin/expense-groups/{id}:
+ *   delete:
+ *     summary: Delete an admin expense group (hard delete)
+ *     tags: [Admin - Expense Groups]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Expense group deleted successfully
+ *       404:
+ *         description: Expense group not found
+ */
+router.delete('/expense-groups/:id', validate(idParamSchema, 'params'), adminController.deleteAdminExpenseGroup);
+
+// =============================================
+// Admin Expense Management CRUD
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/admin/expenses:
+ *   get:
+ *     summary: Get admin expenses with filters (Report API)
+ *     tags: [Admin - Expenses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Items per page
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search in expense name, description, or expense group name
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           default: expenseDate
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *           default: desc
+ *       - in: query
+ *         name: year
+ *         schema:
+ *           type: integer
+ *         description: Filter by year
+ *       - in: query
+ *         name: dateFrom
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Filter from date
+ *       - in: query
+ *         name: dateTo
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Filter to date
+ *       - in: query
+ *         name: expenseGroupId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filter by expense group
+ *       - in: query
+ *         name: paymentMode
+ *         schema:
+ *           type: string
+ *           enum: [CASH, CARD, UPI, BANK_TRANSFER, CHEQUE, NET_BANKING, OTHER]
+ *         description: Filter by payment mode
+ *     responses:
+ *       200:
+ *         description: Expenses retrieved successfully with summary
+ */
+router.get('/expenses', validate(expenseReportSchema, 'query'), adminController.getAdminExpenses);
+
+/**
+ * @swagger
+ * /api/v1/admin/expenses/{id}:
+ *   get:
+ *     summary: Get admin expense by ID
+ *     tags: [Admin - Expenses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Expense retrieved successfully
+ *       404:
+ *         description: Expense not found
+ */
+router.get('/expenses/:id', validate(idParamSchema, 'params'), adminController.getAdminExpenseById);
+
+/**
+ * @swagger
+ * /api/v1/admin/expenses:
+ *   post:
+ *     summary: Create a new admin expense
+ *     tags: [Admin - Expenses]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - expenseGroupId
+ *               - paymentMode
+ *               - amount
+ *             properties:
+ *               expenseDate:
+ *                 type: string
+ *                 format: date-time
+ *               name:
+ *                 type: string
+ *               expenseGroupId:
+ *                 type: string
+ *                 format: uuid
+ *               description:
+ *                 type: string
+ *               paymentMode:
+ *                 type: string
+ *                 enum: [CASH, CARD, UPI, BANK_TRANSFER, CHEQUE, NET_BANKING, OTHER]
+ *               amount:
+ *                 type: number
+ *               attachments:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *     responses:
+ *       201:
+ *         description: Expense created successfully
+ *       404:
+ *         description: Expense group not found
+ */
+router.post('/expenses', uploadExpenseAttachments, handleUploadError, validate(createExpenseSchema), adminController.createAdminExpense);
+
+/**
+ * @swagger
+ * /api/v1/admin/expenses/{id}:
+ *   put:
+ *     summary: Update an admin expense
+ *     tags: [Admin - Expenses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               expenseDate:
+ *                 type: string
+ *                 format: date-time
+ *               name:
+ *                 type: string
+ *               expenseGroupId:
+ *                 type: string
+ *                 format: uuid
+ *               description:
+ *                 type: string
+ *               paymentMode:
+ *                 type: string
+ *                 enum: [CASH, CARD, UPI, BANK_TRANSFER, CHEQUE, NET_BANKING, OTHER]
+ *               amount:
+ *                 type: number
+ *               isActive:
+ *                 type: boolean
+ *               attachments:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *     responses:
+ *       200:
+ *         description: Expense updated successfully
+ *       404:
+ *         description: Expense not found
+ */
+router.put('/expenses/:id', uploadExpenseAttachments, handleUploadError, validate(idParamSchema, 'params'), validate(updateExpenseSchema), adminController.updateAdminExpense);
+
+/**
+ * @swagger
+ * /api/v1/admin/expenses/{id}:
+ *   delete:
+ *     summary: Soft delete an admin expense
+ *     tags: [Admin - Expenses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Expense deleted successfully
+ *       404:
+ *         description: Expense not found
+ */
+router.delete('/expenses/:id', validate(idParamSchema, 'params'), adminController.deleteAdminExpense);
+
+// =============================================
+// Admin Dashboard V2 - Counts + Detail Report APIs
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/admin/dashboard-v2/counts:
+ *   get:
+ *     summary: Get admin dashboard counts (all cards)
+ *     tags: [Admin - Dashboard V2]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Dashboard counts retrieved successfully
+ */
+router.get('/dashboard-v2/counts', adminController.getAdminDashboardCounts);
+
+/**
+ * @swagger
+ * /api/v1/admin/dashboard-v2/active-gyms:
+ *   get:
+ *     summary: List all active gyms (detail report for Total Active Gyms card)
+ *     tags: [Admin - Dashboard V2]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10 }
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortBy
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortOrder
+ *         schema: { type: string, enum: [asc, desc] }
+ *     responses:
+ *       200:
+ *         description: Active gyms list retrieved successfully
+ */
+router.get('/dashboard-v2/active-gyms', adminController.getActiveGymsDetail);
+
+/**
+ * @swagger
+ * /api/v1/admin/dashboard-v2/active-gym-inquiries:
+ *   get:
+ *     summary: List all active gym inquiries (detail report)
+ *     tags: [Admin - Dashboard V2]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10 }
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortBy
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortOrder
+ *         schema: { type: string, enum: [asc, desc] }
+ *     responses:
+ *       200:
+ *         description: Active gym inquiries list retrieved successfully
+ */
+router.get('/dashboard-v2/active-gym-inquiries', adminController.getActiveGymInquiriesDetail);
+
+/**
+ * @swagger
+ * /api/v1/admin/dashboard-v2/todays-followup-inquiries:
+ *   get:
+ *     summary: List todays followup gym inquiries (detail report)
+ *     tags: [Admin - Dashboard V2]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10 }
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortBy
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortOrder
+ *         schema: { type: string, enum: [asc, desc] }
+ *     responses:
+ *       200:
+ *         description: Todays followup inquiries list retrieved successfully
+ */
+router.get('/dashboard-v2/todays-followup-inquiries', adminController.getTodaysFollowupInquiriesDetail);
+
+/**
+ * @swagger
+ * /api/v1/admin/dashboard-v2/expiring-gyms:
+ *   get:
+ *     summary: List gyms expiring within 2 days (detail report)
+ *     tags: [Admin - Dashboard V2]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10 }
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortBy
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortOrder
+ *         schema: { type: string, enum: [asc, desc] }
+ *     responses:
+ *       200:
+ *         description: Expiring gyms list retrieved successfully
+ */
+router.get('/dashboard-v2/expiring-gyms', adminController.getTwoDaysLeftExpiringGymsDetail);
+
+/**
+ * @swagger
+ * /api/v1/admin/dashboard-v2/expired-gyms:
+ *   get:
+ *     summary: List all expired gyms (detail report)
+ *     tags: [Admin - Dashboard V2]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10 }
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortBy
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortOrder
+ *         schema: { type: string, enum: [asc, desc] }
+ *     responses:
+ *       200:
+ *         description: Expired gyms list retrieved successfully
+ */
+router.get('/dashboard-v2/expired-gyms', adminController.getExpiredGymsDetail);
+
+/**
+ * @swagger
+ * /api/v1/admin/dashboard-v2/renewal-gyms:
+ *   get:
+ *     summary: List all renewal gym subscription history (detail report)
+ *     tags: [Admin - Dashboard V2]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10 }
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortBy
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortOrder
+ *         schema: { type: string, enum: [asc, desc] }
+ *     responses:
+ *       200:
+ *         description: Renewal gyms list retrieved successfully
+ */
+router.get('/dashboard-v2/renewal-gyms', adminController.getRenewalGymsDetail);
+
+/**
+ * @swagger
+ * /api/v1/admin/dashboard-v2/members:
+ *   get:
+ *     summary: List all members across all gyms (detail report)
+ *     tags: [Admin - Dashboard V2]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10 }
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortBy
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortOrder
+ *         schema: { type: string, enum: [asc, desc] }
+ *     responses:
+ *       200:
+ *         description: Members list retrieved successfully
+ */
+router.get('/dashboard-v2/members', adminController.getMembersDetail);
+
+/**
+ * @swagger
+ * /api/v1/admin/dashboard-v2/popular-plan-gyms:
+ *   get:
+ *     summary: List gyms on the most popular subscription plan (detail report)
+ *     tags: [Admin - Dashboard V2]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10 }
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortBy
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortOrder
+ *         schema: { type: string, enum: [asc, desc] }
+ *     responses:
+ *       200:
+ *         description: Popular plan gyms list retrieved successfully
+ */
+router.get('/dashboard-v2/popular-plan-gyms', adminController.getPopularPlanGymsDetail);
+
+/**
+ * @swagger
+ * /api/v1/admin/dashboard-v2/recent-gyms:
+ *   get:
+ *     summary: List recently registered gyms (last 7 days) (detail report)
+ *     tags: [Admin - Dashboard V2]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10 }
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortBy
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortOrder
+ *         schema: { type: string, enum: [asc, desc] }
+ *     responses:
+ *       200:
+ *         description: Recent gyms list retrieved successfully
+ */
+router.get('/dashboard-v2/recent-gyms', adminController.getRecentGymsDetail);
+
+/**
+ * @swagger
+ * /api/v1/admin/dashboard-v2/total-income:
+ *   get:
+ *     summary: List all income records (detail report for Total Income card)
+ *     tags: [Admin - Dashboard V2]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10 }
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortBy
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortOrder
+ *         schema: { type: string, enum: [asc, desc] }
+ *     responses:
+ *       200:
+ *         description: Total income details retrieved successfully
+ */
+router.get('/dashboard-v2/total-income', adminController.getTotalIncomeDetail);
+
+/**
+ * @swagger
+ * /api/v1/admin/dashboard-v2/total-expense:
+ *   get:
+ *     summary: List all expense records (detail report for Total Expense card)
+ *     tags: [Admin - Dashboard V2]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10 }
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortBy
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortOrder
+ *         schema: { type: string, enum: [asc, desc] }
+ *     responses:
+ *       200:
+ *         description: Total expense details retrieved successfully
+ */
+router.get('/dashboard-v2/total-expense', adminController.getTotalExpenseDetail);
+
+/**
+ * @swagger
+ * /api/v1/admin/dashboard-v2/this-month-income:
+ *   get:
+ *     summary: List this months income records (detail report)
+ *     tags: [Admin - Dashboard V2]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10 }
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortBy
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortOrder
+ *         schema: { type: string, enum: [asc, desc] }
+ *     responses:
+ *       200:
+ *         description: This months income details retrieved successfully
+ */
+router.get('/dashboard-v2/this-month-income', adminController.getThisMonthIncomeDetail);
+
+/**
+ * @swagger
+ * /api/v1/admin/dashboard-v2/this-month-expense:
+ *   get:
+ *     summary: List this months expense records (detail report)
+ *     tags: [Admin - Dashboard V2]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10 }
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortBy
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortOrder
+ *         schema: { type: string, enum: [asc, desc] }
+ *     responses:
+ *       200:
+ *         description: This months expense details retrieved successfully
+ */
+router.get('/dashboard-v2/this-month-expense', adminController.getThisMonthExpenseDetail);
 
 export default router;
