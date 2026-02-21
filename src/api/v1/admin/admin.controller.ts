@@ -2,7 +2,14 @@ import { Response, NextFunction } from 'express';
 import adminService from './admin.service';
 import { successResponse, paginatedResponse } from '../../../common/utils';
 import { AuthRequest } from '../../../common/middleware';
-import { getRelativeLogoPath, deleteOldLogo } from '../../../common/middleware/upload.middleware';
+import { deleteOldLogo } from '../../../common/middleware/upload.middleware';
+import {
+  uploadGymLogo as uploadGymLogoToR2,
+  uploadExpenseAttachments as uploadExpenseAttachmentsToR2,
+  deleteOldR2File,
+  getPresignedDownloadUrl,
+  getPresignedDownloadUrls,
+} from '../../../common/services/r2-upload.service';
 
 class AdminController {
   // Dashboard
@@ -144,7 +151,7 @@ class AdminController {
   async uploadGymLogo(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const gymId = req.params.id;
-      
+
       // Check if file was uploaded
       if (!req.file) {
         res.status(400).json({
@@ -156,21 +163,37 @@ class AdminController {
 
       // Get the gym to check if it exists and get old logo path
       const existingGym = await adminService.getGymById(gymId);
-      
-      // Delete old logo if exists
+
+      // Delete old logo if exists (both local and R2)
       if (existingGym.gymLogo) {
+        // Delete from local storage (for backward compatibility)
         deleteOldLogo(existingGym.gymLogo);
+        // Delete from R2 if it's an R2 URL
+        await deleteOldR2File(existingGym.gymLogo);
       }
 
-      // Get relative path for the new logo
-      const logoPath = getRelativeLogoPath(req.file.filename);
+      // Upload to R2
+      const uploadResult = await uploadGymLogoToR2({
+        buffer: req.file.buffer,
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+      });
 
-      // Update gym with new logo path
-      const gym = await adminService.updateGym(gymId, { gymLogo: logoPath });
+      if (!uploadResult.success) {
+        res.status(500).json({
+          success: false,
+          message: uploadResult.error || 'Failed to upload logo to cloud storage',
+        });
+        return;
+      }
+
+      // Update gym with new logo URL (full R2 URL)
+      const gym = await adminService.updateGym(gymId, { gymLogo: uploadResult.url });
 
       successResponse(res, {
         gym,
-        logoUrl: logoPath,
+        logoUrl: uploadResult.url,
         message: 'Logo uploaded and saved successfully'
       }, 'Gym logo uploaded successfully');
     } catch (error) {
@@ -181,13 +204,16 @@ class AdminController {
   async deleteGymLogo(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
       const gymId = req.params.id;
-      
+
       // Get the gym to check if it exists and get logo path
       const existingGym = await adminService.getGymById(gymId);
-      
-      // Delete the logo file if exists
+
+      // Delete the logo file if exists (both local and R2)
       if (existingGym.gymLogo) {
+        // Delete from local storage (for backward compatibility)
         deleteOldLogo(existingGym.gymLogo);
+        // Delete from R2 if it's an R2 URL
+        await deleteOldR2File(existingGym.gymLogo);
       }
 
       // Update gym to remove logo path
@@ -692,14 +718,25 @@ class AdminController {
     try {
       const userId = req.user!.id;
 
-      let attachmentPaths: string[] = [];
+      let attachmentUrls: string[] = [];
       if (req.files && Array.isArray(req.files)) {
-        attachmentPaths = req.files.map((file: Express.Multer.File) =>
-          `/uploads/expense-attachments/${file.filename}`
+        // Upload each file to R2
+        const uploadResults = await uploadExpenseAttachmentsToR2(
+          req.files.map((file: Express.Multer.File) => ({
+            buffer: file.buffer,
+            originalname: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size,
+          }))
         );
+
+        // Collect successful upload URLs
+        attachmentUrls = uploadResults
+          .filter((result) => result.success)
+          .map((result) => result.url);
       }
 
-      const expense = await adminService.createAdminExpense(userId, req.body, attachmentPaths);
+      const expense = await adminService.createAdminExpense(userId, req.body, attachmentUrls);
       successResponse(res, expense, 'Expense created successfully', 201);
     } catch (error) {
       next(error);
@@ -708,17 +745,28 @@ class AdminController {
 
   async updateAdminExpense(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      let newAttachmentPaths: string[] = [];
+      let newAttachmentUrls: string[] = [];
       if (req.files && Array.isArray(req.files)) {
-        newAttachmentPaths = req.files.map((file: Express.Multer.File) =>
-          `/uploads/expense-attachments/${file.filename}`
+        // Upload each file to R2
+        const uploadResults = await uploadExpenseAttachmentsToR2(
+          req.files.map((file: Express.Multer.File) => ({
+            buffer: file.buffer,
+            originalname: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size,
+          }))
         );
+
+        // Collect successful upload URLs
+        newAttachmentUrls = uploadResults
+          .filter((result) => result.success)
+          .map((result) => result.url);
       }
 
       const expense = await adminService.updateAdminExpense(
         req.params.id,
         req.body,
-        newAttachmentPaths.length > 0 ? newAttachmentPaths : undefined
+        newAttachmentUrls.length > 0 ? newAttachmentUrls : undefined
       );
       successResponse(res, expense, 'Expense updated successfully');
     } catch (error) {
@@ -997,6 +1045,71 @@ class AdminController {
           summary: { totalAmount },
         },
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // =============================================
+  // File Download - Presigned URLs
+  // =============================================
+
+  async getPresignedUrl(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { url, expiresIn = 3600 } = req.body;
+
+      if (!url) {
+        res.status(400).json({
+          success: false,
+          message: 'URL is required',
+        });
+        return;
+      }
+
+      const presignedUrl = await getPresignedDownloadUrl(url, expiresIn);
+
+      if (!presignedUrl) {
+        // If it's a local file path, return the original URL
+        if (url.startsWith('/uploads/')) {
+          successResponse(res, { presignedUrl: url, isLocal: true }, 'Local file URL returned');
+          return;
+        }
+
+        res.status(500).json({
+          success: false,
+          message: 'Failed to generate presigned URL',
+        });
+        return;
+      }
+
+      successResponse(res, { presignedUrl, expiresIn }, 'Presigned URL generated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getPresignedUrls(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { urls, expiresIn = 3600 } = req.body;
+
+      if (!urls || !Array.isArray(urls) || urls.length === 0) {
+        res.status(400).json({
+          success: false,
+          message: 'URLs array is required',
+        });
+        return;
+      }
+
+      const results = await getPresignedDownloadUrls(urls, expiresIn);
+
+      // For local files, return the original URL
+      const processedResults = results.map((result) => ({
+        original: result.original,
+        presignedUrl: result.presigned || (result.original.startsWith('/uploads/') ? result.original : null),
+        isLocal: result.original.startsWith('/uploads/'),
+      }));
+
+      successResponse(res, { urls: processedResults, expiresIn }, 'Presigned URLs generated successfully');
     } catch (error) {
       next(error);
     }

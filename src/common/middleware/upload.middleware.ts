@@ -1,67 +1,168 @@
 import { Request, Response, NextFunction } from 'express';
 import multer, { FileFilterCallback } from 'multer';
 import path from 'path';
-import fs from 'fs';
 
-// Ensure uploads directory exists
-const uploadsDir = path.join(process.cwd(), 'uploads');
-const gymLogosDir = path.join(uploadsDir, 'gym-logos');
-const memberInquiryPhotosDir = path.join(uploadsDir, 'member-inquiry-photos');
+// ==================================================
+// File Validation Functions
+// ==================================================
 
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
+// Allowed MIME types for images
+const ALLOWED_IMAGE_MIMES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+const ALLOWED_IMAGE_EXTENSIONS = ['.jpeg', '.jpg', '.png', '.gif', '.webp'];
 
-if (!fs.existsSync(gymLogosDir)) {
-  fs.mkdirSync(gymLogosDir, { recursive: true });
-}
-
-if (!fs.existsSync(memberInquiryPhotosDir)) {
-  fs.mkdirSync(memberInquiryPhotosDir, { recursive: true });
-}
-
-// Configure storage for gym logos
-const gymLogoStorage = multer.diskStorage({
-  destination: (req: Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
-    cb(null, gymLogosDir);
-  },
-  filename: (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, `gym-logo-${uniqueSuffix}${ext}`);
-  }
-});
+// Allowed MIME types for documents (images + PDF)
+const ALLOWED_DOCUMENT_MIMES = [...ALLOWED_IMAGE_MIMES, 'application/pdf'];
+const ALLOWED_DOCUMENT_EXTENSIONS = [...ALLOWED_IMAGE_EXTENSIONS, '.pdf'];
 
 // File filter for images only
 const imageFileFilter = (req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
-  const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-  const allowedExtensions = ['.jpeg', '.jpg', '.png', '.gif', '.webp'];
-
   const ext = path.extname(file.originalname).toLowerCase();
 
-  if (allowedMimes.includes(file.mimetype) && allowedExtensions.includes(ext)) {
+  if (ALLOWED_IMAGE_MIMES.includes(file.mimetype) && ALLOWED_IMAGE_EXTENSIONS.includes(ext)) {
     cb(null, true);
   } else {
     cb(new Error('Only image files (JPEG, PNG, GIF, WebP) are allowed'));
   }
 };
 
-// Multer configuration for gym logo uploads
+// File filter for documents (images + PDF)
+const documentFileFilter = (req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
+  const ext = path.extname(file.originalname).toLowerCase();
+
+  if (ALLOWED_DOCUMENT_MIMES.includes(file.mimetype) && ALLOWED_DOCUMENT_EXTENSIONS.includes(ext)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only image files (JPEG, PNG, GIF, WebP) and PDF documents are allowed'));
+  }
+};
+
+// ==================================================
+// Memory Storage Configuration (for R2 uploads)
+// ==================================================
+
+// Using memory storage - files will be stored in memory as Buffer
+// This is required for uploading to cloud storage (R2/S3)
+const memoryStorage = multer.memoryStorage();
+
+// ==================================================
+// Multer Configurations
+// ==================================================
+
+/**
+ * Gym Logo Upload Configuration
+ * - Single file: gymLogo
+ * - Max size: 5MB
+ * - Images only
+ */
 export const uploadGymLogo = multer({
-  storage: gymLogoStorage,
+  storage: memoryStorage,
   fileFilter: imageFileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB max file size
-  }
+    fileSize: 5 * 1024 * 1024, // 5MB
+  },
 }).single('gymLogo');
 
-// Middleware to handle multer errors
+/**
+ * Member Inquiry Photo Upload Configuration
+ * - Single file: memberPhoto
+ * - Max size: 5MB
+ * - Images only
+ */
+export const uploadMemberInquiryPhoto = multer({
+  storage: memoryStorage,
+  fileFilter: imageFileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB
+  },
+}).single('memberPhoto');
+
+/**
+ * Member Files Upload Configuration (Photo + ID Document)
+ * - Two fields: memberPhoto, idProofDocument
+ * - Max size: 5MB per file
+ * - memberPhoto: images only
+ * - idProofDocument: images + PDF
+ */
+export const uploadMemberFiles = multer({
+  storage: memoryStorage,
+  fileFilter: (req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
+    if (file.fieldname === 'memberPhoto') {
+      imageFileFilter(req, file, cb);
+    } else if (file.fieldname === 'idProofDocument') {
+      documentFileFilter(req, file, cb);
+    } else {
+      cb(null, true);
+    }
+  },
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB
+  },
+}).fields([
+  { name: 'memberPhoto', maxCount: 1 },
+  { name: 'idProofDocument', maxCount: 1 },
+]);
+
+/**
+ * Trainer Files Upload Configuration (Photo + ID Document)
+ * - Two fields: trainerPhoto, idProofDocument
+ * - Max size: 5MB per file
+ * - trainerPhoto: images only
+ * - idProofDocument: images + PDF
+ */
+export const uploadTrainerFiles = multer({
+  storage: memoryStorage,
+  fileFilter: (req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
+    if (file.fieldname === 'trainerPhoto') {
+      imageFileFilter(req, file, cb);
+    } else if (file.fieldname === 'idProofDocument') {
+      documentFileFilter(req, file, cb);
+    } else {
+      cb(null, true);
+    }
+  },
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB
+  },
+}).fields([
+  { name: 'trainerPhoto', maxCount: 1 },
+  { name: 'idProofDocument', maxCount: 1 },
+]);
+
+/**
+ * Expense Attachments Upload Configuration
+ * - Array field: attachments
+ * - Max files: 5
+ * - Max size: 10MB per file
+ * - Images + PDF
+ */
+export const uploadExpenseAttachments = multer({
+  storage: memoryStorage,
+  fileFilter: documentFileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB for receipts/invoices
+  },
+}).array('attachments', 5);
+
+// ==================================================
+// Error Handling Middleware
+// ==================================================
+
+/**
+ * Middleware to handle multer errors
+ */
 export const handleUploadError = (err: Error, req: Request, res: Response, next: NextFunction): void => {
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
       res.status(400).json({
         success: false,
         message: 'File size too large. Maximum size is 5MB',
+      });
+      return;
+    }
+    if (err.code === 'LIMIT_FILE_COUNT') {
+      res.status(400).json({
+        success: false,
+        message: 'Too many files. Maximum is 5 files',
       });
       return;
     }
@@ -80,9 +181,48 @@ export const handleUploadError = (err: Error, req: Request, res: Response, next:
   next();
 };
 
-// Utility function to delete old logo file
+// ==================================================
+// Legacy Path Functions (for backward compatibility)
+// These are kept for migration purposes
+// ==================================================
+
+export const getRelativeLogoPath = (filename: string): string => {
+  return `/uploads/gym-logos/${filename}`;
+};
+
+export const getRelativeMemberInquiryPhotoPath = (filename: string): string => {
+  return `/uploads/member-inquiry-photos/${filename}`;
+};
+
+export const getRelativeMemberPhotoPath = (filename: string): string => {
+  return `/uploads/member-photos/${filename}`;
+};
+
+export const getRelativeMemberDocumentPath = (filename: string): string => {
+  return `/uploads/member-documents/${filename}`;
+};
+
+export const getRelativeTrainerPhotoPath = (filename: string): string => {
+  return `/uploads/trainer-photos/${filename}`;
+};
+
+export const getRelativeTrainerDocumentPath = (filename: string): string => {
+  return `/uploads/trainer-documents/${filename}`;
+};
+
+export const getRelativeExpenseAttachmentPath = (filename: string): string => {
+  return `/uploads/expense-attachments/${filename}`;
+};
+
+// ==================================================
+// Legacy Delete Functions (for backward compatibility)
+// These handle deletion of old local files during migration
+// ==================================================
+
+import fs from 'fs';
+
 export const deleteOldLogo = (logoPath: string | null | undefined): void => {
-  if (logoPath) {
+  if (logoPath && !logoPath.startsWith('http')) {
     const fullPath = path.join(process.cwd(), logoPath);
     if (fs.existsSync(fullPath)) {
       try {
@@ -94,145 +234,8 @@ export const deleteOldLogo = (logoPath: string | null | undefined): void => {
   }
 };
 
-// Get the relative path for storing in database
-export const getRelativeLogoPath = (filename: string): string => {
-  return `/uploads/gym-logos/${filename}`;
-};
-
-// Configure storage for member inquiry photos
-const memberInquiryPhotoStorage = multer.diskStorage({
-  destination: (req: Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
-    cb(null, memberInquiryPhotosDir);
-  },
-  filename: (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, `member-inquiry-photo-${uniqueSuffix}${ext}`);
-  }
-});
-
-// Multer configuration for member inquiry photo uploads
-export const uploadMemberInquiryPhoto = multer({
-  storage: memberInquiryPhotoStorage,
-  fileFilter: imageFileFilter,
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB max file size
-  }
-}).single('memberPhoto');
-
-// Get the relative path for member inquiry photo
-export const getRelativeMemberInquiryPhotoPath = (filename: string): string => {
-  return `/uploads/member-inquiry-photos/${filename}`;
-};
-
-// =============================================
-// Member Photo and Document Uploads
-// =============================================
-
-// Ensure member uploads directories exist
-const memberPhotosDir = path.join(uploadsDir, 'member-photos');
-const memberDocumentsDir = path.join(uploadsDir, 'member-documents');
-
-if (!fs.existsSync(memberPhotosDir)) {
-  fs.mkdirSync(memberPhotosDir, { recursive: true });
-}
-
-if (!fs.existsSync(memberDocumentsDir)) {
-  fs.mkdirSync(memberDocumentsDir, { recursive: true });
-}
-
-// Configure storage for member photos
-const memberPhotoStorage = multer.diskStorage({
-  destination: (req: Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
-    cb(null, memberPhotosDir);
-  },
-  filename: (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, `member-photo-${uniqueSuffix}${ext}`);
-  }
-});
-
-// Configure storage for member documents (ID proof)
-const memberDocumentStorage = multer.diskStorage({
-  destination: (req: Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
-    cb(null, memberDocumentsDir);
-  },
-  filename: (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    cb(null, `member-doc-${uniqueSuffix}${ext}`);
-  }
-});
-
-// File filter for documents (images + PDF)
-const documentFileFilter = (req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
-  const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
-  const allowedExtensions = ['.jpeg', '.jpg', '.png', '.gif', '.webp', '.pdf'];
-
-  const ext = path.extname(file.originalname).toLowerCase();
-
-  if (allowedMimes.includes(file.mimetype) && allowedExtensions.includes(ext)) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only image files (JPEG, PNG, GIF, WebP) and PDF documents are allowed'));
-  }
-};
-
-// Multer configuration for member uploads (photo + document)
-export const uploadMemberFiles = multer({
-  storage: multer.diskStorage({
-    destination: (req: Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
-      if (file.fieldname === 'memberPhoto') {
-        cb(null, memberPhotosDir);
-      } else if (file.fieldname === 'idProofDocument') {
-        cb(null, memberDocumentsDir);
-      } else {
-        cb(null, uploadsDir);
-      }
-    },
-    filename: (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-      const ext = path.extname(file.originalname);
-      if (file.fieldname === 'memberPhoto') {
-        cb(null, `member-photo-${uniqueSuffix}${ext}`);
-      } else if (file.fieldname === 'idProofDocument') {
-        cb(null, `member-doc-${uniqueSuffix}${ext}`);
-      } else {
-        cb(null, `file-${uniqueSuffix}${ext}`);
-      }
-    }
-  }),
-  fileFilter: (req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
-    if (file.fieldname === 'memberPhoto') {
-      imageFileFilter(req, file, cb);
-    } else if (file.fieldname === 'idProofDocument') {
-      documentFileFilter(req, file, cb);
-    } else {
-      cb(null, true);
-    }
-  },
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB max file size
-  }
-}).fields([
-  { name: 'memberPhoto', maxCount: 1 },
-  { name: 'idProofDocument', maxCount: 1 }
-]);
-
-// Get the relative path for member photo
-export const getRelativeMemberPhotoPath = (filename: string): string => {
-  return `/uploads/member-photos/${filename}`;
-};
-
-// Get the relative path for member document
-export const getRelativeMemberDocumentPath = (filename: string): string => {
-  return `/uploads/member-documents/${filename}`;
-};
-
-// Utility function to delete old member file
 export const deleteOldMemberFile = (filePath: string | null | undefined): void => {
-  if (filePath) {
+  if (filePath && !filePath.startsWith('http')) {
     const fullPath = path.join(process.cwd(), filePath);
     if (fs.existsSync(fullPath)) {
       try {
@@ -244,76 +247,8 @@ export const deleteOldMemberFile = (filePath: string | null | undefined): void =
   }
 };
 
-// =============================================
-// Trainer Photo and Document Uploads
-// =============================================
-
-// Ensure trainer uploads directories exist
-const trainerPhotosDir = path.join(uploadsDir, 'trainer-photos');
-const trainerDocumentsDir = path.join(uploadsDir, 'trainer-documents');
-
-if (!fs.existsSync(trainerPhotosDir)) {
-  fs.mkdirSync(trainerPhotosDir, { recursive: true });
-}
-
-if (!fs.existsSync(trainerDocumentsDir)) {
-  fs.mkdirSync(trainerDocumentsDir, { recursive: true });
-}
-
-// Multer configuration for trainer uploads (photo + document)
-export const uploadTrainerFiles = multer({
-  storage: multer.diskStorage({
-    destination: (req: Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
-      if (file.fieldname === 'trainerPhoto') {
-        cb(null, trainerPhotosDir);
-      } else if (file.fieldname === 'idProofDocument') {
-        cb(null, trainerDocumentsDir);
-      } else {
-        cb(null, uploadsDir);
-      }
-    },
-    filename: (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-      const ext = path.extname(file.originalname);
-      if (file.fieldname === 'trainerPhoto') {
-        cb(null, `trainer-photo-${uniqueSuffix}${ext}`);
-      } else if (file.fieldname === 'idProofDocument') {
-        cb(null, `trainer-doc-${uniqueSuffix}${ext}`);
-      } else {
-        cb(null, `file-${uniqueSuffix}${ext}`);
-      }
-    }
-  }),
-  fileFilter: (req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
-    if (file.fieldname === 'trainerPhoto') {
-      imageFileFilter(req, file, cb);
-    } else if (file.fieldname === 'idProofDocument') {
-      documentFileFilter(req, file, cb);
-    } else {
-      cb(null, true);
-    }
-  },
-  limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB max file size
-  }
-}).fields([
-  { name: 'trainerPhoto', maxCount: 1 },
-  { name: 'idProofDocument', maxCount: 1 }
-]);
-
-// Get the relative path for trainer photo
-export const getRelativeTrainerPhotoPath = (filename: string): string => {
-  return `/uploads/trainer-photos/${filename}`;
-};
-
-// Get the relative path for trainer document
-export const getRelativeTrainerDocumentPath = (filename: string): string => {
-  return `/uploads/trainer-documents/${filename}`;
-};
-
-// Utility function to delete old trainer file
 export const deleteOldTrainerFile = (filePath: string | null | undefined): void => {
-  if (filePath) {
+  if (filePath && !filePath.startsWith('http')) {
     const fullPath = path.join(process.cwd(), filePath);
     if (fs.existsSync(fullPath)) {
       try {
@@ -325,43 +260,8 @@ export const deleteOldTrainerFile = (filePath: string | null | undefined): void 
   }
 };
 
-// =============================================
-// Expense Attachment Uploads
-// =============================================
-
-// Ensure expense attachments directory exists
-const expenseAttachmentsDir = path.join(uploadsDir, 'expense-attachments');
-
-if (!fs.existsSync(expenseAttachmentsDir)) {
-  fs.mkdirSync(expenseAttachmentsDir, { recursive: true });
-}
-
-// Multer configuration for expense attachments (supports images and PDFs)
-export const uploadExpenseAttachments = multer({
-  storage: multer.diskStorage({
-    destination: (req: Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
-      cb(null, expenseAttachmentsDir);
-    },
-    filename: (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-      const ext = path.extname(file.originalname);
-      cb(null, `expense-attachment-${uniqueSuffix}${ext}`);
-    }
-  }),
-  fileFilter: documentFileFilter, // Allows images + PDF
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB max file size for receipts/invoices
-  }
-}).array('attachments', 5); // Allow up to 5 attachments
-
-// Get the relative path for expense attachment
-export const getRelativeExpenseAttachmentPath = (filename: string): string => {
-  return `/uploads/expense-attachments/${filename}`;
-};
-
-// Utility function to delete expense attachment
 export const deleteExpenseAttachment = (filePath: string | null | undefined): void => {
-  if (filePath) {
+  if (filePath && !filePath.startsWith('http')) {
     const fullPath = path.join(process.cwd(), filePath);
     if (fs.existsSync(fullPath)) {
       try {
@@ -373,7 +273,6 @@ export const deleteExpenseAttachment = (filePath: string | null | undefined): vo
   }
 };
 
-// Utility function to delete multiple expense attachments
 export const deleteExpenseAttachments = (filePaths: string[]): void => {
-  filePaths.forEach(filePath => deleteExpenseAttachment(filePath));
+  filePaths.forEach((filePath) => deleteExpenseAttachment(filePath));
 };
