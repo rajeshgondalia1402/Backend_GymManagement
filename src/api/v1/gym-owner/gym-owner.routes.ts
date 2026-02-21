@@ -5245,4 +5245,68 @@ router.get('/profile', gymOwnerController.getProfile.bind(gymOwnerController));
  */
 router.put('/profile', gymOwnerController.updateProfile.bind(gymOwnerController));
 
+/**
+ * @swagger
+ * /api/v1/gym-owner/files/presigned-url:
+ *   post:
+ *     summary: Get presigned download URL for a file
+ *     description: Generates a temporary signed URL for downloading files from R2 storage
+ *     tags: [Gym Owner - Files]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - url
+ *             properties:
+ *               url:
+ *                 type: string
+ *                 description: The R2 URL of the file
+ *               expiresIn:
+ *                 type: integer
+ *                 description: URL expiration time in seconds (default 3600)
+ *     responses:
+ *       200:
+ *         description: Presigned URL generated successfully
+ *       400:
+ *         description: Invalid request
+ */
+router.post('/files/presigned-url', gymOwnerController.getPresignedUrl.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/files/presigned-urls:
+ *   post:
+ *     summary: Get presigned download URLs for multiple files
+ *     description: Generates temporary signed URLs for downloading multiple files from R2 storage
+ *     tags: [Gym Owner - Files]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - urls
+ *             properties:
+ *               urls:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Array of R2 URLs
+ *               expiresIn:
+ *                 type: integer
+ *                 description: URL expiration time in seconds (default 3600)
+ *     responses:
+ *       200:
+ *         description: Presigned URLs generated successfully
+ */
+router.post('/files/presigned-urls', gymOwnerController.getPresignedUrls.bind(gymOwnerController));
+
 export default router;

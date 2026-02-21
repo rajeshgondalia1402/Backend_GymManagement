@@ -2477,4 +2477,64 @@ router.get('/dashboard-v2/this-month-income', adminController.getThisMonthIncome
  */
 router.get('/dashboard-v2/this-month-expense', adminController.getThisMonthExpenseDetail);
 
+// =============================================
+// File Download - Presigned URLs
+// =============================================
+
+/**
+ * @swagger
+ * /api/v1/admin/files/presigned-url:
+ *   post:
+ *     summary: Get presigned download URL for a file
+ *     tags: [Admin - Files]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - url
+ *             properties:
+ *               url:
+ *                 type: string
+ *               expiresIn:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Presigned URL generated successfully
+ */
+router.post('/files/presigned-url', adminController.getPresignedUrl);
+
+/**
+ * @swagger
+ * /api/v1/admin/files/presigned-urls:
+ *   post:
+ *     summary: Get presigned download URLs for multiple files
+ *     tags: [Admin - Files]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - urls
+ *             properties:
+ *               urls:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               expiresIn:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Presigned URLs generated successfully
+ */
+router.post('/files/presigned-urls', adminController.getPresignedUrls);
+
 export default router;
