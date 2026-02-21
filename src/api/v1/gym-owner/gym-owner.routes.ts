@@ -5110,4 +5110,203 @@ router.get('/reports/income', validate(incomeReportQuerySchema, 'query'), gymOwn
  */
 router.get('/reports/income/:memberId/payments', validate(memberIdParamSchema, 'params'), validate(memberPaymentDetailsQuerySchema, 'query'), gymOwnerController.getMemberPaymentDetails.bind(gymOwnerController));
 
+// ================== GYM OWNER PROFILE ==================
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/profile:
+ *   get:
+ *     summary: Get gym owner profile
+ *     tags: [Gym Owner - Profile]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Profile retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     userId:
+ *                       type: string
+ *                     email:
+ *                       type: string
+ *                     name:
+ *                       type: string
+ *                     isActive:
+ *                       type: boolean
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                     gym:
+ *                       type: object
+ *                       properties:
+ *                         id:
+ *                           type: string
+ *                         name:
+ *                           type: string
+ *                         address1:
+ *                           type: string
+ *                         address2:
+ *                           type: string
+ *                         city:
+ *                           type: string
+ *                         state:
+ *                           type: string
+ *                         zipcode:
+ *                           type: string
+ *                         mobileNo:
+ *                           type: string
+ *                         phoneNo:
+ *                           type: string
+ *                         email:
+ *                           type: string
+ *                         gstRegNo:
+ *                           type: string
+ *                         website:
+ *                           type: string
+ *                         memberSize:
+ *                           type: integer
+ *                         note:
+ *                           type: string
+ *                         gymLogo:
+ *                           type: string
+ *                         isActive:
+ *                           type: boolean
+ *                         createdAt:
+ *                           type: string
+ *                           format: date-time
+ *                         subscriptionPlan:
+ *                           type: object
+ *                         subscriptionStart:
+ *                           type: string
+ *                           format: date-time
+ *                         subscriptionEnd:
+ *                           type: string
+ *                           format: date-time
+ */
+router.get('/profile', gymOwnerController.getProfile.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/profile:
+ *   put:
+ *     summary: Update gym owner profile
+ *     description: Update gym owner profile. Note - Email and mobile number cannot be updated.
+ *     tags: [Gym Owner - Profile]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Owner name
+ *               gymName:
+ *                 type: string
+ *                 description: Gym name
+ *               address1:
+ *                 type: string
+ *               address2:
+ *                 type: string
+ *               city:
+ *                 type: string
+ *               state:
+ *                 type: string
+ *               zipcode:
+ *                 type: string
+ *               phoneNo:
+ *                 type: string
+ *               gstRegNo:
+ *                 type: string
+ *               website:
+ *                 type: string
+ *               memberSize:
+ *                 type: integer
+ *               note:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ *       400:
+ *         description: Invalid request data
+ */
+router.put('/profile', gymOwnerController.updateProfile.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/files/presigned-url:
+ *   post:
+ *     summary: Get presigned download URL for a file
+ *     description: Generates a temporary signed URL for downloading files from R2 storage
+ *     tags: [Gym Owner - Files]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - url
+ *             properties:
+ *               url:
+ *                 type: string
+ *                 description: The R2 URL of the file
+ *               expiresIn:
+ *                 type: integer
+ *                 description: URL expiration time in seconds (default 3600)
+ *     responses:
+ *       200:
+ *         description: Presigned URL generated successfully
+ *       400:
+ *         description: Invalid request
+ */
+router.post('/files/presigned-url', gymOwnerController.getPresignedUrl.bind(gymOwnerController));
+
+/**
+ * @swagger
+ * /api/v1/gym-owner/files/presigned-urls:
+ *   post:
+ *     summary: Get presigned download URLs for multiple files
+ *     description: Generates temporary signed URLs for downloading multiple files from R2 storage
+ *     tags: [Gym Owner - Files]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - urls
+ *             properties:
+ *               urls:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Array of R2 URLs
+ *               expiresIn:
+ *                 type: integer
+ *                 description: URL expiration time in seconds (default 3600)
+ *     responses:
+ *       200:
+ *         description: Presigned URLs generated successfully
+ */
+router.post('/files/presigned-urls', gymOwnerController.getPresignedUrls.bind(gymOwnerController));
+
 export default router;

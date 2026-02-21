@@ -3,6 +3,17 @@ import gymOwnerService from './gym-owner.service';
 import { successResponse, paginatedResponse } from '../../../common/utils';
 import { AuthRequest } from '../../../common/middleware';
 import { BadRequestException } from '../../../common/exceptions';
+import {
+  uploadTrainerPhoto,
+  uploadTrainerDocument,
+  uploadMemberPhoto,
+  uploadMemberDocument,
+  uploadExpenseAttachments as uploadExpenseAttachmentsToR2,
+  deleteOldR2File,
+  getPresignedDownloadUrl,
+  getPresignedDownloadUrls,
+} from '../../../common/services/r2-upload.service';
+import { deleteOldTrainerFile, deleteOldMemberFile } from '../../../common/middleware/upload.middleware';
 
 class GymOwnerController {
   private getGymId(req: AuthRequest): string {
@@ -161,15 +172,37 @@ class GymOwnerController {
     try {
       const gymId = this.getGymId(req);
 
-      // Handle file uploads
+      // Handle file uploads to R2
       const files: { trainerPhoto?: string; idProofDocument?: string } = {};
       if (req.files && typeof req.files === 'object') {
         const uploadedFiles = req.files as { [fieldname: string]: Express.Multer.File[] };
+
+        // Upload trainer photo to R2
         if (uploadedFiles.trainerPhoto && uploadedFiles.trainerPhoto[0]) {
-          files.trainerPhoto = `/uploads/trainer-photos/${uploadedFiles.trainerPhoto[0].filename}`;
+          const file = uploadedFiles.trainerPhoto[0];
+          const result = await uploadTrainerPhoto({
+            buffer: file.buffer,
+            originalname: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size,
+          });
+          if (result.success) {
+            files.trainerPhoto = result.url;
+          }
         }
+
+        // Upload ID document to R2
         if (uploadedFiles.idProofDocument && uploadedFiles.idProofDocument[0]) {
-          files.idProofDocument = `/uploads/trainer-documents/${uploadedFiles.idProofDocument[0].filename}`;
+          const file = uploadedFiles.idProofDocument[0];
+          const result = await uploadTrainerDocument({
+            buffer: file.buffer,
+            originalname: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size,
+          });
+          if (result.success) {
+            files.idProofDocument = result.url;
+          }
         }
       }
 
@@ -184,15 +217,52 @@ class GymOwnerController {
     try {
       const gymId = this.getGymId(req);
 
-      // Handle file uploads
+      // Get existing trainer to delete old files if updating
+      const existingTrainer = await gymOwnerService.getTrainerById(gymId, req.params.id);
+
+      // Handle file uploads to R2
       const files: { trainerPhoto?: string; idProofDocument?: string } = {};
       if (req.files && typeof req.files === 'object') {
         const uploadedFiles = req.files as { [fieldname: string]: Express.Multer.File[] };
+
+        // Upload new trainer photo to R2
         if (uploadedFiles.trainerPhoto && uploadedFiles.trainerPhoto[0]) {
-          files.trainerPhoto = `/uploads/trainer-photos/${uploadedFiles.trainerPhoto[0].filename}`;
+          // Delete old photo (both local and R2)
+          if (existingTrainer.trainerPhoto) {
+            deleteOldTrainerFile(existingTrainer.trainerPhoto);
+            await deleteOldR2File(existingTrainer.trainerPhoto);
+          }
+
+          const file = uploadedFiles.trainerPhoto[0];
+          const result = await uploadTrainerPhoto({
+            buffer: file.buffer,
+            originalname: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size,
+          });
+          if (result.success) {
+            files.trainerPhoto = result.url;
+          }
         }
+
+        // Upload new ID document to R2
         if (uploadedFiles.idProofDocument && uploadedFiles.idProofDocument[0]) {
-          files.idProofDocument = `/uploads/trainer-documents/${uploadedFiles.idProofDocument[0].filename}`;
+          // Delete old document (both local and R2)
+          if (existingTrainer.idProofDocument) {
+            deleteOldTrainerFile(existingTrainer.idProofDocument);
+            await deleteOldR2File(existingTrainer.idProofDocument);
+          }
+
+          const file = uploadedFiles.idProofDocument[0];
+          const result = await uploadTrainerDocument({
+            buffer: file.buffer,
+            originalname: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size,
+          });
+          if (result.success) {
+            files.idProofDocument = result.url;
+          }
         }
       }
 
@@ -307,15 +377,37 @@ class GymOwnerController {
     try {
       const gymId = this.getGymId(req);
 
-      // Handle file uploads
+      // Handle file uploads to R2
       const files: { memberPhoto?: string; idProofDocument?: string } = {};
       if (req.files && typeof req.files === 'object') {
         const uploadedFiles = req.files as { [fieldname: string]: Express.Multer.File[] };
+
+        // Upload member photo to R2
         if (uploadedFiles.memberPhoto && uploadedFiles.memberPhoto[0]) {
-          files.memberPhoto = `/uploads/member-photos/${uploadedFiles.memberPhoto[0].filename}`;
+          const file = uploadedFiles.memberPhoto[0];
+          const result = await uploadMemberPhoto({
+            buffer: file.buffer,
+            originalname: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size,
+          });
+          if (result.success) {
+            files.memberPhoto = result.url;
+          }
         }
+
+        // Upload ID document to R2
         if (uploadedFiles.idProofDocument && uploadedFiles.idProofDocument[0]) {
-          files.idProofDocument = `/uploads/member-documents/${uploadedFiles.idProofDocument[0].filename}`;
+          const file = uploadedFiles.idProofDocument[0];
+          const result = await uploadMemberDocument({
+            buffer: file.buffer,
+            originalname: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size,
+          });
+          if (result.success) {
+            files.idProofDocument = result.url;
+          }
         }
       }
 
@@ -330,15 +422,52 @@ class GymOwnerController {
     try {
       const gymId = this.getGymId(req);
 
-      // Handle file uploads
+      // Get existing member to delete old files if updating
+      const existingMember = await gymOwnerService.getMemberById(gymId, req.params.id);
+
+      // Handle file uploads to R2
       const files: { memberPhoto?: string; idProofDocument?: string } = {};
       if (req.files && typeof req.files === 'object') {
         const uploadedFiles = req.files as { [fieldname: string]: Express.Multer.File[] };
+
+        // Upload new member photo to R2
         if (uploadedFiles.memberPhoto && uploadedFiles.memberPhoto[0]) {
-          files.memberPhoto = `/uploads/member-photos/${uploadedFiles.memberPhoto[0].filename}`;
+          // Delete old photo (both local and R2)
+          if (existingMember.memberPhoto) {
+            deleteOldMemberFile(existingMember.memberPhoto);
+            await deleteOldR2File(existingMember.memberPhoto);
+          }
+
+          const file = uploadedFiles.memberPhoto[0];
+          const result = await uploadMemberPhoto({
+            buffer: file.buffer,
+            originalname: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size,
+          });
+          if (result.success) {
+            files.memberPhoto = result.url;
+          }
         }
+
+        // Upload new ID document to R2
         if (uploadedFiles.idProofDocument && uploadedFiles.idProofDocument[0]) {
-          files.idProofDocument = `/uploads/member-documents/${uploadedFiles.idProofDocument[0].filename}`;
+          // Delete old document (both local and R2)
+          if (existingMember.idProofDocument) {
+            deleteOldMemberFile(existingMember.idProofDocument);
+            await deleteOldR2File(existingMember.idProofDocument);
+          }
+
+          const file = uploadedFiles.idProofDocument[0];
+          const result = await uploadMemberDocument({
+            buffer: file.buffer,
+            originalname: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size,
+          });
+          if (result.success) {
+            files.idProofDocument = result.url;
+          }
         }
       }
 
@@ -871,15 +1000,24 @@ class GymOwnerController {
       const gymId = this.getGymId(req);
       const userId = req.user!.id;
 
-      // Handle file uploads
-      let attachmentPaths: string[] = [];
+      // Handle file uploads to R2
+      let attachmentUrls: string[] = [];
       if (req.files && Array.isArray(req.files)) {
-        attachmentPaths = req.files.map((file: Express.Multer.File) =>
-          `/uploads/expense-attachments/${file.filename}`
+        const uploadResults = await uploadExpenseAttachmentsToR2(
+          req.files.map((file: Express.Multer.File) => ({
+            buffer: file.buffer,
+            originalname: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size,
+          }))
         );
+
+        attachmentUrls = uploadResults
+          .filter((result) => result.success)
+          .map((result) => result.url);
       }
 
-      const expense = await gymOwnerService.createExpense(gymId, userId, req.body, attachmentPaths);
+      const expense = await gymOwnerService.createExpense(gymId, userId, req.body, attachmentUrls);
       successResponse(res, expense, 'Expense created successfully', 201);
     } catch (error) {
       next(error);
@@ -890,19 +1028,28 @@ class GymOwnerController {
     try {
       const gymId = this.getGymId(req);
 
-      // Handle new file uploads
-      let newAttachmentPaths: string[] = [];
+      // Handle new file uploads to R2
+      let newAttachmentUrls: string[] = [];
       if (req.files && Array.isArray(req.files)) {
-        newAttachmentPaths = req.files.map((file: Express.Multer.File) =>
-          `/uploads/expense-attachments/${file.filename}`
+        const uploadResults = await uploadExpenseAttachmentsToR2(
+          req.files.map((file: Express.Multer.File) => ({
+            buffer: file.buffer,
+            originalname: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size,
+          }))
         );
+
+        newAttachmentUrls = uploadResults
+          .filter((result) => result.success)
+          .map((result) => result.url);
       }
 
       const expense = await gymOwnerService.updateExpense(
         gymId,
         req.params.id,
         req.body,
-        newAttachmentPaths.length > 0 ? newAttachmentPaths : undefined
+        newAttachmentUrls.length > 0 ? newAttachmentUrls : undefined
       );
       successResponse(res, expense, 'Expense updated successfully');
     } catch (error) {
@@ -1876,6 +2023,101 @@ class GymOwnerController {
         },
         summary: result.summary,
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ================== GYM OWNER PROFILE ==================
+
+  /**
+   * Get gym owner profile
+   */
+  async getProfile(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const userId = req.user!.id;
+      const profile = await gymOwnerService.getGymOwnerProfile(gymId, userId);
+      successResponse(res, profile, 'Profile retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Update gym owner profile
+   */
+  async updateProfile(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const userId = req.user!.id;
+      const profile = await gymOwnerService.updateGymOwnerProfile(gymId, userId, req.body);
+      successResponse(res, profile, 'Profile updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // =============================================
+  // File Download - Presigned URLs
+  // =============================================
+
+  async getPresignedUrl(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { url, expiresIn = 3600 } = req.body;
+
+      if (!url) {
+        res.status(400).json({
+          success: false,
+          message: 'URL is required',
+        });
+        return;
+      }
+
+      const presignedUrl = await getPresignedDownloadUrl(url, expiresIn);
+
+      if (!presignedUrl) {
+        // If it's a local file path, return the original URL
+        if (url.startsWith('/uploads/')) {
+          successResponse(res, { presignedUrl: url, isLocal: true }, 'Local file URL returned');
+          return;
+        }
+
+        res.status(500).json({
+          success: false,
+          message: 'Failed to generate presigned URL',
+        });
+        return;
+      }
+
+      successResponse(res, { presignedUrl, expiresIn }, 'Presigned URL generated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getPresignedUrls(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { urls, expiresIn = 3600 } = req.body;
+
+      if (!urls || !Array.isArray(urls) || urls.length === 0) {
+        res.status(400).json({
+          success: false,
+          message: 'URLs array is required',
+        });
+        return;
+      }
+
+      const results = await getPresignedDownloadUrls(urls, expiresIn);
+
+      // For local files, return the original URL
+      const processedResults = results.map((result) => ({
+        original: result.original,
+        presignedUrl: result.presigned || (result.original.startsWith('/uploads/') ? result.original : null),
+        isLocal: result.original.startsWith('/uploads/'),
+      }));
+
+      successResponse(res, { urls: processedResults, expiresIn }, 'Presigned URLs generated successfully');
     } catch (error) {
       next(error);
     }

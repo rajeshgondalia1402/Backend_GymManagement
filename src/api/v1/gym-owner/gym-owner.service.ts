@@ -127,6 +127,9 @@ import {
   DashboardRenewalItem,
   DashboardReportParams,
   DashboardReportResponse,
+  // Gym Owner Profile Types
+  GymOwnerProfile,
+  UpdateGymOwnerProfileRequest,
 } from './gym-owner.types';
 
 class GymOwnerService {
@@ -7907,6 +7910,132 @@ class GymOwnerService {
       limit,
       summary,
     };
+  }
+
+  // ================== GYM OWNER PROFILE ==================
+
+  /**
+   * Get gym owner profile including user and gym details
+   */
+  async getGymOwnerProfile(gymId: string, userId: string): Promise<GymOwnerProfile> {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        ownedGym: {
+          include: {
+            subscriptionPlan: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (!user.ownedGym) {
+      throw new NotFoundException('Gym not found for this user');
+    }
+
+    const gym = user.ownedGym;
+
+    return {
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+      isActive: user.isActive,
+      createdAt: user.createdAt,
+      gym: {
+        id: gym.id,
+        name: gym.name,
+        address1: gym.address1 || undefined,
+        address2: gym.address2 || undefined,
+        city: gym.city || undefined,
+        state: gym.state || undefined,
+        zipcode: gym.zipcode || undefined,
+        mobileNo: gym.mobileNo || undefined,
+        phoneNo: gym.phoneNo || undefined,
+        email: gym.email || undefined,
+        gstRegNo: gym.gstRegNo || undefined,
+        website: gym.website || undefined,
+        memberSize: gym.memberSize || undefined,
+        note: gym.note || undefined,
+        gymLogo: gym.gymLogo || undefined,
+        isActive: gym.isActive,
+        createdAt: gym.createdAt,
+        subscriptionPlan: gym.subscriptionPlan
+          ? {
+              id: gym.subscriptionPlan.id,
+              name: gym.subscriptionPlan.name,
+              description: gym.subscriptionPlan.description || undefined,
+            }
+          : undefined,
+        subscriptionStart: gym.subscriptionStart || undefined,
+        subscriptionEnd: gym.subscriptionEnd || undefined,
+      },
+    };
+  }
+
+  /**
+   * Update gym owner profile
+   * Note: Email and mobile number cannot be updated
+   */
+  async updateGymOwnerProfile(
+    gymId: string,
+    userId: string,
+    data: UpdateGymOwnerProfileRequest
+  ): Promise<GymOwnerProfile> {
+    // Verify user owns this gym
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { ownedGym: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (!user.ownedGym || user.ownedGym.id !== gymId) {
+      throw new ForbiddenException('You do not have permission to update this profile');
+    }
+
+    // Update user name if provided
+    if (data.name) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { name: data.name },
+      });
+    }
+
+    // Update gym fields (excluding email and mobileNo)
+    const gymUpdateData: any = {};
+    if (data.gymName !== undefined) gymUpdateData.name = data.gymName;
+    if (data.address1 !== undefined) gymUpdateData.address1 = data.address1;
+    if (data.address2 !== undefined) gymUpdateData.address2 = data.address2;
+    if (data.city !== undefined) gymUpdateData.city = data.city;
+    if (data.state !== undefined) gymUpdateData.state = data.state;
+    if (data.zipcode !== undefined) gymUpdateData.zipcode = data.zipcode;
+    if (data.phoneNo !== undefined) gymUpdateData.phoneNo = data.phoneNo;
+    if (data.gstRegNo !== undefined) gymUpdateData.gstRegNo = data.gstRegNo;
+    if (data.website !== undefined) gymUpdateData.website = data.website;
+    if (data.memberSize !== undefined) gymUpdateData.memberSize = data.memberSize;
+    if (data.note !== undefined) gymUpdateData.note = data.note;
+
+    if (Object.keys(gymUpdateData).length > 0) {
+      await prisma.gym.update({
+        where: { id: gymId },
+        data: gymUpdateData,
+      });
+    }
+
+    // Return updated profile
+    return this.getGymOwnerProfile(gymId, userId);
   }
 }
 
