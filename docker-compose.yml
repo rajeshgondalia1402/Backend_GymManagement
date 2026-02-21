@@ -1,0 +1,19 @@
+
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: gym-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Password@123
+      POSTGRES_DB: gym_management
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
