@@ -4,7 +4,8 @@
   "description": "Gym Member Management System Backend - TypeScript Version",
   "main": "dist/server.js",
   "scripts": {
-    "start": "node dist/server.js",
+    "start": "NODE_ENV=production node dist/server.js",
+    "start:win": "set NODE_ENV=production && node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "npm run prisma:generate && npm run clean && tsc",
     "build:watch": "tsc --watch",
@@ -12,6 +13,7 @@
     "lint:fix": "eslint src --ext .ts --fix",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "prisma:migrate:prod": "prisma migrate deploy",
     "prisma:seed": "node prisma/seed.js",
     "prisma:studio": "prisma studio",
     "clean": "rimraf dist",

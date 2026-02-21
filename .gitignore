@@ -1,6 +1,8 @@
 node_modules
 dist
 .env
+.env.development
+.env.production
 logs/
 
 # Uploads - ignore uploaded files but keep folder structure

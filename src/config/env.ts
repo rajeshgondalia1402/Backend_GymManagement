@@ -1,6 +1,19 @@
 import dotenv from 'dotenv';
+import path from 'path';
+import fs from 'fs';
 
-dotenv.config();
+// Determine environment
+const NODE_ENV = process.env.NODE_ENV || 'development';
+
+// Load environment-specific .env file first, then fall back to .env
+const envFile = path.resolve(process.cwd(), `.env.${NODE_ENV}`);
+const defaultEnvFile = path.resolve(process.cwd(), '.env');
+
+if (fs.existsSync(envFile)) {
+  dotenv.config({ path: envFile });
+} else {
+  dotenv.config({ path: defaultEnvFile });
+}
 
 interface EnvConfig {
   PORT: number;
@@ -46,6 +59,19 @@ class Config {
 
     if (missing.length > 0 && this.isProduction) {
       throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+    }
+
+    // Production-specific validations
+    if (this.isProduction) {
+      if (this.env.JWT_SECRET.includes('CHANGE_ME') || this.env.JWT_SECRET.length < 32) {
+        throw new Error('JWT_SECRET must be a strong secret in production (min 32 chars). Generate with: node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"');
+      }
+      if (this.env.JWT_REFRESH_SECRET.includes('CHANGE_ME') || this.env.JWT_REFRESH_SECRET.length < 32) {
+        throw new Error('JWT_REFRESH_SECRET must be a strong secret in production (min 32 chars).');
+      }
+      if (this.env.FRONTEND_URL.includes('localhost')) {
+        console.warn('⚠️  WARNING: FRONTEND_URL contains "localhost" in production. Update it to your actual domain.');
+      }
     }
   }
 }
