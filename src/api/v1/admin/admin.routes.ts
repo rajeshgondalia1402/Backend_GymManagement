@@ -2537,4 +2537,160 @@ router.post('/files/presigned-url', adminController.getPresignedUrl);
  */
 router.post('/files/presigned-urls', adminController.getPresignedUrls);
 
+// =====================
+// Email Routes
+// =====================
+
+/**
+ * @swagger
+ * /api/v1/admin/send-email:
+ *   post:
+ *     summary: Send a single email
+ *     description: Send an email with HTML content via SMTP. Used for gym inquiry notifications, welcome emails, etc.
+ *     tags: [Admin - Email]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - to
+ *               - subject
+ *               - html
+ *             properties:
+ *               to:
+ *                 type: string
+ *                 format: email
+ *                 description: Recipient email address
+ *                 example: "user@example.com"
+ *               subject:
+ *                 type: string
+ *                 description: Email subject line
+ *                 example: "Welcome to Gym Desk Pro!"
+ *               html:
+ *                 type: string
+ *                 description: Full HTML content of the email
+ *               cc:
+ *                 type: string
+ *                 format: email
+ *                 description: CC email address
+ *               bcc:
+ *                 type: string
+ *                 format: email
+ *                 description: BCC email address
+ *               replyTo:
+ *                 type: string
+ *                 format: email
+ *                 description: Reply-to email address
+ *     responses:
+ *       200:
+ *         description: Email sent successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     success:
+ *                       type: boolean
+ *                     messageId:
+ *                       type: string
+ *                     to:
+ *                       type: string
+ *       400:
+ *         description: Missing required fields
+ *       500:
+ *         description: Failed to send email
+ */
+router.post('/send-email', adminController.sendEmail);
+
+/**
+ * @swagger
+ * /api/v1/admin/send-bulk-emails:
+ *   post:
+ *     summary: Send bulk emails
+ *     description: Send multiple emails in batch. Emails are sent sequentially with a small delay to prevent SMTP rate limiting.
+ *     tags: [Admin - Email]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - emails
+ *             properties:
+ *               emails:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - to
+ *                     - subject
+ *                     - html
+ *                   properties:
+ *                     to:
+ *                       type: string
+ *                       format: email
+ *                     subject:
+ *                       type: string
+ *                     html:
+ *                       type: string
+ *                     cc:
+ *                       type: string
+ *                       format: email
+ *                     bcc:
+ *                       type: string
+ *                       format: email
+ *                     replyTo:
+ *                       type: string
+ *                       format: email
+ *     responses:
+ *       200:
+ *         description: Bulk email operation completed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     totalSent:
+ *                       type: integer
+ *                     totalFailed:
+ *                       type: integer
+ *                     results:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           success:
+ *                             type: boolean
+ *                           messageId:
+ *                             type: string
+ *                           to:
+ *                             type: string
+ *                           error:
+ *                             type: string
+ *       400:
+ *         description: Invalid request body
+ */
+router.post('/send-bulk-emails', adminController.sendBulkEmails);
+
 export default router;
