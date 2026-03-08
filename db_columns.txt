@@ -1,0 +1,565 @@
+﻿DietPlan|id|text|NO||
+DietPlan|name|text|NO||
+DietPlan|description|text|YES||
+DietPlan|calories|integer|YES||
+DietPlan|meals|jsonb|NO||
+DietPlan|isActive|boolean|NO|true|
+DietPlan|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+DietPlan|updatedAt|timestamp without time zone|NO||
+DietPlan|gymId|text|NO||
+ExercisePlan|id|text|NO||
+ExercisePlan|name|text|NO||
+ExercisePlan|description|text|YES||
+ExercisePlan|type|text|YES||
+ExercisePlan|exercises|jsonb|NO||
+ExercisePlan|isActive|boolean|NO|true|
+ExercisePlan|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+ExercisePlan|updatedAt|timestamp without time zone|NO||
+ExercisePlan|gymId|text|NO||
+Gym|id|text|NO||
+Gym|name|text|NO||
+Gym|address|text|YES||
+Gym|phone|text|YES||
+Gym|email|text|YES||
+Gym|logo|text|YES||
+Gym|isActive|boolean|NO|true|
+Gym|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+Gym|updatedAt|timestamp without time zone|NO||
+Gym|ownerId|text|YES||
+Gym|subscriptionPlanId|text|YES||
+Gym|subscriptionStart|timestamp without time zone|YES||
+Gym|subscriptionEnd|timestamp without time zone|YES||
+Gym|address1|text|YES||
+Gym|address2|text|YES||
+Gym|city|text|YES||
+Gym|state|text|YES||
+Gym|zipcode|text|YES||
+Gym|mobileNo|text|YES||
+Gym|phoneNo|text|YES||
+Gym|gstRegNo|text|YES||
+Gym|website|text|YES||
+Gym|note|text|YES||
+Gym|gymLogo|text|YES||
+Gym|memberSize|integer|YES||
+Gym|ownerPassword|text|YES||
+GymSubscriptionPlan|id|text|NO||
+GymSubscriptionPlan|name|text|NO||
+GymSubscriptionPlan|description|text|YES||
+GymSubscriptionPlan|price|numeric|NO||
+GymSubscriptionPlan|durationDays|integer|NO||
+GymSubscriptionPlan|features|text|NO||
+GymSubscriptionPlan|isActive|boolean|NO|true|
+GymSubscriptionPlan|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+GymSubscriptionPlan|updatedAt|timestamp without time zone|NO||
+GymSubscriptionPlan|priceCurrency|text|NO|'INR'::text|
+Inquiry|id|text|NO||
+Inquiry|name|text|NO||
+Inquiry|email|text|YES||
+Inquiry|phone|text|NO||
+Inquiry|source|USER-DEFINED|NO|'WALK_IN'::"InquirySource"|
+Inquiry|interest|text|YES||
+Inquiry|notes|text|YES||
+Inquiry|status|USER-DEFINED|NO|'NEW'::"InquiryStatus"|
+Inquiry|followUpDate|timestamp without time zone|YES||
+Inquiry|isActive|boolean|NO|true|
+Inquiry|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+Inquiry|updatedAt|timestamp without time zone|NO||
+Inquiry|createdBy|text|YES||
+Inquiry|updatedBy|text|YES||
+Inquiry|gymId|text|NO||
+Member|id|text|NO||
+Member|phone|text|YES||
+Member|dateOfBirth|timestamp without time zone|YES||
+Member|gender|text|YES||
+Member|address|text|YES||
+Member|emergencyContact|text|YES||
+Member|healthNotes|text|YES||
+Member|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+Member|updatedAt|timestamp without time zone|NO||
+Member|userId|text|NO||
+Member|gymId|text|NO||
+Member|membershipStart|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+Member|membershipEnd|timestamp without time zone|NO||
+Member|membershipStatus|USER-DEFINED|NO|'ACTIVE'::"SubscriptionStatus"|
+Member|createdBy|text|YES||
+Member|memberType|USER-DEFINED|NO|'REGULAR'::"MemberType"|
+Member|updatedBy|text|YES||
+Member|altContactNo|text|YES||
+Member|anniversaryDate|timestamp without time zone|YES||
+Member|bloodGroup|text|YES||
+Member|idProofDocument|text|YES||
+Member|idProofType|text|YES||
+Member|isActive|boolean|NO|true|
+Member|maritalStatus|text|YES||
+Member|memberId|text|YES||
+Member|memberPhoto|text|YES||
+Member|occupation|text|YES||
+Member|smsFacility|boolean|NO|true|
+Member|afterDiscount|numeric|YES||
+Member|coursePackageId|text|YES||
+Member|extraDiscount|numeric|YES||
+Member|finalFees|numeric|YES||
+Member|maxDiscount|numeric|YES||
+Member|packageFees|numeric|YES||
+Member|hasPTAddon|boolean|NO|false|
+Member|ptAfterDiscount|numeric|YES||
+Member|ptExtraDiscount|numeric|YES||
+Member|ptFinalFees|numeric|YES||
+Member|ptMaxDiscount|numeric|YES||
+Member|ptPackageFees|numeric|YES||
+Member|ptPackageName|text|YES||
+Member|name|text|YES||
+Member|email|text|YES||
+Member|password|text|YES||
+MemberDietAssignment|id|text|NO||
+MemberDietAssignment|memberId|text|NO||
+MemberDietAssignment|dietPlanId|text|NO||
+MemberDietAssignment|assignedAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+MemberDietAssignment|startDate|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+MemberDietAssignment|endDate|timestamp without time zone|YES||
+MemberDietAssignment|isActive|boolean|NO|true|
+MemberDietPlan|id|text|NO||
+MemberDietPlan|memberId|text|NO||
+MemberDietPlan|planName|text|NO||
+MemberDietPlan|description|text|YES||
+MemberDietPlan|calories|integer|YES||
+MemberDietPlan|meals|jsonb|NO||
+MemberDietPlan|startDate|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+MemberDietPlan|endDate|timestamp without time zone|YES||
+MemberDietPlan|isActive|boolean|NO|true|
+MemberDietPlan|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+MemberDietPlan|updatedAt|timestamp without time zone|NO||
+MemberDietPlan|createdBy|text|YES||
+MemberDietPlan|updatedBy|text|YES||
+MemberDietPlan|gymId|text|NO||
+MemberExerciseAssignment|id|text|NO||
+MemberExerciseAssignment|memberId|text|NO||
+MemberExerciseAssignment|exercisePlanId|text|NO||
+MemberExerciseAssignment|assignedAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+MemberExerciseAssignment|dayOfWeek|integer|YES||
+MemberExerciseAssignment|startDate|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+MemberExerciseAssignment|endDate|timestamp without time zone|YES||
+MemberExerciseAssignment|isActive|boolean|NO|true|
+MemberTrainerAssignment|id|text|NO||
+MemberTrainerAssignment|memberId|text|NO||
+MemberTrainerAssignment|trainerId|text|NO||
+MemberTrainerAssignment|assignedAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+MemberTrainerAssignment|isActive|boolean|NO|true|
+PTMember|id|text|NO||
+PTMember|memberId|text|NO||
+PTMember|trainerId|text|NO||
+PTMember|packageName|text|NO||
+PTMember|sessionsTotal|integer|NO|0|
+PTMember|sessionsUsed|integer|NO|0|
+PTMember|sessionDuration|integer|NO|60|
+PTMember|startDate|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+PTMember|endDate|timestamp without time zone|YES||
+PTMember|goals|text|YES||
+PTMember|notes|text|YES||
+PTMember|isActive|boolean|NO|true|
+PTMember|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+PTMember|updatedAt|timestamp without time zone|NO||
+PTMember|createdBy|text|YES||
+PTMember|updatedBy|text|YES||
+PTMember|gymId|text|NO||
+RefreshToken|id|text|NO||
+RefreshToken|token|text|NO||
+RefreshToken|userId|text|NO||
+RefreshToken|expiresAt|timestamp without time zone|NO||
+RefreshToken|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+Rolemaster|Id|text|NO||
+Rolemaster|rolename|text|NO||
+Supplement|id|text|NO||
+Supplement|ptMemberId|text|NO||
+Supplement|name|text|NO||
+Supplement|dosage|text|YES||
+Supplement|frequency|text|YES||
+Supplement|timing|text|YES||
+Supplement|notes|text|YES||
+Supplement|startDate|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+Supplement|endDate|timestamp without time zone|YES||
+Supplement|isActive|boolean|NO|true|
+Supplement|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+Supplement|updatedAt|timestamp without time zone|NO||
+Supplement|createdBy|text|YES||
+Supplement|updatedBy|text|YES||
+Supplement|gymId|text|NO||
+Trainer|id|text|NO||
+Trainer|specialization|text|YES||
+Trainer|experience|integer|YES||
+Trainer|phone|text|YES||
+Trainer|isActive|boolean|NO|true|
+Trainer|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+Trainer|updatedAt|timestamp without time zone|NO||
+Trainer|userId|text|NO||
+Trainer|gymId|text|NO||
+Trainer|createdBy|text|YES||
+Trainer|updatedBy|text|YES||
+Trainer|dateOfBirth|timestamp without time zone|YES||
+Trainer|gender|text|YES||
+Trainer|idProofDocument|text|YES||
+Trainer|idProofType|text|YES||
+Trainer|joiningDate|timestamp without time zone|YES||
+Trainer|salary|numeric|YES||
+Trainer|trainerPhoto|text|YES||
+Trainer|name|text|YES||
+Trainer|email|text|YES||
+Trainer|password|text|YES||
+User|id|text|NO||
+User|email|text|NO||
+User|password|text|NO||
+User|name|text|NO||
+User|isActive|boolean|NO|true|
+User|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+User|updatedAt|timestamp without time zone|NO||
+User|roleId|text|YES||
+admin_expense_group_master|id|text|NO||
+admin_expense_group_master|expenseGroupName|text|NO||
+admin_expense_group_master|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+admin_expense_group_master|updatedAt|timestamp without time zone|NO||
+admin_expense_master|id|text|NO||
+admin_expense_master|expenseDate|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+admin_expense_master|name|text|NO||
+admin_expense_master|expenseGroupId|text|NO||
+admin_expense_master|description|text|YES||
+admin_expense_master|paymentMode|USER-DEFINED|NO||
+admin_expense_master|amount|numeric|NO||
+admin_expense_master|attachments|ARRAY|YES|ARRAY[]::text[]|
+admin_expense_master|createdBy|text|NO||
+admin_expense_master|isActive|boolean|NO|true|
+admin_expense_master|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+admin_expense_master|updatedAt|timestamp without time zone|NO||
+attendance|id|text|NO||
+attendance|memberId|text|NO||
+attendance|gymId|text|NO||
+attendance|attendanceDate|date|NO||
+attendance|checkInTime|timestamp without time zone|NO||
+attendance|checkOutTime|timestamp without time zone|YES||
+attendance|durationMinutes|integer|YES||
+attendance|verificationMethod|USER-DEFINED|NO||
+attendance|verificationScore|integer|YES||
+attendance|deviceId|text|YES||
+attendance|status|USER-DEFINED|NO|'CHECKED_IN'::"AttendanceStatus"|
+attendance|isManualEntry|boolean|NO|false|
+attendance|manualEntryBy|text|YES||
+attendance|manualEntryReason|text|YES||
+attendance|doorUnlocked|boolean|NO|false|
+attendance|doorUnlockTime|timestamp without time zone|YES||
+attendance|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+attendance|updatedAt|timestamp without time zone|NO||
+biometric_device|id|text|NO||
+biometric_device|gymId|text|NO||
+biometric_device|deviceName|text|NO||
+biometric_device|deviceSerial|text|NO||
+biometric_device|deviceModel|text|NO||
+biometric_device|deviceType|USER-DEFINED|NO|'FINGERPRINT'::"DeviceType"|
+biometric_device|vendorId|integer|YES||
+biometric_device|productId|integer|YES||
+biometric_device|ipAddress|text|YES||
+biometric_device|port|integer|YES||
+biometric_device|doorLockType|USER-DEFINED|NO|'NONE'::"DoorLockType"|
+biometric_device|doorLockConfig|jsonb|YES||
+biometric_device|lastSeenAt|timestamp without time zone|YES||
+biometric_device|isOnline|boolean|NO|false|
+biometric_device|location|text|YES||
+biometric_device|isActive|boolean|NO|true|
+biometric_device|registeredAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+biometric_device|registeredBy|text|NO||
+biometric_device|updatedAt|timestamp without time zone|NO||
+bodypartmaster|id|text|NO||
+bodypartmaster|bodyPartName|text|NO||
+bodypartmaster|description|text|YES||
+bodypartmaster|isActive|boolean|NO|true|
+bodypartmaster|gymId|text|NO||
+bodypartmaster|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+bodypartmaster|updatedAt|timestamp without time zone|NO||
+coursepackage|id|text|NO||
+coursepackage|packageName|text|NO||
+coursepackage|description|text|YES||
+coursepackage|fees|numeric|NO||
+coursepackage|maxDiscount|numeric|YES||
+coursepackage|discountType|USER-DEFINED|NO|'PERCENTAGE'::"DiscountType"|
+coursepackage|isActive|boolean|NO|true|
+coursepackage|gymId|text|NO||
+coursepackage|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+coursepackage|updatedAt|timestamp without time zone|NO||
+coursepackage|createdBy|text|YES||
+coursepackage|updatedBy|text|YES||
+coursepackage|coursePackageType|USER-DEFINED|NO|'REGULAR'::"CoursePackageType"|
+coursepackage|Months|integer|NO|1|
+designationmaster|id|text|NO||
+designationmaster|designationName|text|NO||
+designationmaster|gymId|text|NO||
+designationmaster|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+designationmaster|updatedAt|timestamp without time zone|NO||
+dietmeal|id|text|NO||
+dietmeal|dietTemplateId|text|NO||
+dietmeal|mealNo|integer|NO||
+dietmeal|title|text|NO||
+dietmeal|description|text|NO||
+dietmeal|time|text|NO||
+dietmeal|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+dietmeal|updatedAt|timestamp without time zone|NO||
+diettemplate|id|text|NO||
+diettemplate|name|text|NO||
+diettemplate|description|text|YES||
+diettemplate|gymId|text|NO||
+diettemplate|createdBy|text|NO||
+diettemplate|isActive|boolean|NO|true|
+diettemplate|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+diettemplate|updatedAt|timestamp without time zone|NO||
+enquirytypemaster|id|text|NO||
+enquirytypemaster|name|text|NO||
+enquirytypemaster|isActive|boolean|NO|true|
+enquirytypemaster|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+enquirytypemaster|updatedAt|timestamp without time zone|NO||
+enquirytypemaster|createdBy|text|YES||
+expensegroupmaster|id|text|NO||
+expensegroupmaster|expenseGroupName|text|NO||
+expensegroupmaster|gymId|text|NO||
+expensegroupmaster|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+expensegroupmaster|updatedAt|timestamp without time zone|NO||
+expensemaster|id|text|NO||
+expensemaster|expenseDate|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+expensemaster|name|text|NO||
+expensemaster|expenseGroupId|text|NO||
+expensemaster|description|text|YES||
+expensemaster|paymentMode|USER-DEFINED|NO||
+expensemaster|amount|numeric|NO||
+expensemaster|attachments|ARRAY|YES|ARRAY[]::text[]|
+expensemaster|createdBy|text|NO||
+expensemaster|gymId|text|NO||
+expensemaster|isActive|boolean|NO|true|
+expensemaster|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+expensemaster|updatedAt|timestamp without time zone|NO||
+gyminquiry|id|text|NO||
+gyminquiry|gymName|text|NO||
+gyminquiry|address1|text|YES||
+gyminquiry|address2|text|YES||
+gyminquiry|state|text|YES||
+gyminquiry|city|text|YES||
+gyminquiry|mobileNo|text|NO||
+gyminquiry|email|text|YES||
+gyminquiry|subscriptionPlanId|text|NO||
+gyminquiry|note|text|YES||
+gyminquiry|sellerName|text|YES||
+gyminquiry|sellerMobileNo|text|YES||
+gyminquiry|nextFollowupDate|timestamp without time zone|YES||
+gyminquiry|isActive|boolean|NO|true|
+gyminquiry|createdBy|text|YES||
+gyminquiry|updatedBy|text|YES||
+gyminquiry|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+gyminquiry|updatedAt|timestamp without time zone|NO||
+gyminquiry|enquiryTypeId|text|YES||
+gyminquiry|memberSize|integer|YES||
+gyminquiryfollowup|id|text|NO||
+gyminquiryfollowup|gymInquiryId|text|NO||
+gyminquiryfollowup|followupDate|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+gyminquiryfollowup|note|text|YES||
+gyminquiryfollowup|createdBy|text|YES||
+gyminquiryfollowup|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+gymsubscriptionhistory|id|text|NO||
+gymsubscriptionhistory|subscriptionNumber|text|NO||
+gymsubscriptionhistory|gymId|text|NO||
+gymsubscriptionhistory|subscriptionPlanId|text|NO||
+gymsubscriptionhistory|subscriptionStart|timestamp without time zone|NO||
+gymsubscriptionhistory|subscriptionEnd|timestamp without time zone|NO||
+gymsubscriptionhistory|renewalDate|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+gymsubscriptionhistory|previousPlanId|text|YES||
+gymsubscriptionhistory|previousPlanName|text|YES||
+gymsubscriptionhistory|previousSubscriptionEnd|timestamp without time zone|YES||
+gymsubscriptionhistory|renewalType|USER-DEFINED|NO|'NEW'::"GymSubscriptionRenewalType"|
+gymsubscriptionhistory|amount|numeric|NO||
+gymsubscriptionhistory|paymentMode|text|YES||
+gymsubscriptionhistory|paymentStatus|USER-DEFINED|NO|'PAID'::"PaymentStatus"|
+gymsubscriptionhistory|paidAmount|numeric|YES||
+gymsubscriptionhistory|pendingAmount|numeric|YES||
+gymsubscriptionhistory|isActive|boolean|NO|true|
+gymsubscriptionhistory|notes|text|YES||
+gymsubscriptionhistory|createdBy|text|YES||
+gymsubscriptionhistory|updatedBy|text|YES||
+gymsubscriptionhistory|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+gymsubscriptionhistory|updatedAt|timestamp without time zone|NO||
+gymsubscriptionhistory|extraDiscount|numeric|YES||
+gymsubscriptionhistory|planAmount|numeric|YES||
+member_biometric|id|text|NO||
+member_biometric|memberId|text|NO||
+member_biometric|gymId|text|NO||
+member_biometric|fingerTemplate1|bytea|YES||
+member_biometric|fingerTemplate2|bytea|YES||
+member_biometric|fingerPosition1|USER-DEFINED|YES||
+member_biometric|fingerPosition2|USER-DEFINED|YES||
+member_biometric|templateFormat|text|NO|'ISO_19794_2'::text|
+member_biometric|templateVersion|text|NO|'1.0'::text|
+member_biometric|quality1|integer|YES||
+member_biometric|quality2|integer|YES||
+member_biometric|enrolledAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+member_biometric|enrolledBy|text|YES||
+member_biometric|lastUpdatedAt|timestamp without time zone|NO||
+member_biometric|deviceId|text|YES||
+member_biometric|isActive|boolean|NO|true|
+member_biometric|failedAttempts|integer|NO|0|
+member_biometric|lastFailedAt|timestamp without time zone|YES||
+memberbalancepayment|id|text|NO||
+memberbalancepayment|receiptNo|text|NO||
+memberbalancepayment|memberId|text|NO||
+memberbalancepayment|paymentDate|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+memberbalancepayment|contactNo|text|YES||
+memberbalancepayment|paidFees|numeric|NO||
+memberbalancepayment|payMode|text|NO||
+memberbalancepayment|nextPaymentDate|timestamp without time zone|YES||
+memberbalancepayment|notes|text|YES||
+memberbalancepayment|isActive|boolean|NO|true|
+memberbalancepayment|gymId|text|NO||
+memberbalancepayment|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+memberbalancepayment|updatedAt|timestamp without time zone|NO||
+memberbalancepayment|createdBy|text|YES||
+memberbalancepayment|updatedBy|text|YES||
+memberbalancepayment|paymentFor|USER-DEFINED|NO|'REGULAR'::"PaymentFor"|
+memberdiet|id|text|NO||
+memberdiet|memberId|text|NO||
+memberdiet|dietTemplateId|text|NO||
+memberdiet|gymId|text|NO||
+memberdiet|startDate|timestamp without time zone|NO||
+memberdiet|endDate|timestamp without time zone|YES||
+memberdiet|assignedBy|text|NO||
+memberdiet|isActive|boolean|NO|true|
+memberdiet|notes|text|YES||
+memberdiet|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+memberdiet|updatedAt|timestamp without time zone|NO||
+memberdietmeal|id|text|NO||
+memberdietmeal|memberDietId|text|NO||
+memberdietmeal|mealNo|integer|NO||
+memberdietmeal|title|text|NO||
+memberdietmeal|description|text|NO||
+memberdietmeal|time|text|NO||
+memberdietmeal|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+memberdietmeal|updatedAt|timestamp without time zone|NO||
+memberinquiry|id|text|NO||
+memberinquiry|fullName|text|NO||
+memberinquiry|contactNo|text|NO||
+memberinquiry|inquiryDate|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+memberinquiry|dob|timestamp without time zone|YES||
+memberinquiry|followUp|boolean|NO|false|
+memberinquiry|followUpDate|timestamp without time zone|YES||
+memberinquiry|gender|text|YES||
+memberinquiry|address|text|YES||
+memberinquiry|heardAbout|text|YES||
+memberinquiry|userId|text|NO||
+memberinquiry|comments|text|YES||
+memberinquiry|memberPhoto|text|YES||
+memberinquiry|height|numeric|YES||
+memberinquiry|weight|numeric|YES||
+memberinquiry|referenceName|text|YES||
+memberinquiry|gymId|text|NO||
+memberinquiry|isActive|boolean|NO|true|
+memberinquiry|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+memberinquiry|updatedAt|timestamp without time zone|NO||
+memberinquiry|createdBy|text|YES||
+memberinquiry|updatedBy|text|YES||
+membershiprenewal|id|text|NO||
+membershiprenewal|renewalNumber|text|NO||
+membershiprenewal|memberId|text|NO||
+membershiprenewal|gymId|text|NO||
+membershiprenewal|previousMembershipStart|timestamp without time zone|NO||
+membershiprenewal|previousMembershipEnd|timestamp without time zone|NO||
+membershiprenewal|newMembershipStart|timestamp without time zone|NO||
+membershiprenewal|newMembershipEnd|timestamp without time zone|NO||
+membershiprenewal|renewalDate|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+membershiprenewal|renewalType|USER-DEFINED|NO|'STANDARD'::"RenewalType"|
+membershiprenewal|coursePackageId|text|YES||
+membershiprenewal|packageFees|numeric|YES||
+membershiprenewal|maxDiscount|numeric|YES||
+membershiprenewal|afterDiscount|numeric|YES||
+membershiprenewal|extraDiscount|numeric|YES||
+membershiprenewal|finalFees|numeric|YES||
+membershiprenewal|paymentStatus|USER-DEFINED|NO|'PENDING'::"PaymentStatus"|
+membershiprenewal|paymentMode|text|YES||
+membershiprenewal|paidAmount|numeric|YES||
+membershiprenewal|pendingAmount|numeric|YES||
+membershiprenewal|notes|text|YES||
+membershiprenewal|isActive|boolean|NO|true|
+membershiprenewal|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+membershiprenewal|updatedAt|timestamp without time zone|NO||
+membershiprenewal|createdBy|text|YES||
+membershiprenewal|updatedBy|text|YES||
+occupationmaster|id|text|NO||
+occupationmaster|occupationName|text|NO||
+occupationmaster|description|text|YES||
+occupationmaster|isActive|boolean|NO|true|
+occupationmaster|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+occupationmaster|updatedAt|timestamp without time zone|NO||
+occupationmaster|createdBy|text|YES||
+passwordresethistory|id|text|NO||
+passwordresethistory|userId|text|NO||
+passwordresethistory|roleId|text|YES||
+passwordresethistory|roleName|text|YES||
+passwordresethistory|resetBy|text|YES||
+passwordresethistory|resetMethod|text|NO|'MANUAL'::text|
+passwordresethistory|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+passwordresethistory|email|text|YES||
+passwordresethistory|resetByEmail|text|YES||
+passwordresethistory|targetTable|text|YES||
+passwordresethistory|gymId|text|YES||
+passwordresethistory|ipAddress|text|YES||
+paymenttypemaster|id|text|NO||
+paymenttypemaster|paymentTypeName|text|NO||
+paymenttypemaster|description|text|YES||
+paymenttypemaster|isActive|boolean|NO|true|
+paymenttypemaster|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+paymenttypemaster|updatedAt|timestamp without time zone|NO||
+paymenttypemaster|createdBy|text|YES||
+plancategorymaster|id|text|NO||
+plancategorymaster|categoryName|text|NO||
+plancategorymaster|description|text|YES||
+plancategorymaster|isActive|boolean|NO|true|
+plancategorymaster|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+plancategorymaster|updatedAt|timestamp without time zone|NO||
+plancategorymaster|createdBy|text|YES||
+ptsessioncredit|id|text|NO||
+ptsessioncredit|memberId|text|NO||
+ptsessioncredit|sessionCredits|integer|NO||
+ptsessioncredit|originalPackage|text|NO||
+ptsessioncredit|creditDate|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+ptsessioncredit|expiryDate|timestamp without time zone|NO||
+ptsessioncredit|usedCredits|integer|NO|0|
+ptsessioncredit|reason|text|YES||
+ptsessioncredit|notes|text|YES||
+ptsessioncredit|isActive|boolean|NO|true|
+ptsessioncredit|gymId|text|NO||
+ptsessioncredit|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+ptsessioncredit|updatedAt|timestamp without time zone|NO||
+ptsessioncredit|createdBy|text|YES||
+ptsessioncredit|updatedBy|text|YES||
+trainersalarysettlement|id|text|NO||
+trainersalarysettlement|trainerId|text|NO||
+trainersalarysettlement|trainerName|text|NO||
+trainersalarysettlement|mobileNumber|text|YES||
+trainersalarysettlement|joiningDate|timestamp without time zone|YES||
+trainersalarysettlement|monthlySalary|numeric|NO||
+trainersalarysettlement|salaryMonth|text|NO||
+trainersalarysettlement|salarySentDate|timestamp without time zone|YES||
+trainersalarysettlement|totalDaysInMonth|integer|NO||
+trainersalarysettlement|presentDays|integer|NO||
+trainersalarysettlement|absentDays|integer|NO||
+trainersalarysettlement|discountDays|integer|NO|0|
+trainersalarysettlement|payableDays|integer|NO||
+trainersalarysettlement|calculatedSalary|numeric|NO||
+trainersalarysettlement|incentiveAmount|numeric|NO|0|
+trainersalarysettlement|incentiveType|USER-DEFINED|YES||
+trainersalarysettlement|paymentMode|USER-DEFINED|NO||
+trainersalarysettlement|finalPayableAmount|numeric|NO||
+trainersalarysettlement|remarks|text|YES||
+trainersalarysettlement|gymId|text|NO||
+trainersalarysettlement|createdBy|text|NO||
+trainersalarysettlement|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+trainersalarysettlement|updatedAt|timestamp without time zone|NO||
+workoutexercisemaster|id|text|NO||
+workoutexercisemaster|exerciseName|text|NO||
+workoutexercisemaster|shortCode|character varying|YES||20
+workoutexercisemaster|description|text|YES||
+workoutexercisemaster|isActive|boolean|NO|true|
+workoutexercisemaster|gymId|text|NO||
+workoutexercisemaster|createdAt|timestamp without time zone|NO|CURRENT_TIMESTAMP|
+workoutexercisemaster|updatedAt|timestamp without time zone|NO||
+workoutexercisemaster|bodyPartId|text|YES||

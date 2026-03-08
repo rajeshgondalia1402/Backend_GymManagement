@@ -1,5 +1,6 @@
 export interface LoginRequest {
-  email: string;
+  email?: string;     // for gym owners
+  mobileNo?: string;  // for members / trainers / gym owners
   password: string;
 }
 

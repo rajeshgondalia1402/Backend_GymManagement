@@ -10,8 +10,7 @@ export interface Trainer {
   dateOfBirth?: Date;
   joiningDate?: Date;
   salary?: number;
-  /** Masked password hint showing only last 4 characters (e.g., '****word') - never exposes full password */
-  passwordHint?: string;
+  password?: string;
   trainerPhoto?: string;
   idProofType?: string;
   idProofDocument?: string;
@@ -532,6 +531,7 @@ export interface ExercisePlan {
 export interface CreateExercisePlanRequest {
   name: string;
   description?: string;
+  type?: string;
   exercises?: any[];
   durationMinutes?: number;
   difficulty?: string;
