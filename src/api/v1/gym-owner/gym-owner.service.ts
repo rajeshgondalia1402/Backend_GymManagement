@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import { randomUUID } from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { prisma } from '../../../config/database';
@@ -752,6 +753,14 @@ class GymOwnerService {
   }
 
   // Trainers
+  // Returns plain text if stored as plain text; hides bcrypt hashes from the response
+  private getPlainPassword(password: string | null): string | undefined {
+    if (!password) return undefined;
+    // bcrypt hashes start with $2b$ or $2a$
+    if (password.startsWith('$2b$') || password.startsWith('$2a$')) return undefined;
+    return password;
+  }
+
   async getTrainers(gymId: string, params: PaginationParams): Promise<{ trainers: Trainer[]; total: number }> {
     const { page, limit, search, sortBy = 'createdAt', sortOrder = 'desc' } = params;
     const skip = (page - 1) * limit;
@@ -792,7 +801,7 @@ class GymOwnerService {
       dateOfBirth: t.dateOfBirth || undefined,
       joiningDate: t.joiningDate || undefined,
       salary: t.salary ? Number(t.salary) : undefined,
-      passwordHint: undefined, // Hashed password - use reset if needed
+      password: this.getPlainPassword(t.password),
       trainerPhoto: t.trainerPhoto || undefined,
       idProofType: t.idProofType || undefined,
       idProofDocument: t.idProofDocument || undefined,
@@ -828,7 +837,7 @@ class GymOwnerService {
       dateOfBirth: trainer.dateOfBirth || undefined,
       joiningDate: trainer.joiningDate || undefined,
       salary: trainer.salary ? Number(trainer.salary) : undefined,
-      passwordHint: undefined, // Hashed password - use reset if needed
+      password: this.getPlainPassword(trainer.password),
       trainerPhoto: trainer.trainerPhoto || undefined,
       idProofType: trainer.idProofType || undefined,
       idProofDocument: trainer.idProofDocument || undefined,
@@ -869,7 +878,7 @@ class GymOwnerService {
           gymId,
           name: `${data.firstName} ${data.lastName}`,
           email: data.email,
-          password: data.password ? hashedPassword : null, // Store hashed password only if provided
+          password: data.password || null, // Plain text password visible to gym owner
           phone: data.phone,
           specialization: data.specialization,
           experience: data.experience,
@@ -901,7 +910,7 @@ class GymOwnerService {
       dateOfBirth: result.dateOfBirth || undefined,
       joiningDate: result.joiningDate || undefined,
       salary: result.salary ? Number(result.salary) : undefined,
-      passwordHint: maskPassword(data.password), // Mask original plain text on create
+      password: data.password || undefined,
       trainerPhoto: result.trainerPhoto || undefined,
       idProofType: result.idProofType || undefined,
       idProofDocument: result.idProofDocument || undefined,
@@ -957,9 +966,9 @@ class GymOwnerService {
       if (data.salary !== undefined) updateData.salary = data.salary;
       if (data.idProofType !== undefined) updateData.idProofType = data.idProofType;
       if (data.isActive !== undefined) updateData.isActive = data.isActive;
-      // Store hashed password in Trainer table
+      // Store plain text password in Trainer table for gym owner visibility
       if (data.password) {
-        updateData.password = await bcrypt.hash(data.password, 10);
+        updateData.password = data.password;
       }
 
       // Handle file uploads
@@ -989,7 +998,7 @@ class GymOwnerService {
       dateOfBirth: result.dateOfBirth || undefined,
       joiningDate: result.joiningDate || undefined,
       salary: result.salary ? Number(result.salary) : undefined,
-      passwordHint: data.password ? maskPassword(data.password) : undefined, // Mask original plain text if provided
+      password: data.password || undefined,
       trainerPhoto: result.trainerPhoto || undefined,
       idProofType: result.idProofType || undefined,
       idProofDocument: result.idProofDocument || undefined,
@@ -1036,10 +1045,10 @@ class GymOwnerService {
         data: { password: hashedPassword }
       });
 
-      // Update hashed password in Trainer table
+      // Store plain text password in Trainer table for gym owner visibility
       await tx.trainer.update({
         where: { id: trainerId },
-        data: { password: hashedPassword }
+        data: { password: temporaryPassword }
       });
 
       // Log password reset in PasswordResetHistory
@@ -1095,7 +1104,7 @@ class GymOwnerService {
       dateOfBirth: updatedTrainer.dateOfBirth || undefined,
       joiningDate: updatedTrainer.joiningDate || undefined,
       salary: updatedTrainer.salary ? Number(updatedTrainer.salary) : undefined,
-      passwordHint: undefined, // Hashed password - use reset if needed
+      password: this.getPlainPassword(updatedTrainer.password),
       trainerPhoto: updatedTrainer.trainerPhoto || undefined,
       idProofType: updatedTrainer.idProofType || undefined,
       idProofDocument: updatedTrainer.idProofDocument || undefined,
@@ -1365,8 +1374,11 @@ class GymOwnerService {
   }
 
   async createMember(gymId: string, data: CreateMemberRequest, files?: { memberPhoto?: string; idProofDocument?: string }): Promise<Member> {
-    const existingUser = await prisma.user.findUnique({ where: { email: data.email } });
-    if (existingUser) throw new ConflictException('User with this email already exists');
+    // Only check for duplicate mobile number within the gym
+    if (data.phone) {
+      const existingMobileMember = await prisma.member.findFirst({ where: { gymId, phone: data.phone } });
+      if (existingMobileMember) throw new ConflictException('A member with this mobile number already exists');
+    }
 
     const gym = await prisma.gym.findUnique({ where: { id: gymId } });
     if (!gym) throw new NotFoundException('Gym not found');
@@ -1398,9 +1410,12 @@ class GymOwnerService {
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // Default 30 days
 
     const result = await prisma.$transaction(async (tx) => {
+      // Use a system-generated unique email for the User record so the same contact
+      // email can be reused across multiple members. The actual contact email is
+      // stored only in the Member table.
       const user = await tx.user.create({
         data: {
-          email: data.email,
+          email: `member_${randomUUID()}@gym-internal.local`,
           password: hashedPassword,
           name: `${data.firstName} ${data.lastName}`,
           roleId: memberRole.Id,
@@ -1982,10 +1997,19 @@ class GymOwnerService {
   async updateExercisePlan(gymId: string, planId: string, data: UpdateExercisePlanRequest): Promise<ExercisePlan> {
     await this.getExercisePlanById(gymId, planId);
 
+    // Check if any members are assigned to this plan
+    const assignmentCount = await prisma.memberExerciseAssignment.count({
+      where: { exercisePlanId: planId, isActive: true },
+    });
+    if (assignmentCount > 0) {
+      throw new BadRequestException('Cannot update exercise plan that has active member assignments. Remove all member assignments first.');
+    }
+
     const updateData: any = {};
     if (data.name) updateData.name = data.name;
-    if (data.description) updateData.description = data.description;
+    if (data.description !== undefined) updateData.description = data.description;
     if (data.exercises) updateData.exercises = data.exercises;
+    if (data.type !== undefined) updateData.type = data.type;
     if (data.difficulty) updateData.type = data.difficulty;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
 

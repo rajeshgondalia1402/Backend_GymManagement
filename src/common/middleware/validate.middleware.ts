@@ -40,9 +40,13 @@ export const gymIdParamSchema = z.object({
 
 // Auth validation schemas
 export const loginSchema = z.object({
-  email: z.string().email('Invalid email format'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-});
+  email: z.string().optional(),
+  mobileNo: z.string().optional(),
+  password: z.string().min(1, 'Password is required'),
+}).refine(
+  (data) => data.email || data.mobileNo,
+  { message: 'Either email or mobile number is required', path: ['email'] }
+);
 
 export const refreshTokenSchema = z.object({
   refreshToken: z.string().min(1, 'Refresh token is required'),
@@ -453,14 +457,14 @@ const dailyExercisesSchema = z.object({
 export const createExercisePlanSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   description: z.string().optional(),
-  type: z.enum(['general', 'daily']).optional(),
+  type: z.string().optional(),
   // Exercises can be either an array (general plan) or object with day keys (daily plan)
   exercises: z.union([
     z.array(exerciseItemSchema),
     dailyExercisesSchema
   ]).optional(),
   durationMinutes: z.number().optional(),
-  difficulty: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']).optional(),
+  difficulty: z.string().optional(),
   isActive: z.boolean().optional().default(true),
 });
 

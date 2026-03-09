@@ -10,6 +10,11 @@ import {
   getPresignedDownloadUrl,
   getPresignedDownloadUrls,
 } from '../../../common/services/r2-upload.service';
+import {
+  sendEmail as sendEmailService,
+  sendBulkEmails as sendBulkEmailsService,
+} from '../../../common/services/email.service';
+import { SendEmailRequest, SendBulkEmailsRequest } from './admin.types';
 
 class AdminController {
   // Dashboard
@@ -1110,6 +1115,67 @@ class AdminController {
       }));
 
       successResponse(res, { urls: processedResults, expiresIn }, 'Presigned URLs generated successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Email Endpoints
+  async sendEmail(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { to, subject, html, cc, bcc, replyTo } = req.body as SendEmailRequest;
+
+      if (!to || !subject || !html) {
+        res.status(400).json({
+          success: false,
+          message: 'Missing required fields: to, subject, html',
+        });
+        return;
+      }
+
+      const result = await sendEmailService({ to, subject, html, cc, bcc, replyTo });
+
+      if (result.success) {
+        successResponse(res, result, 'Email sent successfully');
+      } else {
+        res.status(500).json({
+          success: false,
+          message: 'Failed to send email',
+          error: result.error,
+        });
+      }
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async sendBulkEmails(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { emails } = req.body as SendBulkEmailsRequest;
+
+      if (!emails || !Array.isArray(emails) || emails.length === 0) {
+        res.status(400).json({
+          success: false,
+          message: 'emails array is required and must not be empty',
+        });
+        return;
+      }
+
+      // Validate each email in the array
+      for (let i = 0; i < emails.length; i++) {
+        const email = emails[i];
+        if (!email.to || !email.subject || !email.html) {
+          res.status(400).json({
+            success: false,
+            message: `Email at index ${i} is missing required fields: to, subject, html`,
+          });
+          return;
+        }
+      }
+
+      const result = await sendBulkEmailsService(emails);
+
+      successResponse(res, result, `Bulk email completed: ${result.totalSent} sent, ${result.totalFailed} failed`);
     } catch (error) {
       next(error);
     }

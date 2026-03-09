@@ -8,24 +8,27 @@ datasource db {
 }
 
 model User {
-  id                      String          @id @default(uuid())
-  email                   String          @unique
-  password                String
-  name                    String
-  isActive                Boolean         @default(true)
-  createdAt               DateTime        @default(now())
-  updatedAt               DateTime        @updatedAt
-  roleId                  String?
-  ownedGym                Gym?            @relation("GymOwner")
-  memberProfile           Member?
-  refreshTokens           RefreshToken[]
-  trainerProfile          Trainer?
-  role                    Rolemaster?     @relation(fields: [roleId], references: [Id])
-  memberInquiries         MemberInquiry[]
-  createdDietTemplates    DietTemplate[]  @relation("DietTemplateCreator")
-  assignedMemberDiets     MemberDiet[]    @relation("MemberDietAssigner")
-  passwordResetHistory    PasswordResetHistory[]
-  adminExpenses           AdminExpenseMaster[]
+  id                   String                 @id @default(uuid())
+  email                String                 @unique
+  password             String
+  name                 String
+  isActive             Boolean                @default(true)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  roleId               String?
+  ownedGym             Gym?                   @relation("GymOwner")
+  memberProfile        Member?
+  refreshTokens        RefreshToken[]
+  trainerProfile       Trainer?
+  role                 Rolemaster?            @relation(fields: [roleId], references: [Id])
+  memberInquiries      MemberInquiry[]
+  createdDietTemplates DietTemplate[]         @relation("DietTemplateCreator")
+  assignedMemberDiets  MemberDiet[]           @relation("MemberDietAssigner")
+  passwordResetHistory PasswordResetHistory[]
+  adminExpenses        AdminExpenseMaster[]
+
+  // Biometric Attendance Relations
+  enrolledBiometrics MemberBiometric[] // Biometrics enrolled by this user
 
   @@index([email])
   @@index([roleId])
@@ -44,16 +47,16 @@ model RefreshToken {
 }
 
 model GymSubscriptionPlan {
-  id            String   @id @default(uuid())
-  name          String
-  description   String?
-  price         Decimal  @db.Decimal(10, 2)
-  durationDays  Int
-  features      String
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  priceCurrency String   @default("INR")
+  id                  String                   @id @default(uuid())
+  name                String
+  description         String?
+  price               Decimal                  @db.Decimal(10, 2)
+  durationDays        Int
+  features            String
+  isActive            Boolean                  @default(true)
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+  priceCurrency       String                   @default("INR")
   gyms                Gym[]
   subscriptionHistory GymSubscriptionHistory[]
   gymInquiries        GymInquiry[]
@@ -63,49 +66,54 @@ model GymSubscriptionPlan {
 }
 
 model Gym {
-  id                 String               @id @default(uuid())
-  name               String
-  address            String?              // Legacy field - use address1, address2 instead
-  address1           String?              // Primary address line
-  address2           String?              // Secondary address line
-  city               String?
-  state              String?
-  zipcode            String?              // Only numbers allowed (validated at API level)
-  phone              String?              // Legacy field - use phoneNo instead
-  mobileNo           String?              // Only numbers allowed (validated at API level)
-  phoneNo            String?              // Only numbers allowed (validated at API level)
-  email              String?              // Email with validation at API level
-  gstRegNo           String?              // GST Registration Number
-  website            String?
-  memberSize         Int?                 // Expected number of members
-  note               String?              // Terms and Conditions shown on receipts
-  logo               String?              // Legacy field - use gymLogo instead
-  gymLogo            String?              // Path to gym logo image
-  isActive           Boolean              @default(true)
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
-  ownerId            String?              @unique
-  subscriptionPlanId String?
-  ownerPassword      String?              // Plain text password for admin display hint
-  subscriptionStart  DateTime?
-  subscriptionEnd    DateTime?
-  dietPlans          DietPlan[]
-  exercisePlans      ExercisePlan[]
-  owner              User?                @relation("GymOwner", fields: [ownerId], references: [id])
-  subscriptionPlan   GymSubscriptionPlan? @relation(fields: [subscriptionPlanId], references: [id])
-  members            Member[]
-  trainers           Trainer[]
-  expenseGroups      ExpenseGroupMaster[]
-  expenses           ExpenseMaster[]
-  designations       DesignationMaster[]
-  bodyParts          BodyPartMaster[]
-  workoutExercises   WorkoutExerciseMaster[]
-  memberInquiries    MemberInquiry[]
-  coursePackages     CoursePackage[]
-  dietTemplates      DietTemplate[]
-  memberDiets        MemberDiet[]
-  salarySettlements  TrainerSalarySettlement[]
+  id                  String                    @id @default(uuid())
+  name                String
+  address             String? // Legacy field - use address1, address2 instead
+  address1            String? // Primary address line
+  address2            String? // Secondary address line
+  city                String?
+  state               String?
+  zipcode             String? // Only numbers allowed (validated at API level)
+  phone               String? // Legacy field - use phoneNo instead
+  mobileNo            String? // Only numbers allowed (validated at API level)
+  phoneNo             String? // Only numbers allowed (validated at API level)
+  email               String? // Email with validation at API level
+  gstRegNo            String? // GST Registration Number
+  website             String?
+  memberSize          Int? // Expected number of members
+  note                String? // Terms and Conditions shown on receipts
+  logo                String? // Legacy field - use gymLogo instead
+  gymLogo             String? // Path to gym logo image
+  isActive            Boolean                   @default(true)
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+  ownerId             String?                   @unique
+  subscriptionPlanId  String?
+  ownerPassword       String? // Plain text password for admin display hint
+  subscriptionStart   DateTime?
+  subscriptionEnd     DateTime?
+  dietPlans           DietPlan[]
+  exercisePlans       ExercisePlan[]
+  owner               User?                     @relation("GymOwner", fields: [ownerId], references: [id])
+  subscriptionPlan    GymSubscriptionPlan?      @relation(fields: [subscriptionPlanId], references: [id])
+  members             Member[]
+  trainers            Trainer[]
+  expenseGroups       ExpenseGroupMaster[]
+  expenses            ExpenseMaster[]
+  designations        DesignationMaster[]
+  bodyParts           BodyPartMaster[]
+  workoutExercises    WorkoutExerciseMaster[]
+  memberInquiries     MemberInquiry[]
+  coursePackages      CoursePackage[]
+  dietTemplates       DietTemplate[]
+  memberDiets         MemberDiet[]
+  salarySettlements   TrainerSalarySettlement[]
   subscriptionHistory GymSubscriptionHistory[]
+
+  // Biometric Attendance Relations
+  biometricDevices BiometricDevice[]
+  memberBiometrics MemberBiometric[]
+  attendances      Attendance[]
 
   @@index([ownerId])
   @@index([city])
@@ -115,32 +123,32 @@ model Gym {
 }
 
 model Trainer {
-  id              String                    @id @default(uuid())
-  name            String?                   // Trainer's full name (synced from User table)
-  email           String?                   @unique // Trainer's email (synced from User table)
-  password        String?                   // Hashed password for easy management
-  specialization  String?
-  experience      Int?
-  phone           String?
-  gender          String?                   // Male, Female, Other
-  dateOfBirth     DateTime?                 // Trainer's date of birth
-  joiningDate     DateTime?                 // Date when trainer joined the gym
-  salary          Decimal?                  @db.Decimal(10, 2) // Monthly salary
-  trainerPhoto    String?                   // Path to trainer's passport size photo
-  idProofType     String?                   // Type of ID proof (Aadhar, PAN, etc.)
-  idProofDocument String?                   // Path to uploaded ID document
-  isActive        Boolean                   @default(true)
-  createdAt       DateTime                  @default(now())
-  updatedAt       DateTime                  @updatedAt
-  createdBy       String?
-  updatedBy       String?
-  userId          String                    @unique
-  gymId           String
-  members         MemberTrainerAssignment[]
-  ptMembers       PTMember[]
+  id                String                    @id @default(uuid())
+  name              String? // Trainer's full name (synced from User table)
+  email             String?                   @unique // Trainer's email (synced from User table)
+  password          String? // Plain text password visible to gym owner
+  specialization    String?
+  experience        Int?
+  phone             String?
+  gender            String? // Male, Female, Other
+  dateOfBirth       DateTime? // Trainer's date of birth
+  joiningDate       DateTime? // Date when trainer joined the gym
+  salary            Decimal?                  @db.Decimal(10, 2) // Monthly salary
+  trainerPhoto      String? // Path to trainer's passport size photo
+  idProofType       String? // Type of ID proof (Aadhar, PAN, etc.)
+  idProofDocument   String? // Path to uploaded ID document
+  isActive          Boolean                   @default(true)
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+  createdBy         String?
+  updatedBy         String?
+  userId            String                    @unique
+  gymId             String
+  members           MemberTrainerAssignment[]
+  ptMembers         PTMember[]
   salarySettlements TrainerSalarySettlement[]
-  gym             Gym                       @relation(fields: [gymId], references: [id], onDelete: Cascade)
-  user            User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  gym               Gym                       @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  user              User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([gymId])
   @@index([isActive])
@@ -148,53 +156,53 @@ model Trainer {
 }
 
 model Member {
-  id                  String                     @id @default(uuid())
-  name                String?                    // Member's full name (synced from User table)
-  email               String?                    @unique // Member's email (synced from User table)
-  password            String?                    // Hashed password for easy management
-  memberId            String?                    // Auto-generated member ID (e.g., 1413)
-  phone               String?
-  altContactNo        String?                    // Alternate contact number
-  dateOfBirth         DateTime?
-  gender              String?
-  address             String?
-  occupation          String?                    // Member's occupation
-  maritalStatus       String?                    // Marital status
-  bloodGroup          String?                    // Blood group
-  anniversaryDate     DateTime?                  // Anniversary date
-  emergencyContact    String?
-  healthNotes         String?
-  idProofType         String?                    // Type of ID proof (Aadhar, PAN, etc.)
-  idProofDocument     String?                    // Path to uploaded ID document
-  memberPhoto         String?                    // Path to member photo
-  smsFacility         Boolean                    @default(true)  // SMS facility preference
-  isActive            Boolean                    @default(true)  // For soft delete
-  memberType          MemberType                 @default(REGULAR)
-  createdAt           DateTime                   @default(now())
-  updatedAt           DateTime                   @updatedAt
-  createdBy           String?
-  updatedBy           String?
-  userId              String                     @unique
-  gymId               String
-  membershipStart     DateTime                   @default(now())
-  membershipEnd       DateTime
-  coursePackageId     String?                    // Reference to course package
-  packageFees         Decimal?                   @db.Decimal(10, 2) // Original package fees
-  maxDiscount         Decimal?                   @db.Decimal(10, 2) // Maximum allowed discount
-  afterDiscount       Decimal?                   @db.Decimal(10, 2) // Amount after applying max discount
-  extraDiscount       Decimal?                   @db.Decimal(10, 2) // Additional extra discount
-  finalFees           Decimal?                   @db.Decimal(10, 2) // Final fees after all discounts
-  membershipStatus    SubscriptionStatus         @default(ACTIVE)
-  
+  id               String             @id @default(uuid())
+  name             String? // Member's full name (synced from User table)
+  email            String? // Member's email (contact email, not unique)
+  password         String? // Hashed password for easy management
+  memberId         String? // Auto-generated member ID (e.g., 1413)
+  phone            String?
+  altContactNo     String? // Alternate contact number
+  dateOfBirth      DateTime?
+  gender           String?
+  address          String?
+  occupation       String? // Member's occupation
+  maritalStatus    String? // Marital status
+  bloodGroup       String? // Blood group
+  anniversaryDate  DateTime? // Anniversary date
+  emergencyContact String?
+  healthNotes      String?
+  idProofType      String? // Type of ID proof (Aadhar, PAN, etc.)
+  idProofDocument  String? // Path to uploaded ID document
+  memberPhoto      String? // Path to member photo
+  smsFacility      Boolean            @default(true) // SMS facility preference
+  isActive         Boolean            @default(true) // For soft delete
+  memberType       MemberType         @default(REGULAR)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  createdBy        String?
+  updatedBy        String?
+  userId           String             @unique
+  gymId            String
+  membershipStart  DateTime           @default(now())
+  membershipEnd    DateTime
+  coursePackageId  String? // Reference to course package
+  packageFees      Decimal?           @db.Decimal(10, 2) // Original package fees
+  maxDiscount      Decimal?           @db.Decimal(10, 2) // Maximum allowed discount
+  afterDiscount    Decimal?           @db.Decimal(10, 2) // Amount after applying max discount
+  extraDiscount    Decimal?           @db.Decimal(10, 2) // Additional extra discount
+  finalFees        Decimal?           @db.Decimal(10, 2) // Final fees after all discounts
+  membershipStatus SubscriptionStatus @default(ACTIVE)
+
   // PT Addon Fields - For combined Regular + PT memberships
-  hasPTAddon          Boolean                    @default(false)  // Whether member has active PT addon
-  ptPackageName       String?                    // PT package name
-  ptPackageFees       Decimal?                   @db.Decimal(10, 2) // Original PT package fees
-  ptMaxDiscount       Decimal?                   @db.Decimal(10, 2) // PT max discount allowed
-  ptAfterDiscount     Decimal?                   @db.Decimal(10, 2) // PT amount after max discount
-  ptExtraDiscount     Decimal?                   @db.Decimal(10, 2) // PT extra discount
-  ptFinalFees         Decimal?                   @db.Decimal(10, 2) // PT final fees after all discounts
-  
+  hasPTAddon      Boolean  @default(false) // Whether member has active PT addon
+  ptPackageName   String? // PT package name
+  ptPackageFees   Decimal? @db.Decimal(10, 2) // Original PT package fees
+  ptMaxDiscount   Decimal? @db.Decimal(10, 2) // PT max discount allowed
+  ptAfterDiscount Decimal? @db.Decimal(10, 2) // PT amount after max discount
+  ptExtraDiscount Decimal? @db.Decimal(10, 2) // PT extra discount
+  ptFinalFees     Decimal? @db.Decimal(10, 2) // PT final fees after all discounts
+
   gym                 Gym                        @relation(fields: [gymId], references: [id], onDelete: Cascade)
   user                User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
   dietAssignments     MemberDietAssignment[]
@@ -202,10 +210,14 @@ model Member {
   trainerAssignments  MemberTrainerAssignment[]
   ptMember            PTMember?
   memberDietPlans     MemberDietPlan[]
-  balancePayments     MemberBalancePayment[]     // Balance payment records
-  membershipRenewals  MembershipRenewal[]        // Membership renewal history
-  ptSessionCredits    PTSessionCredit[]          // PT session credits for carry forward
+  balancePayments     MemberBalancePayment[] // Balance payment records
+  membershipRenewals  MembershipRenewal[] // Membership renewal history
+  ptSessionCredits    PTSessionCredit[] // PT session credits for carry forward
   assignedDiets       MemberDiet[]               @relation("MemberDietAssignments") // Diet assignments
+
+  // Biometric Attendance Relations
+  biometric   MemberBiometric? // One biometric record per member
+  attendances Attendance[] // Attendance records
 
   @@index([gymId])
   @@index([membershipStatus])
@@ -219,17 +231,17 @@ model Member {
 // Member Balance Payment - tracks partial payments toward final fees
 model MemberBalancePayment {
   id              String     @id @default(uuid())
-  receiptNo       String     // Auto-generated receipt number (e.g., RCP-001)
-  memberId        String     // Reference to Member
-  paymentFor      PaymentFor @default(REGULAR)  // REGULAR or PT - which fees this payment is for
+  receiptNo       String // Auto-generated receipt number (e.g., RCP-001)
+  memberId        String // Reference to Member
+  paymentFor      PaymentFor @default(REGULAR) // REGULAR or PT - which fees this payment is for
   paymentDate     DateTime   @default(now())
-  contactNo       String?    // Member contact (from member or override)
+  contactNo       String? // Member contact (from member or override)
   paidFees        Decimal    @db.Decimal(10, 2) // Amount paid in this transaction
-  payMode         String     // CASH, CARD, UPI, BANK_TRANSFER, CHEQUE, etc.
-  nextPaymentDate DateTime?  // Optional next payment reminder date
-  notes           String?    // Optional notes/remarks
+  payMode         String // CASH, CARD, UPI, BANK_TRANSFER, CHEQUE, etc.
+  nextPaymentDate DateTime? // Optional next payment reminder date
+  notes           String? // Optional notes/remarks
   isActive        Boolean    @default(true)
-  gymId           String     // Reference to Gym for ownership
+  gymId           String // Reference to Gym for ownership
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
   createdBy       String?
@@ -273,22 +285,22 @@ model PTMember {
 
 // PT Session Credit - For carrying forward unused sessions when PT is removed
 model PTSessionCredit {
-  id              String    @id @default(uuid())
-  memberId        String    // Reference to Member
-  sessionCredits  Int       // Number of sessions credited
-  originalPackage String    // Original PT package name
-  creditDate      DateTime  @default(now()) // When credit was created
-  expiryDate      DateTime  // When credit expires (typically 6 months)
-  usedCredits     Int       @default(0) // Credits already used
-  reason          String?   // Why sessions were credited (e.g., "PT membership removed")
-  notes           String?   // Optional notes
-  isActive        Boolean   @default(true)
-  gymId           String    // Reference to Gym
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id              String   @id @default(uuid())
+  memberId        String // Reference to Member
+  sessionCredits  Int // Number of sessions credited
+  originalPackage String // Original PT package name
+  creditDate      DateTime @default(now()) // When credit was created
+  expiryDate      DateTime // When credit expires (typically 6 months)
+  usedCredits     Int      @default(0) // Credits already used
+  reason          String? // Why sessions were credited (e.g., "PT membership removed")
+  notes           String? // Optional notes
+  isActive        Boolean  @default(true)
+  gymId           String // Reference to Gym
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
   createdBy       String?
   updatedBy       String?
-  member          Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  member          Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
   @@index([memberId])
   @@index([gymId])
@@ -298,22 +310,22 @@ model PTSessionCredit {
 }
 
 model Supplement {
-  id          String    @id @default(uuid())
-  ptMemberId  String
-  name        String
-  dosage      String?
-  frequency   String?
-  timing      String?
-  notes       String?
-  startDate   DateTime  @default(now())
-  endDate     DateTime?
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  createdBy   String?
-  updatedBy   String?
-  gymId       String
-  ptMember    PTMember  @relation(fields: [ptMemberId], references: [id], onDelete: Cascade)
+  id         String    @id @default(uuid())
+  ptMemberId String
+  name       String
+  dosage     String?
+  frequency  String?
+  timing     String?
+  notes      String?
+  startDate  DateTime  @default(now())
+  endDate    DateTime?
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  createdBy  String?
+  updatedBy  String?
+  gymId      String
+  ptMember   PTMember  @relation(fields: [ptMemberId], references: [id], onDelete: Cascade)
 
   @@index([ptMemberId])
   @@index([gymId])
@@ -341,21 +353,21 @@ model MemberDietPlan {
 }
 
 model Inquiry {
-  id          String        @id @default(uuid())
-  name        String
-  email       String?
-  phone       String
-  source      InquirySource @default(WALK_IN)
-  interest    String?
-  notes       String?
-  status      InquiryStatus @default(NEW)
+  id           String        @id @default(uuid())
+  name         String
+  email        String?
+  phone        String
+  source       InquirySource @default(WALK_IN)
+  interest     String?
+  notes        String?
+  status       InquiryStatus @default(NEW)
   followUpDate DateTime?
-  isActive    Boolean       @default(true)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  createdBy   String?
-  updatedBy   String?
-  gymId       String
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  createdBy    String?
+  updatedBy    String?
+  gymId        String
 
   @@index([gymId])
   @@index([status])
@@ -369,7 +381,7 @@ model MemberInquiry {
   dob           DateTime?
   followUp      Boolean   @default(false)
   followUpDate  DateTime?
-  gender        String?   // Male/Female/Other
+  gender        String? // Male/Female/Other
   address       String?
   heardAbout    String?
   userId        String
@@ -387,13 +399,13 @@ model MemberInquiry {
   gym           Gym       @relation(fields: [gymId], references: [id], onDelete: Cascade)
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("memberinquiry")
   @@index([gymId])
   @@index([userId])
   @@index([contactNo])
   @@index([inquiryDate])
   @@index([followUp])
   @@index([isActive])
+  @@map("memberinquiry")
 }
 
 model DietPlan {
@@ -490,9 +502,9 @@ model OccupationMaster {
   updatedAt      DateTime @updatedAt
   createdBy      String?
 
-  @@map("occupationmaster")
   @@index([isActive])
   @@index([occupationName])
+  @@map("occupationmaster")
 }
 
 model EnquiryTypeMaster {
@@ -505,9 +517,9 @@ model EnquiryTypeMaster {
 
   gymInquiries GymInquiry[]
 
-  @@map("enquirytypemaster")
   @@index([isActive])
   @@index([name])
+  @@map("enquirytypemaster")
 }
 
 model PaymentTypeMaster {
@@ -519,9 +531,9 @@ model PaymentTypeMaster {
   updatedAt       DateTime @updatedAt
   createdBy       String?
 
-  @@map("paymenttypemaster")
   @@index([isActive])
   @@index([paymentTypeName])
+  @@map("paymenttypemaster")
 }
 
 model ExpenseGroupMaster {
@@ -534,48 +546,48 @@ model ExpenseGroupMaster {
   expenses         ExpenseMaster[]
 
   @@unique([expenseGroupName, gymId])
-  @@map("expensegroupmaster")
   @@index([gymId])
   @@index([expenseGroupName])
+  @@map("expensegroupmaster")
 }
 
 model ExpenseMaster {
-  id              String           @id @default(uuid())
-  expenseDate     DateTime         @default(now())
-  name            String
-  expenseGroupId  String
-  description     String?
-  paymentMode     PaymentMode
-  amount          Decimal          @db.Decimal(10, 2)
-  attachments     String[]         @default([])
-  createdBy       String
-  gymId           String
-  isActive        Boolean          @default(true)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  expenseGroup    ExpenseGroupMaster @relation(fields: [expenseGroupId], references: [id], onDelete: Restrict)
-  gym             Gym              @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  id             String             @id @default(uuid())
+  expenseDate    DateTime           @default(now())
+  name           String
+  expenseGroupId String
+  description    String?
+  paymentMode    PaymentMode
+  amount         Decimal            @db.Decimal(10, 2)
+  attachments    String[]           @default([])
+  createdBy      String
+  gymId          String
+  isActive       Boolean            @default(true)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  expenseGroup   ExpenseGroupMaster @relation(fields: [expenseGroupId], references: [id], onDelete: Restrict)
+  gym            Gym                @relation(fields: [gymId], references: [id], onDelete: Cascade)
 
-  @@map("expensemaster")
   @@index([gymId])
   @@index([expenseGroupId])
   @@index([expenseDate])
   @@index([isActive])
   @@index([createdBy])
+  @@map("expensemaster")
 }
 
 model PlanCategoryMaster {
-  id               String   @id @default(uuid())
-  categoryName     String   @unique
-  description      String?
-  isActive         Boolean  @default(true)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  createdBy        String?
+  id           String   @id @default(uuid())
+  categoryName String   @unique
+  description  String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  createdBy    String?
 
-  @@map("plancategorymaster")
   @@index([isActive])
   @@index([categoryName])
+  @@map("plancategorymaster")
 }
 
 model DesignationMaster {
@@ -587,9 +599,9 @@ model DesignationMaster {
   gym             Gym      @relation(fields: [gymId], references: [id], onDelete: Cascade)
 
   @@unique([designationName, gymId])
-  @@map("designationmaster")
   @@index([gymId])
   @@index([designationName])
+  @@map("designationmaster")
 }
 
 model BodyPartMaster {
@@ -604,10 +616,10 @@ model BodyPartMaster {
   exercises    WorkoutExerciseMaster[]
 
   @@unique([bodyPartName, gymId])
-  @@map("bodypartmaster")
   @@index([gymId])
   @@index([bodyPartName])
   @@index([isActive])
+  @@map("bodypartmaster")
 }
 
 model WorkoutExerciseMaster {
@@ -624,12 +636,12 @@ model WorkoutExerciseMaster {
   bodyPart     BodyPartMaster? @relation(fields: [bodyPartId], references: [id], onDelete: SetNull)
 
   @@unique([exerciseName, gymId])
-  @@map("workoutexercisemaster")
   @@index([gymId])
   @@index([exerciseName])
   @@index([shortCode])
   @@index([isActive])
   @@index([bodyPartId])
+  @@map("workoutexercisemaster")
 }
 
 enum SubscriptionStatus {
@@ -639,15 +651,15 @@ enum SubscriptionStatus {
 }
 
 enum MemberType {
-  REGULAR      // Regular membership only
-  PT           // PT membership only (legacy support)
-  REGULAR_PT   // Combined: Regular + PT membership
+  REGULAR // Regular membership only
+  PT // PT membership only (legacy support)
+  REGULAR_PT // Combined: Regular + PT membership
 }
 
 // Payment type - distinguishes between Regular and PT fee payments
 enum PaymentFor {
-  REGULAR   // Payment for regular membership fees
-  PT        // Payment for PT membership fees
+  REGULAR // Payment for regular membership fees
+  PT // Payment for PT membership fees
 }
 
 enum InquirySource {
@@ -674,91 +686,91 @@ enum DiscountType {
 }
 
 enum CoursePackageType {
-  REGULAR   // Regular gym membership packages
-  PT        // Personal Training packages
+  REGULAR // Regular gym membership packages
+  PT // Personal Training packages
 }
 
 model CoursePackage {
-  id                 String            @id @default(uuid())
-  packageName        String
-  description        String?
-  fees               Decimal           @db.Decimal(10, 2)
-  maxDiscount        Decimal?          @db.Decimal(10, 2)
-  discountType       DiscountType      @default(PERCENTAGE)
-  coursePackageType  CoursePackageType @default(REGULAR)
-  Months             Int               @default(1) @map("Months")
-  isActive           Boolean           @default(true)
-  gymId              String
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
-  createdBy          String?
-  updatedBy          String?
-  gym                Gym               @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  id                String            @id @default(uuid())
+  packageName       String
+  description       String?
+  fees              Decimal           @db.Decimal(10, 2)
+  maxDiscount       Decimal?          @db.Decimal(10, 2)
+  discountType      DiscountType      @default(PERCENTAGE)
+  coursePackageType CoursePackageType @default(REGULAR)
+  Months            Int               @default(1) @map("Months")
+  isActive          Boolean           @default(true)
+  gymId             String
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  createdBy         String?
+  updatedBy         String?
+  gym               Gym               @relation(fields: [gymId], references: [id], onDelete: Cascade)
 
   @@unique([packageName, gymId])
-  @@map("coursepackage")
   @@index([gymId])
   @@index([packageName])
   @@index([isActive])
   @@index([coursePackageType])
+  @@map("coursepackage")
 }
 
 // Membership Renewal - Every renewal creates a NEW ROW for historical tracking
 model MembershipRenewal {
-  id                      String    @id @default(uuid())
-  renewalNumber           String    // Auto-generated renewal number (e.g., REN-001)
-  memberId                String    // Reference to Member
-  gymId                   String    // Reference to Gym for ownership
-  
+  id            String @id @default(uuid())
+  renewalNumber String // Auto-generated renewal number (e.g., REN-001)
+  memberId      String // Reference to Member
+  gymId         String // Reference to Gym for ownership
+
   // Previous membership dates (before renewal)
   previousMembershipStart DateTime
   previousMembershipEnd   DateTime
-  
-  // New membership dates (after renewal)  
-  newMembershipStart      DateTime
-  newMembershipEnd        DateTime
-  
-  // Renewal details
-  renewalDate             DateTime  @default(now()) // When the renewal was processed
-  renewalType             RenewalType @default(STANDARD) // Type of renewal
-  
-  // Package and fees
-  coursePackageId         String?   // Course package used for renewal
-  packageFees             Decimal?  @db.Decimal(10, 2)
-  maxDiscount             Decimal?  @db.Decimal(10, 2)
-  afterDiscount           Decimal?  @db.Decimal(10, 2)
-  extraDiscount           Decimal?  @db.Decimal(10, 2)
-  finalFees               Decimal?  @db.Decimal(10, 2)
-  
-  // Payment info
-  paymentStatus           PaymentStatus @default(PENDING)
-  paymentMode             String?   // CASH, CARD, UPI, BANK_TRANSFER, etc.
-  paidAmount              Decimal?  @db.Decimal(10, 2)
-  pendingAmount           Decimal?  @db.Decimal(10, 2)
-  
-  notes                   String?
-  isActive                Boolean   @default(true)
-  createdAt               DateTime  @default(now())
-  updatedAt               DateTime  @updatedAt
-  createdBy               String?
-  updatedBy               String?
-  
-  member                  Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
-  @@map("membershiprenewal")
+  // New membership dates (after renewal)  
+  newMembershipStart DateTime
+  newMembershipEnd   DateTime
+
+  // Renewal details
+  renewalDate DateTime    @default(now()) // When the renewal was processed
+  renewalType RenewalType @default(STANDARD) // Type of renewal
+
+  // Package and fees
+  coursePackageId String? // Course package used for renewal
+  packageFees     Decimal? @db.Decimal(10, 2)
+  maxDiscount     Decimal? @db.Decimal(10, 2)
+  afterDiscount   Decimal? @db.Decimal(10, 2)
+  extraDiscount   Decimal? @db.Decimal(10, 2)
+  finalFees       Decimal? @db.Decimal(10, 2)
+
+  // Payment info
+  paymentStatus PaymentStatus @default(PENDING)
+  paymentMode   String? // CASH, CARD, UPI, BANK_TRANSFER, etc.
+  paidAmount    Decimal?      @db.Decimal(10, 2)
+  pendingAmount Decimal?      @db.Decimal(10, 2)
+
+  notes     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  updatedBy String?
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
   @@index([memberId])
   @@index([gymId])
   @@index([renewalNumber])
   @@index([renewalDate])
   @@index([paymentStatus])
+  @@map("membershiprenewal")
 }
 
 enum RenewalType {
-  STANDARD      // Regular renewal
-  EARLY         // Renewed before expiry
-  LATE          // Renewed after expiry (lapsed member returning)
-  UPGRADE       // Upgraded to a different package
-  DOWNGRADE     // Downgraded to a different package
+  STANDARD // Regular renewal
+  EARLY // Renewed before expiry
+  LATE // Renewed after expiry (lapsed member returning)
+  UPGRADE // Upgraded to a different package
+  DOWNGRADE // Downgraded to a different package
 }
 
 enum PaymentStatus {
@@ -785,33 +797,33 @@ enum GymSubscriptionRenewalType {
 }
 
 model GymSubscriptionHistory {
-  id                      String                      @id @default(uuid())
-  subscriptionNumber      String                      // Auto-generated: GSUB-00001
+  id                      String                     @id @default(uuid())
+  subscriptionNumber      String // Auto-generated: GSUB-00001
   gymId                   String
   subscriptionPlanId      String
   subscriptionStart       DateTime
   subscriptionEnd         DateTime
-  renewalDate             DateTime                    @default(now())
+  renewalDate             DateTime                   @default(now())
   previousPlanId          String?
   previousPlanName        String?
   previousSubscriptionEnd DateTime?
-  renewalType             GymSubscriptionRenewalType  @default(NEW)
-  planAmount              Decimal?                    @db.Decimal(10, 2)
-  extraDiscount           Decimal?                    @db.Decimal(10, 2)
-  amount                  Decimal                     @db.Decimal(10, 2)
+  renewalType             GymSubscriptionRenewalType @default(NEW)
+  planAmount              Decimal?                   @db.Decimal(10, 2)
+  extraDiscount           Decimal?                   @db.Decimal(10, 2)
+  amount                  Decimal                    @db.Decimal(10, 2)
   paymentMode             String?
-  paymentStatus           PaymentStatus               @default(PAID)
-  paidAmount              Decimal?                    @db.Decimal(10, 2)
-  pendingAmount           Decimal?                    @db.Decimal(10, 2)
-  isActive                Boolean                     @default(true)
+  paymentStatus           PaymentStatus              @default(PAID)
+  paidAmount              Decimal?                   @db.Decimal(10, 2)
+  pendingAmount           Decimal?                   @db.Decimal(10, 2)
+  isActive                Boolean                    @default(true)
   notes                   String?
   createdBy               String?
   updatedBy               String?
-  createdAt               DateTime                    @default(now())
-  updatedAt               DateTime                    @updatedAt
+  createdAt               DateTime                   @default(now())
+  updatedAt               DateTime                   @updatedAt
 
-  gym                     Gym                         @relation(fields: [gymId], references: [id], onDelete: Cascade)
-  subscriptionPlan        GymSubscriptionPlan         @relation(fields: [subscriptionPlanId], references: [id])
+  gym              Gym                 @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  subscriptionPlan GymSubscriptionPlan @relation(fields: [subscriptionPlanId], references: [id])
 
   @@index([gymId])
   @@index([subscriptionPlanId])
@@ -821,6 +833,7 @@ model GymSubscriptionHistory {
   @@index([paymentStatus])
   @@map("gymsubscriptionhistory")
 }
+
 // ============================================
 // Diet Template & Member Diet Models
 // ============================================
@@ -830,88 +843,88 @@ model DietTemplate {
   id          String     @id @default(uuid())
   name        String
   description String?
-  gymId       String     // Reference to Gym for ownership
-  createdBy   String     // userId (UUID) who created this template
+  gymId       String // Reference to Gym for ownership
+  createdBy   String // userId (UUID) who created this template
   isActive    Boolean    @default(true)
   meals       DietMeal[]
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
-  
-  gym         Gym        @relation(fields: [gymId], references: [id], onDelete: Cascade)
-  creator     User       @relation("DietTemplateCreator", fields: [createdBy], references: [id])
+
+  gym         Gym          @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  creator     User         @relation("DietTemplateCreator", fields: [createdBy], references: [id])
   memberDiets MemberDiet[]
 
-  @@map("diettemplate")
   @@index([gymId])
   @@index([createdBy])
   @@index([isActive])
+  @@map("diettemplate")
 }
 
 // Diet Meal - Individual meals within a diet template (6 meals per day)
 model DietMeal {
-  id             String       @id @default(uuid())
+  id             String   @id @default(uuid())
   dietTemplateId String
-  mealNo         Int          // 1 to 6 (Meal 1, Meal 2, etc.)
-  title          String       // e.g., "Breakfast", "Mid-Morning Snack", "Lunch", etc.
-  description    String       // What to eat
-  time           String       // e.g., "07:30 AM", "10:00 AM", etc.
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  mealNo         Int // 1 to 6 (Meal 1, Meal 2, etc.)
+  title          String // e.g., "Breakfast", "Mid-Morning Snack", "Lunch", etc.
+  description    String // What to eat
+  time           String // e.g., "07:30 AM", "10:00 AM", etc.
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  dietTemplate   DietTemplate @relation(fields: [dietTemplateId], references: [id], onDelete: Cascade)
+  dietTemplate DietTemplate @relation(fields: [dietTemplateId], references: [id], onDelete: Cascade)
 
   @@unique([dietTemplateId, mealNo])
-  @@map("dietmeal")
   @@index([dietTemplateId])
+  @@map("dietmeal")
 }
 
 // Member Diet - Diet assignment to a member
 model MemberDiet {
-  id             String           @id @default(uuid())
-  memberId       String           // Reference to Member
-  dietTemplateId String           // Reference to original DietTemplate
-  gymId          String           // Reference to Gym for ownership
+  id             String    @id @default(uuid())
+  memberId       String // Reference to Member
+  dietTemplateId String // Reference to original DietTemplate
+  gymId          String // Reference to Gym for ownership
   startDate      DateTime
   endDate        DateTime?
-  assignedBy     String           // userId (UUID) who assigned this diet
-  isActive       Boolean          @default(true)
-  notes          String?          // Optional notes about the diet assignment
+  assignedBy     String // userId (UUID) who assigned this diet
+  isActive       Boolean   @default(true)
+  notes          String? // Optional notes about the diet assignment
 
-  meals          MemberDietMeal[]
+  meals MemberDietMeal[]
 
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  member         Member           @relation("MemberDietAssignments", fields: [memberId], references: [id], onDelete: Cascade)
-  dietTemplate   DietTemplate     @relation(fields: [dietTemplateId], references: [id])
-  gym            Gym              @relation(fields: [gymId], references: [id], onDelete: Cascade)
-  assigner       User             @relation("MemberDietAssigner", fields: [assignedBy], references: [id])
+  member       Member       @relation("MemberDietAssignments", fields: [memberId], references: [id], onDelete: Cascade)
+  dietTemplate DietTemplate @relation(fields: [dietTemplateId], references: [id])
+  gym          Gym          @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  assigner     User         @relation("MemberDietAssigner", fields: [assignedBy], references: [id])
 
-  @@map("memberdiet")
   @@index([memberId])
   @@index([gymId])
   @@index([dietTemplateId])
   @@index([assignedBy])
   @@index([isActive])
   @@index([startDate])
+  @@map("memberdiet")
 }
 
 // Member Diet Meal - Copied meals from template (can be customized per member)
 model MemberDietMeal {
-  id           String     @id @default(uuid())
+  id           String   @id @default(uuid())
   memberDietId String
-  mealNo       Int        // 1 to 6
-  title        String     // e.g., "Breakfast"
-  description  String     // What to eat (can be customized)
-  time         String     // e.g., "07:30 AM"
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  mealNo       Int // 1 to 6
+  title        String // e.g., "Breakfast"
+  description  String // What to eat (can be customized)
+  time         String // e.g., "07:30 AM"
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  memberDiet   MemberDiet @relation(fields: [memberDietId], references: [id], onDelete: Cascade)
+  memberDiet MemberDiet @relation(fields: [memberDietId], references: [id], onDelete: Cascade)
 
   @@unique([memberDietId, mealNo])
-  @@map("memberdietmeal")
   @@index([memberDietId])
+  @@map("memberdietmeal")
 }
 
 // ============================================
@@ -920,100 +933,100 @@ model MemberDietMeal {
 
 // Incentive type for trainer salary
 enum IncentiveType {
-  PT               // Personal Training
-  PROTEIN          // Protein/Supplement sales
+  PT // Personal Training
+  PROTEIN // Protein/Supplement sales
   MEMBER_REFERENCE // Member referral bonus
-  OTHERS           // Other incentives
+  OTHERS // Other incentives
 }
 
 // Trainer Salary Settlement - Monthly salary records
 model TrainerSalarySettlement {
-  id                  String        @id @default(uuid())
-  trainerId           String        // Reference to Trainer
-  trainerName         String        // Denormalized for reporting
-  mobileNumber        String?       // Trainer's mobile number
-  joiningDate         DateTime?     // Trainer's joining date
-  monthlySalary       Decimal       @db.Decimal(10, 2) // Base monthly salary
-  salaryMonth         String        // YYYY-MM format (e.g., "2025-01")
-  salarySentDate      DateTime?     // Date when salary was settled
-  totalDaysInMonth    Int           // Total days in the salary month
-  presentDays         Int           // Days present
-  absentDays          Int           // Days absent (totalDaysInMonth - presentDays)
-  discountDays        Int           @default(0) // Days to discount from absent days
-  payableDays         Int           // presentDays + discountDays
-  calculatedSalary    Decimal       @db.Decimal(10, 2) // (monthlySalary / totalDaysInMonth) * payableDays
-  incentiveAmount     Decimal       @default(0) @db.Decimal(10, 2) // Incentive amount
-  incentiveType       IncentiveType? // Type of incentive
-  paymentMode         PaymentMode   // CASH, UPI, BANK_TRANSFER, CARD, etc.
-  finalPayableAmount  Decimal       @db.Decimal(10, 2) // calculatedSalary + incentiveAmount
-  remarks             String?       // Additional notes
+  id                 String         @id @default(uuid())
+  trainerId          String // Reference to Trainer
+  trainerName        String // Denormalized for reporting
+  mobileNumber       String? // Trainer's mobile number
+  joiningDate        DateTime? // Trainer's joining date
+  monthlySalary      Decimal        @db.Decimal(10, 2) // Base monthly salary
+  salaryMonth        String // YYYY-MM format (e.g., "2025-01")
+  salarySentDate     DateTime? // Date when salary was settled
+  totalDaysInMonth   Int // Total days in the salary month
+  presentDays        Int // Days present
+  absentDays         Int // Days absent (totalDaysInMonth - presentDays)
+  discountDays       Int            @default(0) // Days to discount from absent days
+  payableDays        Int // presentDays + discountDays
+  calculatedSalary   Decimal        @db.Decimal(10, 2) // (monthlySalary / totalDaysInMonth) * payableDays
+  incentiveAmount    Decimal        @default(0) @db.Decimal(10, 2) // Incentive amount
+  incentiveType      IncentiveType? // Type of incentive
+  paymentMode        PaymentMode // CASH, UPI, BANK_TRANSFER, CARD, etc.
+  finalPayableAmount Decimal        @db.Decimal(10, 2) // calculatedSalary + incentiveAmount
+  remarks            String? // Additional notes
 
   // Audit fields
-  gymId               String        // Reference to Gym
-  createdBy           String        // Gym Owner who created this record
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
+  gymId     String // Reference to Gym
+  createdBy String // Gym Owner who created this record
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  trainer             Trainer       @relation(fields: [trainerId], references: [id], onDelete: Cascade)
-  gym                 Gym           @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  trainer Trainer @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  gym     Gym     @relation(fields: [gymId], references: [id], onDelete: Cascade)
 
   // Unique constraint: One settlement per trainer per month per gym
   @@unique([trainerId, salaryMonth, gymId])
-  @@map("trainersalarysettlement")
   @@index([gymId])
   @@index([trainerId])
   @@index([salaryMonth])
   @@index([createdAt])
   @@index([paymentMode])
+  @@map("trainersalarysettlement")
 }
 
 model GymInquiry {
-  id                  String               @id @default(uuid())
-  gymName             String
-  address1            String?
-  address2            String?
-  state               String?
-  city                String?
-  mobileNo            String
-  email               String?
-  subscriptionPlanId  String
-  note                String?
-  sellerName          String?
-  sellerMobileNo      String?
-  nextFollowupDate    DateTime?
-  memberSize          Int?
-  enquiryTypeId       String?
-  isActive            Boolean              @default(true)
-  createdBy           String?
-  updatedBy           String?
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
+  id                 String    @id @default(uuid())
+  gymName            String
+  address1           String?
+  address2           String?
+  state              String?
+  city               String?
+  mobileNo           String
+  email              String?
+  subscriptionPlanId String
+  note               String?
+  sellerName         String?
+  sellerMobileNo     String?
+  nextFollowupDate   DateTime?
+  memberSize         Int?
+  enquiryTypeId      String?
+  isActive           Boolean   @default(true)
+  createdBy          String?
+  updatedBy          String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
-  subscriptionPlan    GymSubscriptionPlan  @relation(fields: [subscriptionPlanId], references: [id])
-  enquiryType         EnquiryTypeMaster?   @relation(fields: [enquiryTypeId], references: [id])
-  followups           GymInquiryFollowup[]
+  subscriptionPlan GymSubscriptionPlan  @relation(fields: [subscriptionPlanId], references: [id])
+  enquiryType      EnquiryTypeMaster?   @relation(fields: [enquiryTypeId], references: [id])
+  followups        GymInquiryFollowup[]
 
-  @@map("gyminquiry")
   @@index([isActive])
   @@index([subscriptionPlanId])
   @@index([nextFollowupDate])
   @@index([enquiryTypeId])
+  @@map("gyminquiry")
 }
 
 model GymInquiryFollowup {
-  id            String      @id @default(uuid())
-  gymInquiryId  String
-  followupDate  DateTime    @default(now())
-  note          String?
-  createdBy     String?
-  createdAt     DateTime    @default(now())
+  id           String   @id @default(uuid())
+  gymInquiryId String
+  followupDate DateTime @default(now())
+  note         String?
+  createdBy    String?
+  createdAt    DateTime @default(now())
 
-  gymInquiry    GymInquiry  @relation(fields: [gymInquiryId], references: [id], onDelete: Cascade)
+  gymInquiry GymInquiry @relation(fields: [gymInquiryId], references: [id], onDelete: Cascade)
 
-  @@map("gyminquiryfollowup")
   @@index([gymInquiryId])
   @@index([followupDate])
+  @@map("gyminquiryfollowup")
 }
 
 // ============================================
@@ -1021,28 +1034,28 @@ model GymInquiryFollowup {
 // Admin can track which roles reset passwords, how many times, and when
 // ============================================
 model PasswordResetHistory {
-  id              String    @id @default(uuid())
-  userId          String    // Reference to User table
-  email           String?   // Email of the user at the time of reset
-  roleId          String?   // Role ID at the time of reset
-  roleName        String?   // Role name at the time of reset (denormalized for reporting)
-  resetBy         String?   // User ID of who performed the reset (admin/gym-owner/self)
-  resetByEmail    String?   // Email of who performed the reset
-  resetMethod     String    @default("MANUAL") // MANUAL, SELF, ADMIN_RESET, OWNER_RESET
-  targetTable     String?   // Which table was updated: USER, TRAINER, MEMBER
-  gymId           String?   // Gym ID (for gym-specific tracking)
-  ipAddress       String?   // IP address of the requester
-  createdAt       DateTime  @default(now())
+  id           String   @id @default(uuid())
+  userId       String // Reference to User table
+  email        String? // Email of the user at the time of reset
+  roleId       String? // Role ID at the time of reset
+  roleName     String? // Role name at the time of reset (denormalized for reporting)
+  resetBy      String? // User ID of who performed the reset (admin/gym-owner/self)
+  resetByEmail String? // Email of who performed the reset
+  resetMethod  String   @default("MANUAL") // MANUAL, SELF, ADMIN_RESET, OWNER_RESET
+  targetTable  String? // Which table was updated: USER, TRAINER, MEMBER
+  gymId        String? // Gym ID (for gym-specific tracking)
+  ipAddress    String? // IP address of the requester
+  createdAt    DateTime @default(now())
 
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@map("passwordresethistory")
   @@index([userId])
   @@index([email])
   @@index([roleId])
   @@index([roleName])
   @@index([gymId])
   @@index([createdAt])
+  @@map("passwordresethistory")
 }
 
 // =============================================
@@ -1056,29 +1069,219 @@ model AdminExpenseGroupMaster {
   updatedAt        DateTime             @updatedAt
   expenses         AdminExpenseMaster[]
 
-  @@map("admin_expense_group_master")
   @@index([expenseGroupName])
+  @@map("admin_expense_group_master")
 }
 
 model AdminExpenseMaster {
-  id              String                  @id @default(uuid())
-  expenseDate     DateTime                @default(now())
-  name            String
-  expenseGroupId  String
-  description     String?
-  paymentMode     PaymentMode
-  amount          Decimal                 @db.Decimal(10, 2)
-  attachments     String[]                @default([])
-  createdBy       String
-  isActive        Boolean                 @default(true)
-  createdAt       DateTime                @default(now())
-  updatedAt       DateTime                @updatedAt
-  expenseGroup    AdminExpenseGroupMaster  @relation(fields: [expenseGroupId], references: [id], onDelete: Restrict)
-  creator         User                    @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  id             String                  @id @default(uuid())
+  expenseDate    DateTime                @default(now())
+  name           String
+  expenseGroupId String
+  description    String?
+  paymentMode    PaymentMode
+  amount         Decimal                 @db.Decimal(10, 2)
+  attachments    String[]                @default([])
+  createdBy      String
+  isActive       Boolean                 @default(true)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  expenseGroup   AdminExpenseGroupMaster @relation(fields: [expenseGroupId], references: [id], onDelete: Restrict)
+  creator        User                    @relation(fields: [createdBy], references: [id], onDelete: Cascade)
 
-  @@map("admin_expense_master")
   @@index([expenseGroupId])
   @@index([expenseDate])
   @@index([isActive])
   @@index([createdBy])
+  @@map("admin_expense_master")
+}
+
+// ============================================
+// Biometric Attendance System
+// ============================================
+
+// Finger positions for biometric enrollment
+enum FingerPosition {
+  RIGHT_THUMB
+  RIGHT_INDEX
+  RIGHT_MIDDLE
+  RIGHT_RING
+  RIGHT_LITTLE
+  LEFT_THUMB
+  LEFT_INDEX
+  LEFT_MIDDLE
+  LEFT_RING
+  LEFT_LITTLE
+}
+
+// Attendance status
+enum AttendanceStatus {
+  CHECKED_IN // Member checked in, hasn't checked out
+  CHECKED_OUT // Member checked out
+  ABSENT // Marked absent (for reporting)
+}
+
+// How the attendance was verified
+enum VerificationMethod {
+  FINGERPRINT // Biometric fingerprint
+  MANUAL // Manual entry by gym owner
+  CARD // RFID card (future)
+  FACE // Face recognition (future)
+  QR_CODE // QR code scan (future)
+}
+
+// Type of biometric device
+enum DeviceType {
+  FINGERPRINT // USB fingerprint scanner
+  FINGERPRINT_DOOR // All-in-one fingerprint + door controller
+  FACE // Face recognition (future)
+  IRIS // Iris scanner (future)
+}
+
+// Door lock integration type
+enum DoorLockType {
+  NONE // No door lock (attendance only)
+  USB_RELAY // USB relay module for door control
+  SMART_LOCK_API // Smart lock with HTTP API
+  ESP32_HTTP // ESP32/Arduino with HTTP endpoint
+  ZKTECO_DEVICE // ZKTeco all-in-one device
+}
+
+// Biometric Device - Scanner/Device Registration
+model BiometricDevice {
+  id    String @id @default(uuid())
+  gymId String
+
+  // Device Info
+  deviceName   String // "Front Desk Scanner", "Main Entrance"
+  deviceSerial String // Hardware serial number
+  deviceModel  String // "SecuGen Hamster Pro 20", "ZKTeco K40"
+  deviceType   DeviceType @default(FINGERPRINT)
+
+  // WebUSB Info (for USB scanners)
+  vendorId  Int? // USB Vendor ID (e.g., 0x1162 for SecuGen)
+  productId Int? // USB Product ID
+
+  // Network Info (for networked devices like ZKTeco)
+  ipAddress String?
+  port      Int?
+
+  // Door Lock Integration
+  doorLockType   DoorLockType @default(NONE)
+  doorLockConfig Json? // Door lock configuration (relay pin, API URL, etc.)
+
+  // Connection Status
+  lastSeenAt DateTime?
+  isOnline   Boolean   @default(false)
+
+  // Location
+  location String? // "Main Entrance", "Back Door"
+
+  // Status
+  isActive     Boolean  @default(true)
+  registeredAt DateTime @default(now())
+  registeredBy String // User ID who registered the device
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  gym         Gym          @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  attendances Attendance[]
+
+  @@unique([deviceSerial])
+  @@unique([gymId, deviceName])
+  @@index([gymId])
+  @@index([isActive])
+  @@index([deviceType])
+  @@map("biometric_device")
+}
+
+// Member Biometric - Fingerprint Templates
+model MemberBiometric {
+  id       String @id @default(uuid())
+  memberId String @unique // One biometric record per member
+  gymId    String // For gym-scoped queries
+
+  // Fingerprint Templates (Encrypted binary data)
+  // Store up to 2 fingers for redundancy
+  fingerTemplate1 Bytes? // Primary finger template (encrypted)
+  fingerTemplate2 Bytes? // Backup finger template (encrypted)
+  fingerPosition1 FingerPosition? // Which finger (e.g., RIGHT_THUMB)
+  fingerPosition2 FingerPosition?
+
+  // Template Metadata
+  templateFormat  String @default("ISO_19794_2") // ISO standard format
+  templateVersion String @default("1.0")
+  quality1        Int? // Quality score 0-100 for finger 1
+  quality2        Int? // Quality score 0-100 for finger 2
+
+  // Enrollment Info
+  enrolledAt    DateTime @default(now())
+  enrolledBy    String? // User ID who enrolled the member
+  lastUpdatedAt DateTime @updatedAt
+  deviceId      String? // Device used for enrollment
+
+  // Status
+  isActive       Boolean   @default(true)
+  failedAttempts Int       @default(0) // Track consecutive failed verifications
+  lastFailedAt   DateTime?
+
+  // Relations
+  member         Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  gym            Gym    @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  enrolledByUser User?  @relation(fields: [enrolledBy], references: [id])
+
+  @@index([gymId])
+  @@index([memberId])
+  @@index([isActive])
+  @@map("member_biometric")
+}
+
+// Attendance - Daily attendance records
+model Attendance {
+  id       String @id @default(uuid())
+  memberId String
+  gymId    String
+
+  // Date & Time
+  attendanceDate DateTime  @db.Date // Just the date portion (unique per member)
+  checkInTime    DateTime // Full timestamp for check-in
+  checkOutTime   DateTime? // Optional check-out timestamp
+
+  // Duration (auto-calculated on check-out)
+  durationMinutes Int? // Time spent in gym
+
+  // Verification Details
+  verificationMethod VerificationMethod
+  verificationScore  Int? // Match score (0-100) for biometric
+  deviceId           String? // Scanner device ID
+
+  // Status
+  status AttendanceStatus @default(CHECKED_IN)
+
+  // Manual Override (for corrections)
+  isManualEntry     Boolean @default(false)
+  manualEntryBy     String? // User ID if manual entry
+  manualEntryReason String?
+
+  // Door Access
+  doorUnlocked   Boolean   @default(false) // Whether door was unlocked
+  doorUnlockTime DateTime?
+
+  // Audit
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  member Member           @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  gym    Gym              @relation(fields: [gymId], references: [id], onDelete: Cascade)
+  device BiometricDevice? @relation(fields: [deviceId], references: [id])
+
+  // Constraints: One attendance per member per day
+  @@unique([memberId, attendanceDate])
+  @@index([gymId])
+  @@index([memberId])
+  @@index([attendanceDate])
+  @@index([gymId, attendanceDate]) // Composite for daily reports
+  @@index([status])
+  @@map("attendance")
 }

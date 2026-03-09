@@ -710,3 +710,17 @@ export interface AdminExpenseListResponse {
   limit: number;
   totalAmount: number;
 }
+
+// Email Types
+export interface SendEmailRequest {
+  to: string;
+  subject: string;
+  html: string;
+  cc?: string;
+  bcc?: string;
+  replyTo?: string;
+}
+
+export interface SendBulkEmailsRequest {
+  emails: SendEmailRequest[];
+}

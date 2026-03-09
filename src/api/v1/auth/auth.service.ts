@@ -22,101 +22,158 @@ import {
 
 class AuthService {
   async login(data: LoginRequest): Promise<LoginResponse> {
-    const user = await prisma.user.findUnique({
-      where: { email: data.email },
-      include: {
-        role: true,
-        ownedGym: {
-          include: {
-            subscriptionPlan: true
-          }
+    const username = (data.email || data.mobileNo || '').trim();
+    // Detect if username looks like an email (contains @ but not our internal system emails)
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(username) && !username.endsWith('@gym-internal.local');
+
+    let userId: string | undefined;
+    let roleName: string = 'MEMBER';
+    let gymId: string | undefined;
+    let subscriptionName: string | undefined;
+    let displayEmail: string = '';
+    let displayName: string = '';
+    let ownedGym: any = null;
+
+    if (isEmail) {
+      // ── Email login: ADMIN or GYM_OWNER ──────────────────────────────────────
+      const user = await prisma.user.findUnique({
+        where: { email: username },
+        include: {
+          role: true,
+          ownedGym: { include: { subscriptionPlan: true } },
+        },
+      });
+
+      if (!user) throw new UnauthorizedException('Invalid email or password');
+
+      const role = user.role?.rolename || '';
+      if (role !== 'GYM_OWNER' && role !== 'ADMIN') {
+        throw new UnauthorizedException('Email login is only available for admins and gym owners. Use your mobile number to log in.');
+      }
+
+      if (!user.isActive) throw new UnauthorizedException('Account is deactivated');
+
+      const valid = await bcrypt.compare(data.password, user.password);
+      if (!valid) throw new UnauthorizedException('Invalid email or password');
+
+      userId = user.id;
+      roleName = role;
+      displayEmail = user.email;
+      displayName = user.name;
+      ownedGym = user.ownedGym;
+      gymId = user.ownedGym?.id;
+      subscriptionName = user.ownedGym?.subscriptionPlan?.name;
+    } else {
+      // ── Mobile number login ──────────────────────────────────────────────────
+
+      // 1. Try MEMBER by phone
+      const member = await prisma.member.findFirst({
+        where: { phone: username, isActive: true },
+        include: { user: { include: { role: true } } },
+      });
+
+      if (member) {
+        if (!member.password) throw new UnauthorizedException('Invalid mobile number or password');
+        const valid = await bcrypt.compare(data.password, member.password);
+        if (!valid) throw new UnauthorizedException('Invalid mobile number or password');
+        if (!member.user.isActive) throw new UnauthorizedException('Account is deactivated');
+        userId = member.user.id;
+        roleName = member.user.role?.rolename || 'MEMBER';
+        displayEmail = member.email || member.user.email;
+        displayName = member.name || member.user.name;
+        gymId = member.gymId;
+      }
+
+      // 2. Try TRAINER by phone
+      if (!userId) {
+        const trainer = await prisma.trainer.findFirst({
+          where: { phone: username, isActive: true },
+          include: { user: { include: { role: true } } },
+        });
+
+        if (trainer) {
+          if (!trainer.user.password) throw new UnauthorizedException('Invalid mobile number or password');
+          const valid = await bcrypt.compare(data.password, trainer.user.password);
+          if (!valid) throw new UnauthorizedException('Invalid mobile number or password');
+          if (!trainer.user.isActive) throw new UnauthorizedException('Account is deactivated');
+          userId = trainer.user.id;
+          roleName = trainer.user.role?.rolename || 'TRAINER';
+          displayEmail = trainer.email || trainer.user.email;
+          displayName = trainer.name || trainer.user.name;
+          gymId = trainer.gymId;
         }
-      },
-    });
+      }
 
-    if (!user) {
-      throw new UnauthorizedException('Invalid email or password');
+      // 3. Try GYM_OWNER by gym mobileNo / phoneNo
+      if (!userId) {
+        const gym = await prisma.gym.findFirst({
+          where: { OR: [{ mobileNo: username }, { phoneNo: username }] },
+          include: {
+            owner: {
+              include: {
+                role: true,
+                ownedGym: { include: { subscriptionPlan: true } },
+              },
+            },
+            subscriptionPlan: true,
+          },
+        });
+
+        if (gym?.owner) {
+          const user = gym.owner;
+          if (!user.isActive) throw new UnauthorizedException('Account is deactivated');
+          const valid = await bcrypt.compare(data.password, user.password);
+          if (!valid) throw new UnauthorizedException('Invalid mobile number or password');
+          userId = user.id;
+          roleName = user.role?.rolename || 'GYM_OWNER';
+          displayEmail = user.email;
+          displayName = user.name;
+          ownedGym = user.ownedGym;
+          gymId = gym.id;
+          subscriptionName = gym.subscriptionPlan?.name;
+        }
+      }
+
+      if (!userId) throw new UnauthorizedException('Invalid mobile number or password');
     }
 
-    if (!user.isActive) {
-      throw new UnauthorizedException('Account is deactivated');
-    }
-
-    const isPasswordValid = await bcrypt.compare(data.password, user.password);
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid email or password');
-    }
-
-    const roleName = user.role?.rolename || 'MEMBER';
-
-    // Check subscription expiry for GYM_OWNER role only
-    if (roleName === 'GYM_OWNER' && user.ownedGym) {
-      const gym = user.ownedGym;
-
-      // Check if gym has a subscription plan assigned
+    // ── Subscription check for GYM_OWNER ────────────────────────────────────
+    if (roleName === 'GYM_OWNER' && ownedGym) {
+      const gym = ownedGym;
       if (gym.subscriptionPlan && gym.subscriptionStart) {
         const subscriptionStartDate = new Date(gym.subscriptionStart);
         const durationDays = gym.subscriptionPlan.durationDays;
         const currentDate = new Date();
-
-        // Calculate subscription end date based on start date + duration days
         const subscriptionEndDate = new Date(subscriptionStartDate);
         subscriptionEndDate.setDate(subscriptionEndDate.getDate() + durationDays);
-
-        // If subscriptionEnd is explicitly set in the database, use that instead
-        const effectiveEndDate = gym.subscriptionEnd
-          ? new Date(gym.subscriptionEnd)
-          : subscriptionEndDate;
-
-        // Check if subscription has expired
+        const effectiveEndDate = gym.subscriptionEnd ? new Date(gym.subscriptionEnd) : subscriptionEndDate;
         if (currentDate > effectiveEndDate) {
-          throw new UnauthorizedException(
-            'Your subscription has expired. Please renew your plan or contact the administrator.'
-          );
+          throw new UnauthorizedException('Your subscription has expired. Please renew your plan or contact the administrator.');
         }
       } else if (!gym.subscriptionPlan) {
-        // No subscription plan assigned - block login
-        throw new UnauthorizedException(
-          'No subscription plan assigned to your gym. Please contact the administrator.'
-        );
+        throw new UnauthorizedException('No subscription plan assigned to your gym. Please contact the administrator.');
       }
     }
 
-    const payload = { userId: user.id, role: roleName };
+    // ── Generate tokens ──────────────────────────────────────────────────────
+    const payload = { userId: userId!, role: roleName };
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
 
-    // Store refresh token
     await prisma.refreshToken.create({
       data: {
         token: refreshToken,
-        userId: user.id,
+        userId: userId!,
         expiresAt: getRefreshTokenExpiry(),
       },
     });
 
-    // Get gym ID and subscription name based on role
-    let gymId: string | undefined;
-    let subscriptionName: string | undefined;
-    if (user.ownedGym) {
-      gymId = user.ownedGym.id;
-      subscriptionName = user.ownedGym.subscriptionPlan?.name;
-    } else {
-      // Check if user is a member or trainer
-      const member = await prisma.member.findUnique({ where: { userId: user.id } });
-      if (member) gymId = member.gymId;
-      else {
-        const trainer = await prisma.trainer.findUnique({ where: { userId: user.id } });
-        if (trainer) gymId = trainer.gymId;
-      }
-    }
-
     return {
       user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.name.split(' ')[0] || user.name,
-        lastName: user.name.split(' ').slice(1).join(' ') || '',
+        id: userId!,
+        email: displayEmail,
+        firstName: displayName.split(' ')[0] || displayName,
+        lastName: displayName.split(' ').slice(1).join(' ') || '',
         role: roleName,
         gymId,
         subscriptionName,

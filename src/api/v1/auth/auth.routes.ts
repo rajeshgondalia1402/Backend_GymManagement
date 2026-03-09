@@ -16,16 +16,20 @@ const router = Router();
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - email
- *               - password
  *             properties:
  *               email:
  *                 type: string
  *                 format: email
+ *                 description: Email address (for gym owners)
+ *               mobileNo:
+ *                 type: string
+ *                 description: Mobile number (for members / trainers)
  *               password:
  *                 type: string
- *                 minLength: 6
+ *                 minLength: 1
+ *             oneOf:
+ *               - required: [email, password]
+ *               - required: [mobileNo, password]
  *     responses:
  *       200:
  *         description: Login successful
