@@ -10,77 +10,133 @@ import apiRoutes from './api';
 
 const app: Application = express();
 
-// CORS configuration - MUST be before helmet and other middleware
-const corsOptions: cors.CorsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (mobile apps, curl, server-to-server)
-    if (!origin) return callback(null, true);
+/*
+-----------------------------------------
+CORS CONFIGURATION
+-----------------------------------------
+*/
+const allowedOrigins = config.env.CORS_ORIGINS;
 
-    if (config.env.CORS_ORIGINS.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.warn(`⛔ CORS blocked request from origin: ${origin}`);
-      callback(new Error(`CORS policy: Origin ${origin} not allowed`));
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    // allow requests with no origin (curl, mobile apps, server-to-server)
+    if (!origin) {
+      return callback(null, true);
     }
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    console.warn(`⛔ CORS blocked request from origin: ${origin}`);
+    return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  optionsSuccessStatus: 200, // Some legacy browsers choke on 204
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept'
+  ],
+  optionsSuccessStatus: 200
 };
 
-// Handle preflight OPTIONS requests first
+/*
+-----------------------------------------
+APPLY CORS FIRST
+-----------------------------------------
+*/
+app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
-// Apply CORS to all routes
-app.use(cors(corsOptions));
+/*
+-----------------------------------------
+SECURITY MIDDLEWARE
+-----------------------------------------
+*/
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' }
+  })
+);
 
-// Security middleware (after CORS so preflight headers aren't stripped)
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: 'cross-origin' },
-}));
+console.log(`🌐 Allowed CORS origins: ${allowedOrigins.join(', ')}`);
 
-// Log allowed CORS origins on startup
-console.log(`🌐 CORS origins: ${config.env.CORS_ORIGINS.join(', ')}`);
-
-// Body parsing middleware
+/*
+-----------------------------------------
+BODY PARSING
+-----------------------------------------
+*/
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Compression middleware
+/*
+-----------------------------------------
+COMPRESSION
+-----------------------------------------
+*/
 app.use(compression());
 
-// Static file serving for uploads (gym logos, etc.)
+/*
+-----------------------------------------
+STATIC FILES
+-----------------------------------------
+*/
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
-// API Documentation
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  explorer: true,
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'Gym Management API Documentation',
-}));
+/*
+-----------------------------------------
+SWAGGER DOCUMENTATION
+-----------------------------------------
+*/
+app.use(
+  '/api-docs',
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec, {
+    explorer: true,
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'Gym Management API Documentation'
+  })
+);
 
-// Health check endpoint
+/*
+-----------------------------------------
+HEALTH CHECK
+-----------------------------------------
+*/
 app.get('/health', (req: Request, res: Response) => {
   res.status(200).json({
     success: true,
     message: 'Server is running',
-    timestamp: new Date().toISOString(),
+    timestamp: new Date().toISOString()
   });
 });
 
-// API Routes
+/*
+-----------------------------------------
+API ROUTES
+-----------------------------------------
+*/
 app.use('/api', apiRoutes);
 
-// 404 handler
+/*
+-----------------------------------------
+404 HANDLER
+-----------------------------------------
+*/
 app.use((req: Request, res: Response) => {
   res.status(404).json({
     success: false,
-    message: 'Route not found',
+    message: 'Route not found'
   });
 });
 
-// Global error handler
+/*
+-----------------------------------------
+GLOBAL ERROR HANDLER
+-----------------------------------------
+*/
 app.use(errorHandler);
 
 export default app;
