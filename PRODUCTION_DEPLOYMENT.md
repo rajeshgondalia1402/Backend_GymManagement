@@ -184,14 +184,42 @@ pm2 monit                   # Monitor CPU/memory
 sudo apt install nginx
 ```
 
-Create `/etc/nginx/sites-available/gym-api`:
+Copy the included Nginx config to your VPS:
+
+```bash
+# Copy the config file (from project root)
+sudo cp nginx.conf.example /etc/nginx/sites-available/gym-api
+
+# Enable it
+sudo ln -sf /etc/nginx/sites-available/gym-api /etc/nginx/sites-enabled/
+
+# Test & restart
+sudo nginx -t
+sudo systemctl restart nginx
+```
+
+Or manually create `/etc/nginx/sites-available/gym-api`:
 
 ```nginx
 server {
     listen 80;
-    server_name api.yourdomain.com;
+    server_name api.gymdeskpro.in;
+
+    client_max_body_size 10M;
 
     location / {
+        # Handle CORS preflight at Nginx level
+        if ($request_method = 'OPTIONS') {
+            add_header 'Access-Control-Allow-Origin' $http_origin always;
+            add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, PATCH, OPTIONS' always;
+            add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization' always;
+            add_header 'Access-Control-Allow-Credentials' 'true' always;
+            add_header 'Access-Control-Max-Age' 86400;
+            add_header 'Content-Type' 'text/plain charset=UTF-8';
+            add_header 'Content-Length' 0;
+            return 200;
+        }
+
         proxy_pass http://localhost:5000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
@@ -201,12 +229,18 @@ server {
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_cache_bypass $http_upgrade;
+
+        # CORS headers on all proxied responses
+        add_header 'Access-Control-Allow-Origin' $http_origin always;
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, PATCH, OPTIONS' always;
+        add_header 'Access-Control-Allow-Headers' 'Content-Type, Authorization' always;
+        add_header 'Access-Control-Allow-Credentials' 'true' always;
     }
 }
 ```
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/gym-api /etc/nginx/sites-enabled/
+sudo ln -sf /etc/nginx/sites-available/gym-api /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl restart nginx
 ```
