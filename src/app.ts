@@ -15,11 +15,14 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allow serving images from different origins
 }));
 app.use(cors({
-  origin: [config.env.FRONTEND_URL, 'http://localhost:5000', 'http://localhost:3005'],
+  origin: config.env.CORS_ORIGINS,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+
+// Log allowed CORS origins on startup
+console.log(`🌐 CORS origins: ${config.env.CORS_ORIGINS.join(', ')}`);
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));

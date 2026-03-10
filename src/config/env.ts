@@ -9,11 +9,16 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 const envFile = path.resolve(process.cwd(), `.env.${NODE_ENV}`);
 const defaultEnvFile = path.resolve(process.cwd(), '.env');
 
+let loadedEnvFile: string;
 if (fs.existsSync(envFile)) {
   dotenv.config({ path: envFile });
+  loadedEnvFile = `.env.${NODE_ENV}`;
 } else {
   dotenv.config({ path: defaultEnvFile });
+  loadedEnvFile = '.env (fallback)';
 }
+
+console.log(`📁 Env file loaded: ${loadedEnvFile} | NODE_ENV: ${NODE_ENV}`);
 
 interface EnvConfig {
   PORT: number;
@@ -24,6 +29,7 @@ interface EnvConfig {
   JWT_EXPIRATION: string;
   JWT_REFRESH_EXPIRATION: string;
   FRONTEND_URL: string;
+  CORS_ORIGINS: string[];
   RATE_LIMIT_WINDOW: number;
   RATE_LIMIT_MAX: number;
 }
@@ -43,6 +49,7 @@ class Config {
       JWT_EXPIRATION: process.env.JWT_EXPIRES_IN || '15d',
       JWT_REFRESH_EXPIRATION: process.env.JWT_REFRESH_EXPIRES_IN || '15d',
       FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3000',
+      CORS_ORIGINS: this.parseCorsOrigins(),
       RATE_LIMIT_WINDOW: parseInt(process.env.RATE_LIMIT_WINDOW || '900000', 10),
       RATE_LIMIT_MAX: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),
     };
@@ -51,6 +58,32 @@ class Config {
     this.isProduction = this.env.NODE_ENV === 'production';
 
     this.validateConfig();
+  }
+
+  /**
+   * Parse CORS origins from environment variables.
+   * Supports:
+   *   CORS_ORIGINS="https://domain1.com,https://domain2.com"  (comma-separated)
+   *   Falls back to FRONTEND_URL + localhost defaults for development
+   */
+  private parseCorsOrigins(): string[] {
+    const raw = process.env.CORS_ORIGINS;
+    if (raw) {
+      // Comma-separated list of allowed origins
+      return raw.split(',').map((o) => o.trim()).filter(Boolean);
+    }
+
+    // Fallback: FRONTEND_URL + localhost origins for dev convenience
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const origins = [frontendUrl];
+
+    // In non-production, also allow common local dev ports
+    if ((process.env.NODE_ENV || 'development') !== 'production') {
+      origins.push('http://localhost:3000', 'http://localhost:3005', 'http://localhost:5000', 'http://localhost:5173');
+    }
+
+    // De-duplicate
+    return [...new Set(origins)];
   }
 
   private validateConfig(): void {
