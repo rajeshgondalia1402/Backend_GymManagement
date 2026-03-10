@@ -10,15 +10,34 @@ import apiRoutes from './api';
 
 const app: Application = express();
 
-// Security middleware
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allow serving images from different origins
-}));
-app.use(cors({
-  origin: config.env.CORS_ORIGINS,
+// CORS configuration - MUST be before helmet and other middleware
+const corsOptions: cors.CorsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, server-to-server)
+    if (!origin) return callback(null, true);
+
+    if (config.env.CORS_ORIGINS.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`⛔ CORS blocked request from origin: ${origin}`);
+      callback(new Error(`CORS policy: Origin ${origin} not allowed`));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 200, // Some legacy browsers choke on 204
+};
+
+// Handle preflight OPTIONS requests first
+app.options('*', cors(corsOptions));
+
+// Apply CORS to all routes
+app.use(cors(corsOptions));
+
+// Security middleware (after CORS so preflight headers aren't stripped)
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
 
 // Log allowed CORS origins on startup
