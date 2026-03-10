@@ -6,12 +6,11 @@ Node.js PostgreSQL Prisma Backend for Gym Management System
 ```bash
 cd gym-management/backend
 npm install
-# Copy the appropriate env template:
-#   For development: edit .env.development with your local DB credentials
-#   For production:  edit .env.production with your VPS/domain settings
-# The app auto-loads .env.{NODE_ENV} (defaults to .env.development)
+# Edit .env with your DB credentials and settings
+# Local: set DATABASE_URL to your local DB, NODE_ENV=development
+# VPS:   set DATABASE_URL to production DB, NODE_ENV=production
 npx prisma generate
-npx prisma migrate dev --name add_course_package
+npx prisma migrate dev
 npx prisma db seed
 npm run dev
 ```

@@ -1,24 +1,11 @@
 import dotenv from 'dotenv';
 import path from 'path';
-import fs from 'fs';
 
-// Determine environment
+// Load .env file from project root
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+
 const NODE_ENV = process.env.NODE_ENV || 'development';
-
-// Load environment-specific .env file first, then fall back to .env
-const envFile = path.resolve(process.cwd(), `.env.${NODE_ENV}`);
-const defaultEnvFile = path.resolve(process.cwd(), '.env');
-
-let loadedEnvFile: string;
-if (fs.existsSync(envFile)) {
-  dotenv.config({ path: envFile });
-  loadedEnvFile = `.env.${NODE_ENV}`;
-} else {
-  dotenv.config({ path: defaultEnvFile });
-  loadedEnvFile = '.env (fallback)';
-}
-
-console.log(`📁 Env file loaded: ${loadedEnvFile} | NODE_ENV: ${NODE_ENV}`);
+console.log(`📁 Loaded .env | NODE_ENV: ${NODE_ENV}`);
 
 interface EnvConfig {
   PORT: number;
