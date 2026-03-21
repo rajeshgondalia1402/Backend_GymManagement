@@ -12,6 +12,7 @@ import {
   memberAttendanceRoutes,
   adminAttendanceRoutes,
 } from './attendance';
+import { contactRoutes } from './contact';
 
 const router = Router();
 
@@ -28,5 +29,8 @@ router.use('/gym-owner/attendance', gymOwnerAttendanceRoutes);
 router.use('/attendance', attendanceKioskRoutes);
 router.use('/member/attendance', memberAttendanceRoutes);
 router.use('/admin/attendance', adminAttendanceRoutes);
+
+// Public contact form (no auth required)
+router.use('/contact', contactRoutes);
 
 export default router;
