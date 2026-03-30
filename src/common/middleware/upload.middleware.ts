@@ -143,6 +143,20 @@ export const uploadExpenseAttachments = multer({
   },
 }).array('attachments', 5);
 
+/**
+ * Hire Trainer Certificate Upload Configuration
+ * - Single file: certificate
+ * - Max size: 5MB
+ * - Images + PDF
+ */
+export const uploadHireTrainerCertificate = multer({
+  storage: memoryStorage,
+  fileFilter: documentFileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB
+  },
+}).single('certificate');
+
 // ==================================================
 // Error Handling Middleware
 // ==================================================

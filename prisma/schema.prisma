@@ -1285,3 +1285,123 @@ model Attendance {
   @@index([status])
   @@map("attendance")
 }
+
+// ============================================================
+// HIRE TRAINER — Public marketplace for trainer applications
+// ============================================================
+
+enum HireTrainerRole {
+  FIRST_HALF
+  SECOND_HALF
+  FULL_TIME
+}
+
+enum HireTrainerStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+model HireTrainer {
+  id                    String            @id @default(uuid())
+  email                 String            @unique
+  mobile                String
+  fullName              String?
+  address               String?
+  whatsappNumber        String?
+  country               String            @default("India")
+  state                 String?
+  city                  String?
+  role                  HireTrainerRole?
+  totalYearsExperience  Int?
+  ptExperienceYears     Int?
+  ptExperienceMonths    Int?
+  currentSalary         Decimal?          @db.Decimal(10, 2)
+  expectedSalary        Decimal?          @db.Decimal(10, 2)
+  howSoonCanJoin        String?
+  specialization        String?
+  currentGymName        String?
+  reasonForLeaving      String?
+  numberOfGymsChanged   Int?
+  gender                String?
+  maritalStatus         String?
+  status                HireTrainerStatus @default(DRAFT)
+  currentStep           Int               @default(1)
+  isSubmitted           Boolean           @default(false)
+  submittedAt           DateTime?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  documents HireTrainerDocument[]
+
+  @@index([status])
+  @@index([city])
+  @@index([role])
+  @@index([specialization])
+  @@map("hire_trainer")
+}
+
+model HireTrainerVerification {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  mobile        String?
+  otpCode       String
+  otpExpiresAt  DateTime
+  isVerified    Boolean   @default(false)
+  verifiedAt    DateTime?
+  attempts      Int       @default(0)
+  lastAttemptAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([email])
+  @@map("hire_trainer_verification")
+}
+
+model HireTrainerDocument {
+  id             String      @id @default(uuid())
+  hireTrainerId  String
+  fileName       String
+  fileUrl        String
+  fileType       String
+  fileSize       Int
+  createdAt      DateTime    @default(now())
+
+  hireTrainer HireTrainer @relation(fields: [hireTrainerId], references: [id], onDelete: Cascade)
+
+  @@index([hireTrainerId])
+  @@map("hire_trainer_document")
+}
+
+// ── Gym-Owner Lead (for hire-trainer contact flow) ──────────
+model GymOwnerLead {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  gymName   String
+  mobile    String
+  gender    String   @default("Male")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([mobile])
+  @@map("gym_owner_lead")
+}
+
+model GymOwnerLeadVerification {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  otpCode       String
+  otpExpiresAt  DateTime
+  isVerified    Boolean   @default(false)
+  verifiedAt    DateTime?
+  attempts      Int       @default(0)
+  lastAttemptAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([email])
+  @@map("gym_owner_lead_verification")
+}
