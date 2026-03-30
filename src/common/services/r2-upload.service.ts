@@ -13,6 +13,7 @@ export enum R2Folder {
   TRAINER_PHOTOS = 'trainer-photos',
   TRAINER_DOCUMENTS = 'trainer-documents',
   EXPENSE_ATTACHMENTS = 'expense-attachments',
+  HIRE_TRAINER_CERTIFICATES = 'hire-trainer-certificates',
 }
 
 // Allowed MIME types for images
