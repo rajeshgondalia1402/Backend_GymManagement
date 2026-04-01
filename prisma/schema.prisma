@@ -699,6 +699,7 @@ model CoursePackage {
   discountType      DiscountType      @default(PERCENTAGE)
   coursePackageType CoursePackageType @default(REGULAR)
   Months            Int               @default(1) @map("Months")
+  orderNo           Int?
   isActive          Boolean           @default(true)
   gymId             String
   createdAt         DateTime          @default(now())

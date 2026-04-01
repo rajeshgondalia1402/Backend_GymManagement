@@ -4195,6 +4195,7 @@ class GymOwnerService {
       discountType: p.discountType as 'PERCENTAGE' | 'AMOUNT',
       coursePackageType: p.coursePackageType as 'REGULAR' | 'PT',
       Months: p.Months,
+      orderNo: p.orderNo ?? null,
       isActive: p.isActive,
       gymId: p.gymId,
       createdAt: p.createdAt,
@@ -4223,6 +4224,7 @@ class GymOwnerService {
       discountType: p.discountType as 'PERCENTAGE' | 'AMOUNT',
       coursePackageType: p.coursePackageType as 'REGULAR' | 'PT',
       Months: p.Months,
+      orderNo: p.orderNo ?? null,
       isActive: p.isActive,
       gymId: p.gymId,
       createdAt: p.createdAt,
@@ -4231,9 +4233,12 @@ class GymOwnerService {
       updatedBy: p.updatedBy || undefined,
     }));
 
-    return mapped.sort((a, b) =>
-      a.packageName.localeCompare(b.packageName, undefined, { numeric: true, sensitivity: 'base' })
-    );
+    return mapped.sort((a, b) => {
+      const aOrder = a.orderNo ?? Number.MAX_SAFE_INTEGER;
+      const bOrder = b.orderNo ?? Number.MAX_SAFE_INTEGER;
+      if (aOrder !== bOrder) return aOrder - bOrder;
+      return a.packageName.localeCompare(b.packageName, undefined, { numeric: true, sensitivity: 'base' });
+    });
   }
 
   async getCoursePackageById(gymId: string, id: string): Promise<CoursePackage> {
@@ -4252,6 +4257,7 @@ class GymOwnerService {
       discountType: packageRecord.discountType as 'PERCENTAGE' | 'AMOUNT',
       coursePackageType: packageRecord.coursePackageType as 'REGULAR' | 'PT',
       Months: packageRecord.Months,
+      orderNo: packageRecord.orderNo ?? null,
       isActive: packageRecord.isActive,
       gymId: packageRecord.gymId,
       createdAt: packageRecord.createdAt,
@@ -4279,7 +4285,8 @@ class GymOwnerService {
         maxDiscount: data.maxDiscount,
         discountType: data.discountType || 'PERCENTAGE',
         coursePackageType: data.coursePackageType || 'REGULAR',
-        Months: data.Months,
+        Months: data.Months ?? data.months,
+        orderNo: data.orderNo ?? null,
         gymId,
         createdBy: userId,
       },
@@ -4294,6 +4301,7 @@ class GymOwnerService {
       discountType: packageRecord.discountType as 'PERCENTAGE' | 'AMOUNT',
       coursePackageType: packageRecord.coursePackageType as 'REGULAR' | 'PT',
       Months: packageRecord.Months,
+      orderNo: packageRecord.orderNo ?? null,
       isActive: packageRecord.isActive,
       gymId: packageRecord.gymId,
       createdAt: packageRecord.createdAt,
@@ -4329,6 +4337,9 @@ class GymOwnerService {
     if (data.discountType !== undefined) updateData.discountType = data.discountType;
     if (data.coursePackageType !== undefined) updateData.coursePackageType = data.coursePackageType;
     if (data.Months !== undefined) updateData.Months = data.Months;
+    else if (data.months !== undefined) updateData.Months = data.months;
+    if (data.orderNo !== undefined) updateData.orderNo = data.orderNo;
+    else if ('orderNo' in data) updateData.orderNo = null;
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
 
     const packageRecord = await prisma.coursePackage.update({
@@ -4345,6 +4356,7 @@ class GymOwnerService {
       discountType: packageRecord.discountType as 'PERCENTAGE' | 'AMOUNT',
       coursePackageType: packageRecord.coursePackageType as 'REGULAR' | 'PT',
       Months: packageRecord.Months,
+      orderNo: packageRecord.orderNo ?? null,
       isActive: packageRecord.isActive,
       gymId: packageRecord.gymId,
       createdAt: packageRecord.createdAt,
@@ -4389,6 +4401,7 @@ class GymOwnerService {
       discountType: packageRecord.discountType as 'PERCENTAGE' | 'AMOUNT',
       coursePackageType: packageRecord.coursePackageType as 'REGULAR' | 'PT',
       Months: packageRecord.Months,
+      orderNo: packageRecord.orderNo ?? null,
       isActive: packageRecord.isActive,
       gymId: packageRecord.gymId,
       createdAt: packageRecord.createdAt,
@@ -4517,6 +4530,7 @@ class GymOwnerService {
         discountType: packageRecord.discountType as 'PERCENTAGE' | 'AMOUNT',
         coursePackageType: packageRecord.coursePackageType as 'REGULAR' | 'PT',
         Months: packageRecord.Months,
+        orderNo: packageRecord.orderNo ?? null,
         isActive: packageRecord.isActive,
         gymId: packageRecord.gymId,
         createdAt: packageRecord.createdAt,

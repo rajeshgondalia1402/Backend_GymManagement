@@ -26,6 +26,8 @@ export const paginationSchema = z.object({
   membershipEndTo: z.string().optional(),
   // Course package filter
   coursePackageId: z.string().uuid().optional(),
+  // Course package type filter (REGULAR / PT)
+  coursePackageType: z.enum(['REGULAR', 'PT']).optional(),
   // Payment filter
   paymentFor: z.enum(['REGULAR', 'PT']).optional(),
 });
@@ -535,6 +537,7 @@ export const createCoursePackageSchema = z.object({
   coursePackageType: z.enum(['REGULAR', 'PT']).optional().default('REGULAR'),
   Months: monthsFieldSchema.optional(),
   months: monthsFieldSchema.optional(),
+  orderNo: z.number().int().min(0).optional().nullable(),
 }).transform((data) => {
   // Normalize months/Months field - prefer lowercase 'months' if both provided
   const monthsValue = data.months ?? data.Months;
@@ -554,6 +557,7 @@ export const updateCoursePackageSchema = z.object({
   coursePackageType: z.enum(['REGULAR', 'PT']).optional(),
   Months: monthsFieldSchema.optional(),
   months: monthsFieldSchema.optional(),
+  orderNo: z.number().int().min(0).optional().nullable(),
   isActive: z.boolean().optional(),
 }).transform((data) => {
   // Normalize months/Months field - prefer lowercase 'months' if both provided
