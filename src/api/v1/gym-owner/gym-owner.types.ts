@@ -934,6 +934,7 @@ export interface CoursePackage {
   discountType: 'PERCENTAGE' | 'AMOUNT';
   coursePackageType: CoursePackageType;
   Months: number;
+  orderNo: number | null;
   isActive: boolean;
   gymId: string;
   createdAt: Date;
@@ -951,6 +952,7 @@ export interface CreateCoursePackageRequest {
   coursePackageType?: CoursePackageType;
   Months: number;
   months?: number; // Alternative lowercase version
+  orderNo?: number;
 }
 
 export interface UpdateCoursePackageRequest {
@@ -962,6 +964,7 @@ export interface UpdateCoursePackageRequest {
   coursePackageType?: CoursePackageType;
   Months?: number;
   months?: number; // Alternative lowercase version
+  orderNo?: number;
   isActive?: boolean;
 }
 
