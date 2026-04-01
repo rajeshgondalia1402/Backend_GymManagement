@@ -2681,7 +2681,7 @@ router.get('/course-packages/active', gymOwnerController.getAllActiveCoursePacka
  *         name: sortBy
  *         schema:
  *           type: string
- *           enum: [packageName, fees, createdAt, coursePackageType]
+ *           enum: [packageName, fees, createdAt, coursePackageType, orderNo]
  *         description: Sort field
  *       - in: query
  *         name: sortOrder
