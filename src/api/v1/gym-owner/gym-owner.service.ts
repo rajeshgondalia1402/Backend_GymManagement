@@ -4212,10 +4212,9 @@ class GymOwnerService {
         gymId,
         isActive: true,
       },
-      orderBy: { packageName: 'asc' },
     });
 
-    return packageRecords.map((p) => ({
+    const mapped = packageRecords.map((p) => ({
       id: p.id,
       packageName: p.packageName,
       description: p.description || undefined,
@@ -4231,6 +4230,10 @@ class GymOwnerService {
       createdBy: p.createdBy || undefined,
       updatedBy: p.updatedBy || undefined,
     }));
+
+    return mapped.sort((a, b) =>
+      a.packageName.localeCompare(b.packageName, undefined, { numeric: true, sensitivity: 'base' })
+    );
   }
 
   async getCoursePackageById(gymId: string, id: string): Promise<CoursePackage> {
