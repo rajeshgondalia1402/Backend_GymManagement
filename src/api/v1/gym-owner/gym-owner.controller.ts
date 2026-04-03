@@ -140,6 +140,29 @@ class GymOwnerController {
     }
   }
 
+  // Dashboard Chart Data
+  async getDashboardIncomeExpenseChart(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const months = Number(req.query.months) || 6;
+      const data = await gymOwnerService.getDashboardIncomeExpenseChart(gymId, Math.min(months, 12));
+      successResponse(res, data, 'Income/Expense chart data retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getDashboardMonthlyActivityChart(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const gymId = this.getGymId(req);
+      const months = Number(req.query.months) || 6;
+      const data = await gymOwnerService.getDashboardMonthlyActivityChart(gymId, Math.min(months, 12));
+      successResponse(res, data, 'Monthly activity chart data retrieved successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
   // Trainers
   async getTrainers(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {

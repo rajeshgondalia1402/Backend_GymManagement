@@ -8078,6 +8078,211 @@ class GymOwnerService {
     // Return updated profile
     return this.getGymOwnerProfile(gymId, userId);
   }
+
+  // =============================================
+  // Dashboard Chart Data
+  // =============================================
+
+  async getDashboardIncomeExpenseChart(gymId: string, months: number = 6): Promise<{
+    data: { month: string; income: number; expenses: number }[];
+    totalIncome: number;
+    totalExpenses: number;
+    incomeBreakdown: { category: string; amount: number }[];
+    expenseBreakdown: { category: string; amount: number }[];
+  }> {
+    const today = new Date();
+    const startDate = new Date(today.getFullYear(), today.getMonth() - months + 1, 1);
+    const endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    // Generate month keys
+    const monthsList: string[] = [];
+    for (let i = 0; i < months; i++) {
+      const d = new Date(today.getFullYear(), today.getMonth() - months + 1 + i, 1);
+      monthsList.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    }
+
+    const [balancePayments, renewalPayments, newMembers, expenseRecords, salarySettlements] = await Promise.all([
+      prisma.memberBalancePayment.findMany({
+        where: { gymId, isActive: true, paymentDate: { gte: startDate, lte: endDate } },
+        select: { paymentDate: true, paidFees: true, paymentFor: true },
+      }),
+      prisma.membershipRenewal.findMany({
+        where: { gymId, isActive: true, renewalDate: { gte: startDate, lte: endDate }, paymentStatus: { in: ['PAID', 'PARTIAL'] } },
+        select: { renewalDate: true, paidAmount: true },
+      }),
+      prisma.member.findMany({
+        where: { gymId, isActive: true, createdAt: { gte: startDate, lte: endDate } },
+        select: { createdAt: true, finalFees: true },
+      }),
+      prisma.expenseMaster.findMany({
+        where: { gymId, isActive: true, expenseDate: { gte: startDate, lte: endDate } },
+        select: { expenseDate: true, amount: true, expenseGroup: { select: { expenseGroupName: true } } },
+      }),
+      prisma.trainerSalarySettlement.findMany({
+        where: { gymId, createdAt: { gte: startDate, lte: endDate } },
+        select: { createdAt: true, finalPayableAmount: true },
+      }),
+    ]);
+
+    const getMonthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+    // Initialize monthly buckets
+    const monthlyMap = new Map<string, { income: number; expenses: number }>();
+    for (const m of monthsList) {
+      monthlyMap.set(m, { income: 0, expenses: 0 });
+    }
+
+    // Category totals
+    let newMembershipTotal = 0, regularPaymentTotal = 0, ptPaymentTotal = 0, renewalTotal = 0;
+    const expenseCategoryMap = new Map<string, number>();
+    let salaryTotal = 0;
+
+    // Process income
+    for (const bp of balancePayments) {
+      const key = getMonthKey(bp.paymentDate);
+      const entry = monthlyMap.get(key);
+      const amt = Number(bp.paidFees || 0);
+      if (entry) entry.income += amt;
+      if (bp.paymentFor === 'REGULAR') regularPaymentTotal += amt;
+      else if (bp.paymentFor === 'PT') ptPaymentTotal += amt;
+    }
+    for (const r of renewalPayments) {
+      const key = getMonthKey(r.renewalDate);
+      const entry = monthlyMap.get(key);
+      const amt = Number(r.paidAmount || 0);
+      if (entry) entry.income += amt;
+      renewalTotal += amt;
+    }
+    for (const m of newMembers) {
+      const key = getMonthKey(m.createdAt);
+      const entry = monthlyMap.get(key);
+      const amt = Number(m.finalFees || 0);
+      if (entry) entry.income += amt;
+      newMembershipTotal += amt;
+    }
+
+    // Process expenses
+    for (const e of expenseRecords) {
+      const key = getMonthKey(e.expenseDate);
+      const entry = monthlyMap.get(key);
+      const amt = Number(e.amount || 0);
+      if (entry) entry.expenses += amt;
+      const groupName = e.expenseGroup?.expenseGroupName || 'Other';
+      expenseCategoryMap.set(groupName, (expenseCategoryMap.get(groupName) || 0) + amt);
+    }
+    for (const s of salarySettlements) {
+      const key = getMonthKey(s.createdAt);
+      const entry = monthlyMap.get(key);
+      const amt = Number(s.finalPayableAmount || 0);
+      if (entry) entry.expenses += amt;
+      salaryTotal += amt;
+    }
+
+    // Build response
+    const data = monthsList.map(m => ({
+      month: m,
+      income: Math.round(monthlyMap.get(m)!.income),
+      expenses: Math.round(monthlyMap.get(m)!.expenses),
+    }));
+
+    const incomeBreakdown = [
+      { category: 'New Memberships', amount: Math.round(newMembershipTotal) },
+      { category: 'Regular Payments', amount: Math.round(regularPaymentTotal) },
+      { category: 'PT Payments', amount: Math.round(ptPaymentTotal) },
+      { category: 'Renewals', amount: Math.round(renewalTotal) },
+    ].filter(i => i.amount > 0).sort((a, b) => b.amount - a.amount);
+
+    if (salaryTotal > 0) expenseCategoryMap.set('Trainer Salaries', (expenseCategoryMap.get('Trainer Salaries') || 0) + salaryTotal);
+    const expenseBreakdown = Array.from(expenseCategoryMap.entries())
+      .map(([category, amount]) => ({ category, amount: Math.round(amount) }))
+      .sort((a, b) => b.amount - a.amount);
+
+    const totalIncome = data.reduce((s, d) => s + d.income, 0);
+    const totalExpenses = data.reduce((s, d) => s + d.expenses, 0);
+
+    return { data, totalIncome, totalExpenses, incomeBreakdown, expenseBreakdown };
+  }
+
+  async getDashboardMonthlyActivityChart(gymId: string, months: number = 6): Promise<{
+    data: { month: string; newInquiries: number; newJoiners: number; newPT: number; renewals: number }[];
+  }> {
+    const today = new Date();
+    const startDate = new Date(today.getFullYear(), today.getMonth() - months + 1, 1);
+    const endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    const [inquiries, members, ptMembers, renewals] = await Promise.all([
+      // New inquiries by month
+      prisma.memberInquiry.findMany({
+        where: {
+          gymId,
+          isActive: true,
+          inquiryDate: { gte: startDate, lte: endDate },
+        },
+        select: { inquiryDate: true },
+      }),
+      // New members (joiners) by month
+      prisma.member.findMany({
+        where: {
+          gymId,
+          isActive: true,
+          createdAt: { gte: startDate, lte: endDate },
+        },
+        select: { createdAt: true },
+      }),
+      // New PT subscriptions by month
+      prisma.pTMember.findMany({
+        where: {
+          gymId,
+          isActive: true,
+          createdAt: { gte: startDate, lte: endDate },
+        },
+        select: { createdAt: true },
+      }),
+      // Renewals by month
+      prisma.membershipRenewal.findMany({
+        where: {
+          gymId,
+          isActive: true,
+          renewalDate: { gte: startDate, lte: endDate },
+        },
+        select: { renewalDate: true },
+      }),
+    ]);
+
+    // Build monthly buckets
+    const monthlyMap = new Map<string, { newInquiries: number; newJoiners: number; newPT: number; renewals: number }>();
+    for (let i = 0; i < months; i++) {
+      const d = new Date(today.getFullYear(), today.getMonth() - months + 1 + i, 1);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      monthlyMap.set(key, { newInquiries: 0, newJoiners: 0, newPT: 0, renewals: 0 });
+    }
+
+    const getMonthKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+    for (const inq of inquiries) {
+      const key = getMonthKey(inq.inquiryDate);
+      if (monthlyMap.has(key)) monthlyMap.get(key)!.newInquiries++;
+    }
+    for (const mem of members) {
+      const key = getMonthKey(mem.createdAt);
+      if (monthlyMap.has(key)) monthlyMap.get(key)!.newJoiners++;
+    }
+    for (const pt of ptMembers) {
+      const key = getMonthKey(pt.createdAt);
+      if (monthlyMap.has(key)) monthlyMap.get(key)!.newPT++;
+    }
+    for (const ren of renewals) {
+      const key = getMonthKey(ren.renewalDate);
+      if (monthlyMap.has(key)) monthlyMap.get(key)!.renewals++;
+    }
+
+    const data = Array.from(monthlyMap.entries()).map(([month, counts]) => ({
+      month,
+      ...counts,
+    }));
+
+    return { data };
+  }
 }
 
 export default new GymOwnerService();

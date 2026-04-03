@@ -178,6 +178,10 @@ router.get('/dashboard/expenses-summary', validate(paginationSchema, 'query'), g
  */
 router.get('/dashboard/today-renewals', validate(paginationSchema, 'query'), gymOwnerController.getDashboardTodayRenewals.bind(gymOwnerController));
 
+// Dashboard Chart Data Routes
+router.get('/dashboard/income-expense-chart', gymOwnerController.getDashboardIncomeExpenseChart.bind(gymOwnerController));
+router.get('/dashboard/monthly-activity-chart', gymOwnerController.getDashboardMonthlyActivityChart.bind(gymOwnerController));
+
 // Trainers
 /**
  * @swagger
