@@ -19,6 +19,8 @@ router.post('/upload-certificate', uploadHireTrainerCertificate, handleUploadErr
 
 // Search & profiles
 router.get('/search', controller.searchTrainers);
+router.get('/my', controller.getMyProfile);
+router.put('/update', controller.updateTrainerProfile);
 router.get('/:id', controller.getTrainerProfile);
 
 export { router as hireTrainerRoutes };
