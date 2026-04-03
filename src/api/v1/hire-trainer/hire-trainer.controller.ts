@@ -73,6 +73,34 @@ export const searchTrainers = async (req: Request, res: Response) => {
   }
 };
 
+export const getMyProfile = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.query as { email: string };
+    if (!email) {
+      return errorResponse(res, 'Email is required', 400);
+    }
+    const result = await hireTrainerService.getMyProfile(email);
+    return successResponse(res, result, 'Trainer profile retrieved');
+  } catch (error: any) {
+    logger.error('Get my profile error', { error: error.message });
+    return errorResponse(res, error.message, 400);
+  }
+};
+
+export const updateTrainerProfile = async (req: Request, res: Response) => {
+  try {
+    const { email, ...updateData } = req.body;
+    if (!email) {
+      return errorResponse(res, 'Email is required', 400);
+    }
+    const result = await hireTrainerService.updateTrainerProfile(email, updateData);
+    return successResponse(res, result, 'Profile updated successfully');
+  } catch (error: any) {
+    logger.error('Update trainer profile error', { error: error.message });
+    return errorResponse(res, error.message, 400);
+  }
+};
+
 export const getTrainerProfile = async (req: Request, res: Response) => {
   try {
     const result = await hireTrainerService.getTrainerProfile(req.params.id);

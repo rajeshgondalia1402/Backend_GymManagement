@@ -304,6 +304,77 @@ export const uploadCertificate = async (hireTrainerId: string, file: FileData) =
 };
 
 // ============================================================
+// My Profile & Update
+// ============================================================
+
+export const getMyProfile = async (email: string) => {
+  const verification = await prisma.hireTrainerVerification.findUnique({
+    where: { email },
+  });
+  if (!verification?.isVerified) {
+    throw new Error('Email must be verified.');
+  }
+
+  const trainer = await prisma.hireTrainer.findUnique({
+    where: { email },
+    include: { documents: true },
+  });
+
+  if (!trainer) {
+    throw new Error('No trainer profile found for this email.');
+  }
+
+  return trainer;
+};
+
+export const updateTrainerProfile = async (email: string, data: Record<string, any>) => {
+  const verification = await prisma.hireTrainerVerification.findUnique({
+    where: { email },
+  });
+  if (!verification?.isVerified) {
+    throw new Error('Email must be verified.');
+  }
+
+  const trainer = await prisma.hireTrainer.findUnique({
+    where: { email },
+  });
+
+  if (!trainer) {
+    throw new Error('No trainer profile found for this email.');
+  }
+
+  const allowedFields = [
+    'fullName', 'address', 'whatsappNumber', 'country', 'state', 'city',
+    'role', 'totalYearsExperience', 'ptExperienceYears', 'ptExperienceMonths',
+    'currentSalary', 'expectedSalary', 'howSoonCanJoin', 'specialization',
+    'currentGymName', 'reasonForLeaving', 'numberOfGymsChanged',
+    'gender', 'maritalStatus',
+  ];
+
+  const updateData: Record<string, any> = {};
+
+  for (const field of allowedFields) {
+    if (data[field] !== undefined) {
+      if (['totalYearsExperience', 'ptExperienceYears', 'ptExperienceMonths', 'numberOfGymsChanged'].includes(field)) {
+        updateData[field] = data[field] !== null && data[field] !== '' ? parseInt(data[field], 10) : null;
+      } else if (['currentSalary', 'expectedSalary'].includes(field)) {
+        updateData[field] = data[field] !== null && data[field] !== '' ? parseFloat(data[field]) : null;
+      } else {
+        updateData[field] = data[field] || null;
+      }
+    }
+  }
+
+  const updated = await prisma.hireTrainer.update({
+    where: { email },
+    data: updateData,
+    include: { documents: true },
+  });
+
+  return updated;
+};
+
+// ============================================================
 // Search & Listing
 // ============================================================
 

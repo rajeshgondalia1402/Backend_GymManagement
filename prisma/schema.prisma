@@ -1386,6 +1386,8 @@ model GymOwnerLead {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  vacancies TrainerVacancy[]
+
   @@index([email])
   @@index([mobile])
   @@map("gym_owner_lead")
@@ -1405,4 +1407,49 @@ model GymOwnerLeadVerification {
 
   @@index([email])
   @@map("gym_owner_lead_verification")
+}
+
+// ── Trainer Vacancy (Gym Owner posts job openings) ──────────
+enum VacancySalaryType {
+  PER_MONTH
+  PER_YEAR
+}
+
+enum TrainerVacancyStatus {
+  ACTIVE
+  CLOSED
+  EXPIRED
+}
+
+model TrainerVacancy {
+  id                  String               @id @default(uuid())
+  gymOwnerLeadId      String
+  role                HireTrainerRole
+  yearsOfExperience   Int?
+  ptClientExperience  Int?
+  description         String?              @db.Text
+  specialization      String?
+  certificate         String?
+  isPTTrainer         Boolean              @default(false)
+  howSoonCanJoin      String?
+  gender              String?
+  salaryMin           Decimal?             @db.Decimal(10, 2)
+  salaryMax           Decimal?             @db.Decimal(10, 2)
+  salaryType          VacancySalaryType    @default(PER_MONTH)
+  country             String               @default("India")
+  state               String?
+  city                String?
+  closeDate           DateTime?
+  status              TrainerVacancyStatus @default(ACTIVE)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  gymOwnerLead GymOwnerLead @relation(fields: [gymOwnerLeadId], references: [id], onDelete: Cascade)
+
+  @@index([gymOwnerLeadId])
+  @@index([status])
+  @@index([role])
+  @@index([state])
+  @@index([city])
+  @@map("trainer_vacancy")
 }
