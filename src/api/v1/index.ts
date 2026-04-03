@@ -15,6 +15,7 @@ import {
 import { contactRoutes } from './contact';
 import { hireTrainerRoutes } from './hire-trainer';
 import { gymOwnerLeadRoutes } from './gym-owner-lead';
+import { trainerVacancyRoutes } from './trainer-vacancy';
 
 const router = Router();
 
@@ -40,5 +41,8 @@ router.use('/hire-trainer', hireTrainerRoutes);
 
 // Public gym-owner lead (for hire-trainer contact flow, no auth required)
 router.use('/gym-owner-lead', gymOwnerLeadRoutes);
+
+// Public trainer vacancy marketplace (no auth required)
+router.use('/trainer-vacancy', trainerVacancyRoutes);
 
 export default router;
