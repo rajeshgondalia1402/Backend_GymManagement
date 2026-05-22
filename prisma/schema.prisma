@@ -216,8 +216,8 @@ model Member {
   assignedDiets       MemberDiet[]               @relation("MemberDietAssignments") // Diet assignments
 
   // Biometric Attendance Relations
-  biometric   MemberBiometric? // One biometric record per member
-  attendances Attendance[] // Attendance records
+  biometric      MemberBiometric? // One biometric record per member
+  attendances    Attendance[] // Attendance records
 
   @@index([gymId])
   @@index([membershipStatus])
@@ -1285,6 +1285,19 @@ model Attendance {
   @@index([gymId, attendanceDate]) // Composite for daily reports
   @@index([status])
   @@map("attendance")
+}
+
+// ============================================================
+// BIOMETRIC TEST
+// ============================================================
+
+model BiometricTest {
+  id          String   @id @default(uuid())
+  memberId    String
+  createdDate DateTime @default(now())
+
+  @@index([memberId])
+  @@map("biometric_test")
 }
 
 // ============================================================
