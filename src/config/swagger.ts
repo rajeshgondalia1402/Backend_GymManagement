@@ -14,6 +14,10 @@ const options: swaggerJsdoc.Options = {
       }
     },
     servers: [
+      {
+        url: 'https://api.gymdeskpro.in',
+        description: 'Production Server'
+      },
       { 
         url: `http://localhost:${config.env.PORT}`, 
         description: 'Local Development Server' 
