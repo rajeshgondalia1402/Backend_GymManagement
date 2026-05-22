@@ -13,23 +13,12 @@ const options: swaggerJsdoc.Options = {
         email: 'support@gymmanagement.com'
       }
     },
-    servers: config.isProduction
-      ? [
-          {
-            url: 'https://api.gymdeskpro.in',
-            description: 'Production Server',
-          },
-        ]
-      : [
-          {
-            url: `http://localhost:${config.env.PORT}`,
-            description: 'Local Development Server',
-          },
-          {
-            url: 'https://api.gymdeskpro.in',
-            description: 'Production Server',
-          },
-        ],
+    servers: [
+      {
+        url: '/',
+        description: 'API Server',
+      },
+    ],
     components: {
       securitySchemes: {
         bearerAuth: {

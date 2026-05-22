@@ -90,20 +90,15 @@ app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 SWAGGER DOCUMENTATION
 -----------------------------------------
 */
-app.use('/api-docs', swaggerUi.serve);
-app.get('/api-docs', (req: Request, res: Response, next) => {
-  const protocol = (req.get('x-forwarded-proto') || req.protocol) as string;
-  const host = req.get('host') as string;
-  const dynamicSpec = {
-    ...(swaggerSpec as object),
-    servers: [{ url: `${protocol}://${host}`, description: 'API Server' }],
-  };
-  swaggerUi.setup(dynamicSpec, {
+app.use(
+  '/api-docs',
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec, {
     explorer: true,
     customCss: '.swagger-ui .topbar { display: none }',
-    customSiteTitle: 'Gym Management API Documentation',
-  })(req, res, next);
-});
+    customSiteTitle: 'Gym Management API Documentation'
+  })
+);
 
 /*
 -----------------------------------------
