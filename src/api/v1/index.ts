@@ -16,6 +16,7 @@ import { contactRoutes } from './contact';
 import { hireTrainerRoutes } from './hire-trainer';
 import { gymOwnerLeadRoutes } from './gym-owner-lead';
 import { trainerVacancyRoutes } from './trainer-vacancy';
+import { biometricTestRoutes } from './biometric-test';
 
 const router = Router();
 
@@ -44,5 +45,8 @@ router.use('/gym-owner-lead', gymOwnerLeadRoutes);
 
 // Public trainer vacancy marketplace (no auth required)
 router.use('/trainer-vacancy', trainerVacancyRoutes);
+
+// Biometric test
+router.use('/biometric-test', biometricTestRoutes);
 
 export default router;
