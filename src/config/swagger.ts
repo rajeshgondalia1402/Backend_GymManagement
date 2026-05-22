@@ -13,9 +13,10 @@ const options: swaggerJsdoc.Options = {
         email: 'support@gymmanagement.com'
       }
     },
-    servers: config.env.NODE_ENV === 'production'
-      ? [{ url: 'https://api.gymdeskpro.in', description: 'Production Server' }]
-      : [{ url: `http://localhost:${config.env.PORT}`, description: 'Local Development Server' }],
+    servers: [
+      { url: 'https://api.gymdeskpro.in', description: 'Production Server' },
+      { url: `http://localhost:${config.env.PORT}`, description: 'Local Development Server' }
+    ],
     components: {
       securitySchemes: {
         bearerAuth: {

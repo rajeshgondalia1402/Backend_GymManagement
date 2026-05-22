@@ -62,17 +62,18 @@ class Config {
 
     const isProduction = (process.env.NODE_ENV || 'development') === 'production';
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    const origins = [frontendUrl];
 
-    if (isProduction) {
-      // Allow the API's own Swagger origin and the production frontend
-      origins.push(
-        'https://api.gymdeskpro.in',
-        'https://gymdeskpro.in',
-        'https://www.gymdeskpro.in'
-      );
-    } else {
-      // Allow common local dev ports
+    // Always include production domains so Swagger works after deployment
+    // regardless of how NODE_ENV is configured on the server
+    const origins = [
+      frontendUrl,
+      'https://api.gymdeskpro.in',
+      'https://gymdeskpro.in',
+      'https://www.gymdeskpro.in',
+    ];
+
+    if (!isProduction) {
+      // Also allow common local dev ports
       origins.push(
         'http://localhost:3000',
         'http://localhost:3005',
