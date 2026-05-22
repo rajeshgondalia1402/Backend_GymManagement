@@ -56,17 +56,29 @@ class Config {
   private parseCorsOrigins(): string[] {
     const raw = process.env.CORS_ORIGINS;
     if (raw) {
-      // Comma-separated list of allowed origins
-      return raw.split(',').map((o) => o.trim()).filter(Boolean);
+      // Support comma or semicolon-separated list of allowed origins
+      return raw.split(/[,;]/).map((o) => o.trim()).filter(Boolean);
     }
 
-    // Fallback: FRONTEND_URL + localhost origins for dev convenience
+    const isProduction = (process.env.NODE_ENV || 'development') === 'production';
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const origins = [frontendUrl];
 
-    // In non-production, also allow common local dev ports
-    if ((process.env.NODE_ENV || 'development') !== 'production') {
-      origins.push('http://localhost:3000', 'http://localhost:3005', 'http://localhost:5000', 'http://localhost:5173');
+    if (isProduction) {
+      // Allow the API's own Swagger origin and the production frontend
+      origins.push(
+        'https://api.gymdeskpro.in',
+        'https://gymdeskpro.in',
+        'https://www.gymdeskpro.in'
+      );
+    } else {
+      // Allow common local dev ports
+      origins.push(
+        'http://localhost:3000',
+        'http://localhost:3005',
+        'http://localhost:5000',
+        'http://localhost:5173'
+      );
     }
 
     // De-duplicate
